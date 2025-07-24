@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sling-sync
+  namespace: default
+spec:
+  schedule: "*/5 * * * *"  # run every 5 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: sling
+            image: slingdata/sling-cli:latest
+            args: ["sync", "--config", "/etc/sling/mission-to-command-sling.yaml"]
+            env:
+            - name: MISSION_CLUSTER_ID
+              value: "mission-01"
+            - name: SYNC_JOB_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            volumeMounts:
+            - name: sling-config
+              mountPath: /etc/sling
+          restartPolicy: OnFailure
+          volumes:
+          - name: sling-config
+            configMap:
+              name: sling-pipeline
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sling-pipeline
+data:
+  mission-to-command-sling.yaml: |
+    source:
+      type: postgres
+      connection: "postgres://user:pass@mission-db:5432/dbname"
+      table: drone_telemetry
+      incremental_column: ts
+
+    target:
+      type: postgres
+      connection: "postgres://user:pass@command-db:5432/dbname"
+      table: drone_telemetry
+
+    transforms:
+      - add_column:
+          name: synced_from
+          value: "{{ env.MISSION_CLUSTER_ID }}"
+      - add_column:
+          name: synced_at
+          value: "{{ now() }}"
+      - add_column:
+          name: synced_id
+          value: "{{ env.SYNC_JOB_ID }}"
+
+    options:
+      on_conflict: skip

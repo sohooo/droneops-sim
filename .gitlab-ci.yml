@@ -1,0 +1,81 @@
+stages:
+  - test
+  - build
+  - deploy
+  - cleanup
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/droneops-sim
+  TEST_NAMESPACE: droneops-mr-$CI_MERGE_REQUEST_IID
+
+# Step 1: Unit tests
+test:
+  stage: test
+  script:
+    - go test ./...
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# Step 2: Build image with Podman
+build:
+  stage: build
+  image: quay.io/podman/stable:latest
+  script:
+    - podman login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - podman build -t $DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - podman push $DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# Step 3: Deploy Merge Request preview with Helm
+deploy_mr:
+  stage: deploy
+  image: alpine/helm:3.14.0
+  script:
+    - helm upgrade --install droneops charts/droneops \
+        --namespace $TEST_NAMESPACE --create-namespace \
+        --set image.repository=$DOCKER_IMAGE \
+        --set image.tag=$CI_COMMIT_SHORT_SHA \
+        --set config.enabled=true \
+        --wait --timeout 90s
+  environment:
+    name: mr/$CI_MERGE_REQUEST_IID
+    url: https://droneops-mr-$CI_MERGE_REQUEST_IID.example.com
+    on_stop: cleanup_mr
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# Step 4: Cleanup namespace after merge or close
+cleanup_mr:
+  stage: cleanup
+  image: bitnami/kubectl:latest
+  script:
+    - echo "Cleaning up namespace: $TEST_NAMESPACE"
+    - kubectl delete namespace $TEST_NAMESPACE --ignore-not-found=true
+  environment:
+    name: mr/$CI_MERGE_REQUEST_IID
+    action: stop
+  when: manual
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# Step 5: Push to Artifactory + update GitOps repo
+promote_prod:
+  stage: deploy
+  image: quay.io/skopeo/stable:latest
+  script:
+    - skopeo copy --dest-creds $ARTIFACTORY_USER:$ARTIFACTORY_PASSWORD \
+        docker://$DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA \
+        docker://artifactory.infra.local/droneops-sim:$CI_COMMIT_TAG
+
+    - git config --global user.email "ci@gitlab.local"
+    - git config --global user.name "GitLab CI"
+    - git clone https://gitlab.local/infra/k8s-environments.git
+    - cd k8s-environments/environments/prod/droneops
+    - yq -i '.image.tag = "'$CI_COMMIT_TAG'"' values.yaml
+    - git commit -am "Promote droneops-sim to $CI_COMMIT_TAG"
+    - git push
+  rules:
+    - if: '$CI_COMMIT_TAG'

@@ -1,0 +1,130 @@
+{
+  "uid": "droneops-telemetry",
+  "title": "DroneOps Telemetry Dashboard",
+  "version": 1,
+  "schemaVersion": 36,
+  "style": "dark",
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "geomap",
+      "title": "Drone Positions",
+      "description": "Shows the current positions of all active drones. Marker color represents status (OK, Low Battery, Failure), marker size represents battery level.",
+      "gridPos": { "x": 0, "y": 0, "w": 16, "h": 12 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "points" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 20 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "markers",
+            "config": {
+              "latField": "lat",
+              "lonField": "lon",
+              "sizeField": "battery",
+              "colorField": "status",
+              "sizeMin": 4,
+              "sizeMax": 12,
+              "colorScheme": "RdYlGn"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Active Drones",
+      "description": "Shows the total number of drones reporting telemetry in the selected time range.",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "refId": "B",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "Average Battery Level",
+      "description": "Shows the average battery level across all active drones.",
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Recent Telemetry",
+      "description": "Shows the 50 most recent telemetry records for troubleshooting and detailed analysis.",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "D",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 50",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "cluster_id",
+        "label": "Cluster",
+        "description": "Filter telemetry by cluster.",
+        "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+        "query": "SELECT DISTINCT cluster_id FROM drone_telemetry",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "type": "query",
+        "name": "status",
+        "label": "Drone Status",
+        "description": "Filter drones by status.",
+        "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+        "query": "SELECT DISTINCT status FROM drone_telemetry",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s"
+}

@@ -1,0 +1,160 @@
+{
+  "id": null,
+  "uid": "droneops-sync",
+  "title": "DroneOps - Fleet Overview (with Sync Metadata)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "tags": ["drones", "sync", "telemetry"],
+  "panels": [
+    {
+      "type": "geomap",
+      "title": "Drone Positions",
+      "description": "Real-time drone positions with optional filter by synced_from (command cluster).",
+      "datasource": {
+        "type": "postgres",
+        "uid": "YOUR_DATASOURCE_UID"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT ts AS time, lat, lon, battery, status, synced_from FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from')",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "osm" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Drones",
+            "config": {
+              "lat": "lat",
+              "lon": "lon",
+              "size": { "fixed": 5 },
+              "color": { "fixed": "blue" },
+              "text": "status"
+            }
+          }
+        ]
+      },
+      "gridPos": { "h": 15, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "geomap",
+      "title": "Fleet Distribution by Command",
+      "description": "Shows the aggregated fleet distribution per mission cluster (synced_from). Marker size and color indicate fleet size, with popups for details.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "YOUR_DATASOURCE_UID"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT synced_from, COUNT(DISTINCT drone_id) AS active_drones, AVG(lat) AS avg_lat, AVG(lon) AS avg_lon, MAX(synced_at) AS last_sync FROM drone_telemetry WHERE $__timeFilter(ts) GROUP BY synced_from",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "osm" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Fleet Centers",
+            "config": {
+              "lat": "avg_lat",
+              "lon": "avg_lon",
+              "size": { "field": "active_drones", "min": 4, "max": 20 },
+              "color": { "field": "active_drones" },
+              "text": "synced_from"
+            }
+          }
+        ],
+        "tooltip": {
+          "mode": "single",
+          "fields": ["synced_from", "active_drones", "last_sync"]
+        }
+      },
+      "gridPos": { "h": 15, "w": 24, "x": 0, "y": 15 }
+    },
+    {
+      "type": "stat",
+      "title": "Active Drones",
+      "datasource": {
+        "type": "postgres",
+        "uid": "YOUR_DATASOURCE_UID"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) as count FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from')",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "fields": "", "values": false, "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": { "defaults": { "unit": "none" } },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 30 }
+    },
+    {
+      "type": "stat",
+      "title": "Last Sync Time by Command",
+      "datasource": {
+        "type": "postgres",
+        "uid": "YOUR_DATASOURCE_UID"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT synced_from, max(synced_at) as last_sync FROM drone_telemetry WHERE $__timeFilter(ts) GROUP BY synced_from",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "fields": "", "values": false, "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": { "defaults": { "unit": "dateTimeAsIso" } },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 30 }
+    },
+    {
+      "type": "table",
+      "title": "Sync Audit (per Sync Job)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "YOUR_DATASOURCE_UID"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT synced_from, synced_id, count(*) as rows_synced, min(synced_at) as start_time, max(synced_at) as end_time FROM drone_telemetry WHERE $__timeFilter(ts) GROUP BY synced_from, synced_id ORDER BY end_time DESC",
+          "refId": "A"
+        }
+      ],
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "end_time", "desc": true }] },
+      "fieldConfig": { "defaults": { "unit": "none" } },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 35 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "synced_from",
+        "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+        "refresh": 1,
+        "query": "SELECT DISTINCT synced_from FROM drone_telemetry ORDER BY synced_from",
+        "includeAll": true,
+        "multi": false,
+        "current": { "selected": false, "text": "All", "value": "" }
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" }
+}
