@@ -124,6 +124,28 @@ data:
           failure_rate: 0.02
           speed_min_kmh: 50
           speed_max_kmh: 90
+
+      - name: transport-squad
+        model: medium-uav
+        count: 5
+        movement_pattern: point-to-point
+        home_region: central-europe
+        behavior:
+          battery_drain_rate: 0.3
+          failure_rate: 0.01
+          speed_min_kmh: 80
+          speed_max_kmh: 140
+
+      - name: heavy-support
+        model: large-uav
+        count: 2
+        movement_pattern: loiter
+        home_region: central-europe
+        behavior:
+          battery_drain_rate: 0.2
+          failure_rate: 0.005
+          speed_min_kmh: 100
+          speed_max_kmh: 180
 ---
 apiVersion: v1
 kind: ConfigMap
