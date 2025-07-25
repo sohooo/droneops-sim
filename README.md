@@ -104,6 +104,23 @@ docker run --rm \
 {"cluster_id":"mission-01","drone_id":"recon-swarm-123456-A","lat":48.2023,"lon":16.4098,"alt":100.5,"battery":99.5,"status":"ok","synced_to_json":"[]","ts":"2025-07-23T12:34:56Z"}
 ```
 
+## Data Flow
+
+```mermaid
+flowchart TD
+    A["cmd/droneops-sim/main.go\nParse flags & env"] --> B["config.Load\ninternal/config/config.go"]
+    B --> C["ValidateWithCue\ninternal/config/validate.go\nusing schemas/fleet.cue"]
+    C --> D["FleetConfig structs"]
+    D --> E["sim.NewSimulator\ninternal/sim/simulator.go"]
+    E --> F["Create drones for fleets"]
+    F --> G["Simulator.Run loop"]
+    G --> H["telemetry.Generator.GenerateTelemetry\ninternal/telemetry/generator.go"]
+    H --> I["TelemetryRow\ninternal/telemetry/types.go"]
+    I --> J{"TelemetryWriter"}
+    J -->|"StdoutWriter"| K["internal/sim/stdout_writer.go"]
+    J -->|"GreptimeDBWriter"| L["internal/sim/greptime_writer.go"]
+```
+
 ## Grafana Dashboard (Recommended)
 
 - Use the GreptimeDB data source for Grafana.
