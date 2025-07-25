@@ -1,7 +1,10 @@
 // Telemetry structs with greptime tags
 package telemetry
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 // TelemetryRow represents one telemetry record for GreptimeDB.
 type TelemetryRow struct {
@@ -18,9 +21,18 @@ type TelemetryRow struct {
 	Timestamp  time.Time `json:"ts"`          // TIME INDEX
 }
 
-// TableName returns the target table name for ORM mapping.
-func (TelemetryRow) TableName() string {
+// TelemetryTableName holds the table name used when writing to GreptimeDB.
+// It defaults to "drone_telemetry" but can be overridden via the
+// GREPTIMEDB_TABLE environment variable.
+var TelemetryTableName = func() string {
+	if env := os.Getenv("GREPTIMEDB_TABLE"); env != "" {
+		return env
+	}
 	return "drone_telemetry"
+}()
+
+func (TelemetryRow) TableName() string {
+	return TelemetryTableName
 }
 
 // Drone holds runtime state for a simulated drone.

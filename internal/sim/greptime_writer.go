@@ -19,7 +19,7 @@ type GreptimeDBWriter struct {
 }
 
 // NewGreptimeDBWriter creates a new GreptimeDB writer.
-func NewGreptimeDBWriter(endpoint, database string) (*GreptimeDBWriter, error) {
+func NewGreptimeDBWriter(endpoint, database, table string) (*GreptimeDBWriter, error) {
 	cfg := greptime.NewConfig(endpoint).
 		WithPort(4001).
 		WithDatabase(database)
@@ -30,10 +30,14 @@ func NewGreptimeDBWriter(endpoint, database string) (*GreptimeDBWriter, error) {
 
 	// Table creation must be done outside this code (via SQL API or manually).
 
+	if table == "" {
+		table = telemetry.TelemetryTableName
+	}
+
 	return &GreptimeDBWriter{
 		client: client,
 		db:     database,
-		table:  "drone_telemetry",
+		table:  table,
 	}, nil
 }
 

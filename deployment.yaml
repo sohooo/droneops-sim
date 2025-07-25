@@ -23,6 +23,8 @@ spec:
         env:
         - name: GREPTIMEDB_ENDPOINT
           value: "127.0.0.1:4001"   # override for real deployments
+        - name: GREPTIMEDB_TABLE
+          value: "drone_telemetry"
         - name: CLUSTER_ID
           value: "mission-01"
         volumeMounts:
