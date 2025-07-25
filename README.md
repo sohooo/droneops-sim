@@ -108,17 +108,15 @@ docker run --rm \
 
 ```mermaid
 flowchart TD
-    A["cmd/droneops-sim/main.go\nParse flags & env"] --> B["config.Load\ninternal/config/config.go"]
-    B --> C["ValidateWithCue\ninternal/config/validate.go\nusing schemas/fleet.cue"]
-    C --> D["FleetConfig structs"]
-    D --> E["sim.NewSimulator\ninternal/sim/simulator.go"]
-    E --> F["Create drones for fleets"]
-    F --> G["Simulator.Run loop"]
-    G --> H["telemetry.Generator.GenerateTelemetry\ninternal/telemetry/generator.go"]
-    H --> I["TelemetryRow\ninternal/telemetry/types.go"]
-    I --> J{"TelemetryWriter"}
-    J -->|"StdoutWriter"| K["internal/sim/stdout_writer.go"]
-    J -->|"GreptimeDBWriter"| L["internal/sim/greptime_writer.go"]
+    Start["Start"] -->|"main.go"| A["Parse flags & env"]
+    A -->|"config.go"| B["Load config"]
+    B -->|"schemas/fleet.cue"| C["Validate with CUE"]
+    C -->|"simulator.go"| D["Create simulator"]
+    D -->|"Simulator.Run loop"| E["Create drones for fleets"]
+    E -->|"generator.go"| F["Generate telemetry"]
+    F -->|"types.go"| G["Build TelemetryRow"]
+    G -->|"stdout_writer.go"| K["Stdout output"]
+    G -->|"greptime_writer.go"| L["GreptimeDB output"]
 ```
 
 ## Grafana Dashboard (Recommended)
