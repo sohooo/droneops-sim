@@ -7,47 +7,28 @@ import (
 	"droneops-sim/internal/telemetry"
 
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
-	ingesterContext "github.com/GreptimeTeam/greptimedb-ingester-go/context"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 // GreptimeDBWriter writes telemetry to GreptimeDB via the ingester client
 type GreptimeDBWriter struct {
-	client greptime.Client
+	client *greptime.Client
 	db     string
 	table  string
 }
 
-// NewGreptimeDBWriter creates a new GreptimeDB writer and auto-creates the table if needed.
+// NewGreptimeDBWriter creates a new GreptimeDB writer.
 func NewGreptimeDBWriter(endpoint, database string) (*GreptimeDBWriter, error) {
-	ctx := ingesterContext.NewContext(context.Background())
-	client, err := greptime.NewClient(ctx, &greptime.Config{
-		Endpoint: endpoint,
-	})
+	cfg := greptime.NewConfig(endpoint).
+		WithPort(4001).
+		WithDatabase(database)
+	client, err := greptime.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Auto-create table schema
-	ddl := `
-CREATE TABLE IF NOT EXISTS drone_telemetry (
-  cluster_id STRING TAG,
-  drone_id STRING TAG,
-  lat DOUBLE,
-  lon DOUBLE,
-  alt DOUBLE,
-  battery DOUBLE,
-  status STRING,
-  synced_from STRING,
-  synced_id STRING,
-  synced_at TIMESTAMP,
-  ts TIMESTAMP TIME INDEX
-) WITH (ttl='30d')
-`
-	if _, err := client.SQL(ctx, ddl); err != nil {
-		return nil, err
-	}
+	// Table creation must be done outside this code (via SQL API or manually).
 
 	return &GreptimeDBWriter{
 		client: client,
@@ -67,36 +48,45 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 		return nil
 	}
 
-	ctx := ingesterContext.NewContext(context.Background())
+	ctx := context.Background()
 
-	tbl := table.New(w.table)
-	tbl.AddTagColumn("cluster_id", types.StringType, 0)
-	tbl.AddTagColumn("drone_id", types.StringType, 0)
-	tbl.AddFieldColumn("lat", types.Float64Type)
-	tbl.AddFieldColumn("lon", types.Float64Type)
-	tbl.AddFieldColumn("alt", types.Float64Type)
-	tbl.AddFieldColumn("battery", types.Float64Type)
-	tbl.AddFieldColumn("status", types.StringType)
-	tbl.AddFieldColumn("synced_from", types.StringType)
-	tbl.AddFieldColumn("synced_id", types.StringType)
-	tbl.AddFieldColumn("synced_at", types.TimestampType)
-	tbl.SetTimeIndex("ts", types.TimestampType)
+	tbl, err := table.New(w.table)
+	if err != nil {
+		return err
+	}
+	tbl.AddTagColumn("cluster_id", types.STRING)
+	tbl.AddTagColumn("drone_id", types.STRING)
+	tbl.AddFieldColumn("lat", types.FLOAT64)
+	tbl.AddFieldColumn("lon", types.FLOAT64)
+	tbl.AddFieldColumn("alt", types.FLOAT64)
+	tbl.AddFieldColumn("battery", types.FLOAT64)
+	tbl.AddFieldColumn("status", types.STRING)
+	tbl.AddFieldColumn("synced_from", types.STRING)
+	tbl.AddFieldColumn("synced_id", types.STRING)
+	tbl.AddFieldColumn("synced_at", types.TIMESTAMP_MILLISECOND)
+	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 
 	for _, r := range rows {
-		tbl.AppendTagValue("cluster_id", r.ClusterID)
-		tbl.AppendTagValue("drone_id", r.DroneID)
-		tbl.AppendFieldValue("lat", r.Lat)
-		tbl.AppendFieldValue("lon", r.Lon)
-		tbl.AppendFieldValue("alt", r.Alt)
-		tbl.AppendFieldValue("battery", r.Battery)
-		tbl.AppendFieldValue("status", r.Status)
-		tbl.AppendFieldValue("synced_from", r.SyncedFrom)
-		tbl.AppendFieldValue("synced_id", r.SyncedID)
-		tbl.AppendFieldValue("synced_at", r.SyncedAt)
-		tbl.AppendTimeIndex(r.Timestamp)
+		err := tbl.AddRow(
+			r.ClusterID,
+			r.DroneID,
+			r.Lat,
+			r.Lon,
+			r.Alt,
+			r.Battery,
+			r.Status,
+			r.SyncedFrom,
+			r.SyncedID,
+			r.SyncedAt,
+			r.Timestamp,
+		)
+		if err != nil {
+			return err
+		}
 	}
 
-	if err := w.client.Write(ctx, w.db, []*table.Table{tbl}); err != nil {
+	_, err = w.client.Write(ctx, tbl)
+	if err != nil {
 		log.Printf("[GreptimeDBWriter] Write failed: %v", err)
 		return err
 	}
