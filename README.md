@@ -28,6 +28,7 @@ This project was designed to support visualization dashboards (e.g., Grafana Geo
 ### Fleet Configuration (`config/fleet.yaml`)
 
 Defines regions and fleets:
+
 ```yaml
 regions:
   - name: central-europe
@@ -58,15 +59,15 @@ cue vet config/fleet.yaml schemas/fleet.cue
 
 ### CLI Flags
 
--	`--print-only` → Print telemetry JSON to STDOUT (ignores DB)
--	`--config` → Path to YAML config (default: config/fleet.yaml)
--	`--schema` → Path to CUE schema (default: schemas/fleet.cue)
+- `--print-only` → Print telemetry JSON to STDOUT (ignores DB)
+- `--config` → Path to YAML config (default: config/fleet.yaml)
+- `--schema` → Path to CUE schema (default: schemas/fleet.cue)
 
 ### Environment Variables
 
--       `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
--       `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
--	`CLUSTER_ID` → Cluster identity tag (default: mission-01)
+- `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
+- `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
+- `CLUSTER_ID` → Cluster identity tag (default: mission-01)
 
 ## Quickstart
 
@@ -74,7 +75,7 @@ cue vet config/fleet.yaml schemas/fleet.cue
 
 ```bash
 make build
-./build/droneops-sim --print-only
+make run
 ```
 
 ### Write to GreptimeDB

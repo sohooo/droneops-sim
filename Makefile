@@ -1,7 +1,7 @@
 APP_NAME=droneops-sim
 BUILD_DIR=build
 
-.PHONY: all build run clean docker
+.PHONY: all build run clean docker test
 
 all: build
 
@@ -16,3 +16,6 @@ docker:
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+test:
+	go test ./...
