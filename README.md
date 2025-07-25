@@ -64,7 +64,8 @@ cue vet config/fleet.yaml schemas/fleet.cue
 
 ### Environment Variables
 
--	`GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
+-       `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
+-       `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
 -	`CLUSTER_ID` → Cluster identity tag (default: mission-01)
 
 ## Quickstart
@@ -80,6 +81,7 @@ make build
 
 ```bash
 export GREPTIMEDB_ENDPOINT=127.0.0.1:4001
+export GREPTIMEDB_TABLE=drone_telemetry
 ./build/droneops-sim
 ```
 
@@ -89,6 +91,7 @@ Docker run:
 docker build -t droneops-sim:latest .
 docker run --rm \
     -e GREPTIMEDB_ENDPOINT=127.0.0.1:4001 \
+    -e GREPTIMEDB_TABLE=drone_telemetry \
     droneops-sim:latest
 ```
 

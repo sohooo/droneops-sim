@@ -32,7 +32,8 @@ func main() {
 		writer = &sim.StdoutWriter{}
 	} else {
 		endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
-		writer, err = sim.NewGreptimeDBWriter(endpoint, "public")
+		table := os.Getenv("GREPTIMEDB_TABLE")
+		writer, err = sim.NewGreptimeDBWriter(endpoint, "public", table)
 		if err != nil {
 			log.Fatalf("Failed to init GreptimeDB writer: %v", err)
 		}
