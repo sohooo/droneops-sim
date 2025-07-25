@@ -3,16 +3,19 @@ package telemetry
 
 import "time"
 
-// TelemetryRow represents one record written to GreptimeDB.
+// TelemetryRow represents one telemetry record for GreptimeDB.
 type TelemetryRow struct {
-	ClusterID    string    `greptime:"tag;column:cluster_id;type:string"`
-	DroneID      string    `greptime:"tag;column:drone_id;type:string"`
-	Lat          float64   `greptime:"field;column:lat;type:float64"`
-	Lon          float64   `greptime:"field;column:lon;type:float64"`
-	Alt          float64   `greptime:"field;column:alt;type:float64"`
-	Battery      float64   `greptime:"field;column:battery;type:float64"`
-	Status       string    `greptime:"field;column:status;type:string"`
-	Timestamp    time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+	ClusterID  string    `json:"cluster_id"`  // TAG
+	DroneID    string    `json:"drone_id"`    // TAG
+	Lat        float64   `json:"lat"`         // FIELD
+	Lon        float64   `json:"lon"`         // FIELD
+	Alt        float64   `json:"alt"`         // FIELD
+	Battery    float64   `json:"battery"`     // FIELD
+	Status     string    `json:"status"`      // FIELD
+	SyncedFrom string    `json:"synced_from"` // Added by sync process
+	SyncedID   string    `json:"synced_id"`   // Added by sync process
+	SyncedAt   time.Time `json:"synced_at"`   // Added by sync process
+	Timestamp  time.Time `json:"ts"`          // TIME INDEX
 }
 
 // TableName returns the target table name for ORM mapping.

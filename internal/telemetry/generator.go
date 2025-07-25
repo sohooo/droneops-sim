@@ -1,4 +1,3 @@
-// Telemetry generator with random walk, battery drain, failures
 package telemetry
 
 import (
@@ -38,15 +37,17 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	}
 
 	return TelemetryRow{
-		ClusterID:    g.ClusterID,
-		DroneID:      drone.ID,
-		Lat:          drone.Position.Lat,
-		Lon:          drone.Position.Lon,
-		Alt:          drone.Position.Alt,
-		Battery:      drone.Battery,
-		Status:       drone.Status,
-		SyncedToJSON: "[]", // Initially unsynced
-		Timestamp:    time.Now().UTC(),
+		ClusterID:  g.ClusterID,
+		DroneID:    drone.ID,
+		Lat:        drone.Position.Lat,
+		Lon:        drone.Position.Lon,
+		Alt:        drone.Position.Alt,
+		Battery:    drone.Battery,
+		Status:     drone.Status,
+		SyncedFrom: "",
+		SyncedID:   "",
+		SyncedAt:   time.Time{},
+		Timestamp:  time.Now().UTC(),
 	}
 }
 

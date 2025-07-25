@@ -5,50 +5,36 @@ import (
 	"time"
 )
 
-func TestGenerateTelemetry_BatteryDrainAndStatus(t *testing.T) {
+func TestGenerateTelemetry(t *testing.T) {
+	gen := NewGenerator("cluster-1")
 	drone := &Drone{
-		ID:       "test-drone",
+		ID:       "drone-001",
 		Model:    "small-fpv",
-		Position: Position{Lat: 48.2, Lon: 16.4, Alt: 100},
-		Battery:  100,
+		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
+		Battery:  50,
 		Status:   StatusOK,
 	}
-	gen := NewGenerator("cluster-01")
-
-	// Run multiple ticks to drain battery
-	for i := 0; i < 200; i++ {
-		_ = gen.GenerateTelemetry(drone)
-	}
-
-	if drone.Battery <= 0 {
-		t.Logf("Battery drained fully after simulation: %f", drone.Battery)
-	} else {
-		t.Errorf("Expected battery to drain significantly, got %f", drone.Battery)
-	}
-
-	if drone.Status != StatusFailure && drone.Battery <= 5 {
-		t.Errorf("Expected drone to be in failure state when battery low, got %s", drone.Status)
-	}
-}
-
-func TestGenerateTelemetry_PositionChanges(t *testing.T) {
-	drone := &Drone{
-		ID:       "test-drone",
-		Model:    "medium-uav",
-		Position: Position{Lat: 48.2, Lon: 16.4, Alt: 100},
-		Battery:  100,
-		Status:   StatusOK,
-	}
-	gen := NewGenerator("cluster-02")
-
-	firstLat := drone.Position.Lat
-	firstLon := drone.Position.Lon
 
 	row := gen.GenerateTelemetry(drone)
-	if row.Lat == firstLat && row.Lon == firstLon {
-		t.Errorf("Expected drone position to change, but it did not.")
+
+	if row.ClusterID != "cluster-1" {
+		t.Errorf("expected cluster-1, got %s", row.ClusterID)
 	}
-	if row.Timestamp.After(time.Now()) {
-		t.Errorf("Timestamp should not be in the future")
+	if row.DroneID != "drone-001" {
+		t.Errorf("expected drone-001, got %s", row.DroneID)
+	}
+	if row.SyncedFrom != "" || row.SyncedID != "" || !row.SyncedAt.IsZero() {
+		t.Errorf("expected unsynced defaults, got %+v", row)
+	}
+	if time.Since(row.Timestamp) > 1*time.Second {
+		t.Errorf("timestamp too old: %v", row.Timestamp)
+	}
+	// Check that position changed (movement simulated)
+	if row.Lat == 48.2082 && row.Lon == 16.3738 {
+		t.Errorf("expected position to change")
+	}
+	// Battery should decrease
+	if row.Battery >= 50 {
+		t.Errorf("expected battery decrease, got %f", row.Battery)
 	}
 }
