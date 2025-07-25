@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - "--config"
+          - "/etc/{{ .Chart.Name }}/config/fleet.yaml"
+          - "--schema"
+          - "/etc/{{ .Chart.Name }}/schema/fleet.cue"
+        env:
+        - name: GREPTIMEDB_ENDPOINT
+          value: "127.0.0.1:4001"
+        - name: GREPTIMEDB_TABLE
+          value: "drone_telemetry"
+        - name: CLUSTER_ID
+          value: "mission-01"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/{{ .Chart.Name }}/config
+        - name: schema
+          mountPath: /etc/{{ .Chart.Name }}/schema
+        ports:
+        - name: metrics
+          containerPort: {{ .Values.service.port }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+        readinessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "echo ready"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "echo alive"]
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532
+          readOnlyRootFilesystem: true
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Release.Name }}-config
+      - name: schema
+        configMap:
+          name: {{ .Release.Name }}-schema
+      securityContext:
+        fsGroup: 65532

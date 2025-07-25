@@ -1,0 +1,5 @@
+apiVersion: v2
+name: droneops-sim
+description: A Helm chart for deploying the DroneOps simulator
+version: 0.1.0
+appVersion: "1.0.0"
