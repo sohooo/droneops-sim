@@ -53,7 +53,7 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 
 // randomWalk moves the drone in a pseudo-random direction, speed depends on model.
 func randomWalk(pos Position, model string) Position {
-	var speedMin, speedMax float64
+	var speedMin, speedMax float64 // speed range, in meters
 	switch model {
 	case "small-fpv":
 		speedMin, speedMax = 15, 30
@@ -65,18 +65,28 @@ func randomWalk(pos Position, model string) Position {
 		speedMin, speedMax = 15, 25
 	}
 
+	// Random heading (direction) in radians (0 to 2π)
 	heading := rand.Float64() * 2 * math.Pi
+
+	// Random speed within the range for the drone model
 	speed := rand.Float64()*(speedMax-speedMin) + speedMin // m/s
 
-	// Convert speed to lat/lon deltas
+	// Convert speed and heading into latitude and longitude deltas
+	// Latitude delta: speed * cos(heading) divided by Earth's approximate radius in meters (111,000 m per degree)
 	deltaLat := (speed * math.Cos(heading)) / 111000
+
+	// Longitude delta: speed * sin(heading) divided by Earth's radius adjusted for latitude
+	// The adjustment accounts for the Earth's curvature (cos(latitude in radians))
 	deltaLon := (speed * math.Sin(heading)) / (111000 * math.Cos(pos.Lat*math.Pi/180))
+
+	// Altitude delta: random change between -1m and +1m
 	altDelta := rand.Float64()*2 - 1 // ±1m
 
+	// Return the new position, ensuring altitude is non-negative
 	return Position{
-		Lat: pos.Lat + deltaLat,
-		Lon: pos.Lon + deltaLon,
-		Alt: math.Max(0, pos.Alt+altDelta),
+		Lat: pos.Lat + deltaLat,            // Update latitude
+		Lon: pos.Lon + deltaLon,            // Update longitude
+		Alt: math.Max(0, pos.Alt+altDelta), // Ensure altitude is at least 0
 	}
 }
 
