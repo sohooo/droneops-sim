@@ -18,8 +18,17 @@ func NewGenerator(clusterID string) *Generator {
 
 // GenerateTelemetry updates a drone's state and returns a TelemetryRow ready for DB write.
 func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
-	// Movement
-	drone.Position = randomWalk(drone.Position, drone.Model)
+	// Movement based on the fleet's movement pattern
+	switch drone.MovementPattern {
+	case "patrol":
+		drone.Position = patrolMovement(drone.Position, drone.HomeRegion)
+	case "point-to-point":
+		drone.Position = pointToPointMovement(drone.Position, drone.Waypoints)
+	case "loiter":
+		drone.Position = loiterMovement(drone.Position, drone.HomeRegion)
+	default:
+		drone.Position = randomWalk(drone.Position, drone.Model)
+	}
 
 	// Battery drain
 	drone.Battery -= batteryDrain(drone.Model)
@@ -48,6 +57,45 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 		SyncedID:   "",
 		SyncedAt:   time.Time{},
 		Timestamp:  time.Now().UTC(),
+	}
+}
+
+// patrolMovement simulates circular movement around the home region's center.
+func patrolMovement(pos Position, region Region) Position {
+	radius := region.RadiusKM * 1000 * 0.99 // Scale radius slightly to ensure position stays within bounds
+	angle := rand.Float64() * 2 * math.Pi
+	deltaLat := (radius * math.Cos(angle)) / 111000
+	deltaLon := (radius * math.Sin(angle)) / (111000 * math.Cos(region.CenterLat*math.Pi/180))
+	return Position{
+		Lat: region.CenterLat + deltaLat,
+		Lon: region.CenterLon + deltaLon,
+		Alt: pos.Alt,
+	}
+}
+
+// pointToPointMovement simulates movement between predefined waypoints.
+func pointToPointMovement(pos Position, waypoints []Position) Position {
+	if len(waypoints) == 0 {
+		return pos
+	}
+	target := waypoints[rand.Intn(len(waypoints))]
+	deltaLat := (target.Lat - pos.Lat) / 10 // Gradual movement
+	deltaLon := (target.Lon - pos.Lon) / 10
+	return Position{
+		Lat: pos.Lat + deltaLat,
+		Lon: pos.Lon + deltaLon,
+		Alt: pos.Alt,
+	}
+}
+
+// loiterMovement simulates hovering near the home region's center.
+func loiterMovement(pos Position, region Region) Position {
+	deltaLat := rand.Float64()*0.0001 - 0.00005 // Small random movement
+	deltaLon := rand.Float64()*0.0001 - 0.00005
+	return Position{
+		Lat: region.CenterLat + deltaLat,
+		Lon: region.CenterLon + deltaLon,
+		Alt: pos.Alt,
 	}
 }
 
