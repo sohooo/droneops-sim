@@ -1,15 +1,19 @@
 APP_NAME=droneops-sim
 BUILD_DIR=build
+BIN=$(BUILD_DIR)/$(APP_NAME)
 
 .PHONY: all build run clean docker test
 
 all: build
 
 build:
-	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
+	go build -o $(BIN) ./cmd/$(APP_NAME)
 
 run:
-	$(BUILD_DIR)/$(APP_NAME) --config config/fleet.yaml --schema schemas/fleet.cue --print-only
+	@if [ ! -f $(BIN) ]; then \
+		$(MAKE) build; \
+	fi
+	$(BIN) --config config/fleet.yaml --schema schemas/fleet.cue --print-only
 
 docker:
 	docker build -t $(APP_NAME):latest .
