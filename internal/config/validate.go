@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/encoding/yaml"
 )
@@ -19,7 +18,11 @@ func ValidateWithCue(configFile, cueFile string) error {
 	if err != nil {
 		return fmt.Errorf("cannot read YAML config: %w", err)
 	}
-	configVal := ctx.CompileBytes(yamlBytes, yaml.Parse)
+	yamlFile, err := yaml.Extract(configFile, yamlBytes)
+	if err != nil {
+		return fmt.Errorf("cannot parse YAML config: %w", err)
+	}
+	configVal := ctx.BuildFile(yamlFile)
 
 	// Read CUE schema
 	schemaBytes, err := os.ReadFile(cueFile)
