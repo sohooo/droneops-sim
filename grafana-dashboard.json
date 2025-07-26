@@ -97,6 +97,21 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Active Missions",
+      "description": "Displays the currently running missions based on the configuration.",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "E",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT id, name, objective, description, region_name FROM mission_metadata",
+          "format": "table"
+        }
+      ]
     }
   ],
   "templating": {
