@@ -20,9 +20,9 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
           - "--config"
-          - "/etc/{{ .Chart.Name }}/config/fleet.yaml"
+          - "/etc/{{ .Chart.Name }}/config/simulation.yaml"
           - "--schema"
-          - "/etc/{{ .Chart.Name }}/schema/fleet.cue"
+          - "/etc/{{ .Chart.Name }}/schema/simulation.cue"
         env:
         - name: GREPTIMEDB_ENDPOINT
           value: "127.0.0.1:4001"

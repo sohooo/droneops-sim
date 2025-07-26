@@ -1,11 +1,17 @@
-// CUE schema content for fleet.yaml
+// CUE schema content for simulation.yaml
 package schemas
 
-regions: [...{
+zones: [...{
     name:        string & !=""
     center_lat:  number
     center_lon:  number
     radius_km:   number & >0
+}]
+
+missions: [...{
+    name:        string & !=""
+    zone:        string
+    description: string
 }]
 
 fleets: [...{

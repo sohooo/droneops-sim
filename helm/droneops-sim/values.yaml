@@ -18,12 +18,19 @@ resources:
     memory: "512Mi"
 
 config:
-  fleet:
-    regions:
+  simulation:
+    zones:
       - name: central-europe
         center_lat: 48.2
         center_lon: 16.4
         radius_km: 300
+    missions:
+      - name: surveillance-alpha
+        zone: central-europe
+        description: Recon and patrol of key areas
+      - name: cargo-beta
+        zone: central-europe
+        description: Deliver supplies between bases
     fleets:
       - name: recon-swarm
         model: small-fpv
@@ -57,13 +64,17 @@ config:
           speed_max_kmh: 180
 
 schema:
-  fleet:
+  simulation:
     package: schemas
-    regions:
+    zones:
       - name: string & !=""
         center_lat: number
         center_lon: number
         radius_km: number
+    missions:
+      - name: string & !=""
+        zone: string
+        description: string
     fleets:
       - name: string & !=""
         model: string & !=""

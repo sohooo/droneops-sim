@@ -6,14 +6,18 @@ import (
 )
 
 func TestLoadConfig_Valid(t *testing.T) {
-	tmpFile := "test-fleet.yaml"
+	tmpFile := "test-simulation.yaml"
 	defer os.Remove(tmpFile)
 	yaml := `
-regions:
+zones:
   - name: region-x
     center_lat: 48.2
     center_lon: 16.4
     radius_km: 50
+missions:
+  - name: test-mission
+    zone: region-x
+    description: test
 fleets:
   - name: fleet-x
     model: small-fpv
@@ -26,7 +30,7 @@ fleets:
 	}
 
 	// This test skips full CUE validation for speed, uses ValidateWithCue = no-op or mocked.
-	cfg, err := Load(tmpFile, "../../schemas/fleet.cue")
+	cfg, err := Load(tmpFile, "../../schemas/simulation.cue")
 	if err != nil {
 		t.Fatalf("Load() returned error: %v", err)
 	}

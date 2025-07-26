@@ -35,7 +35,7 @@ type DroneFleet struct {
 }
 
 // NewSimulator initializes drones from fleet config.
-func NewSimulator(clusterID string, cfg *config.FleetConfig, writer TelemetryWriter, tickInterval time.Duration) *Simulator {
+func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, tickInterval time.Duration) *Simulator {
 	sim := &Simulator{
 		clusterID:    clusterID,
 		teleGen:      telemetry.NewGenerator(clusterID),
@@ -50,7 +50,7 @@ func NewSimulator(clusterID string, cfg *config.FleetConfig, writer TelemetryWri
 			drone := &telemetry.Drone{
 				ID:       generateDroneID(fleet.Name, i),
 				Model:    fleet.Model,
-				Position: telemetry.Position{Lat: cfg.Regions[0].CenterLat, Lon: cfg.Regions[0].CenterLon, Alt: 100},
+				Position: telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
 				Battery:  100,
 				Status:   telemetry.StatusOK,
 			}
