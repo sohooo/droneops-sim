@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"droneops-sim/internal/admin"
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/sim"
 )
@@ -47,6 +48,15 @@ func main() {
 
 	// Simulator setup
 	simulator := sim.NewSimulator(clusterID, cfg, writer, 1*time.Second)
+
+	// Start admin UI
+	go func() {
+		srv := admin.NewServer(simulator)
+		log.Println("[Main] Admin UI listening on :8080")
+		if err := srv.Start(":8080"); err != nil {
+			log.Fatalf("Admin server failed: %v", err)
+		}
+	}()
 
 	// Graceful shutdown handling
 	stop := make(chan struct{})

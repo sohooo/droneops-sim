@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DroneOps Control</title>
+<style>
+body{background:#111;color:#eee;font-family:Arial,Helvetica,sans-serif;margin:0;padding:20px;}
+header{margin-bottom:20px;}
+button{padding:10px 20px;margin-right:10px;border:none;background:#444;color:#fff;cursor:pointer;}
+button:hover{background:#666;}
+.table{margin-top:20px;border-collapse:collapse;width:100%;}
+.table th,.table td{border:1px solid #333;padding:8px;text-align:left;}
+</style>
+</head>
+<body>
+<header>
+<h1>DroneOps Mission Control</h1>
+<button onclick="fetch('/toggle-chaos').then(()=>location.reload())">Toggle Chaos</button>
+<button onclick="launchSwarm()">Launch Swarm</button>
+</header>
+<table class="table">
+<tr><th>Fleet</th><th>Total</th><th>Low Battery</th><th>Failed</th></tr>
+{{range .Fleets}}
+<tr><td>{{.Name}}</td><td>{{.Total}}</td><td>{{.LowBattery}}</td><td>{{.Failed}}</td></tr>
+{{end}}
+</table>
+<script>
+function launchSwarm(){
+  const model = prompt('Model type:', 'small-fpv');
+  const count = prompt('How many drones?', '5');
+  fetch(`/launch-drones?model=${model}&count=${count}`).then(()=>location.reload());
+}
+</script>
+</body>
+</html>
