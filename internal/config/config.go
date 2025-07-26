@@ -2,9 +2,11 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 
+	"cuelang.org/go/cue/cuecontext"
 	"gopkg.in/yaml.v3"
 )
 
@@ -67,4 +69,34 @@ func Load(configPath, cueSchemaPath string) (*SimulationConfig, error) {
 	log.Printf("Loaded configuration: %+v", cfg)
 
 	return &cfg, nil
+}
+
+// ValidateWithCue validates a YAML configuration file using a CUE schema file.
+func ValidateWithCue(configFile, cueFile string) error {
+	ctx := cuecontext.New()
+
+	// Read YAML config
+	yamlBytes, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("cannot read YAML config: %w", err)
+	}
+	var configData map[string]interface{}
+	if err := yaml.Unmarshal(yamlBytes, &configData); err != nil {
+		return fmt.Errorf("cannot unmarshal YAML config: %w", err)
+	}
+	configVal := ctx.CompileBytes(yamlBytes)
+
+	// Read CUE schema
+	schemaBytes, err := os.ReadFile(cueFile)
+	if err != nil {
+		return fmt.Errorf("cannot read CUE schema: %w", err)
+	}
+	schemaVal := ctx.CompileBytes(schemaBytes)
+
+	// Validate config against schema
+	if err := schemaVal.Subsume(configVal); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	return nil
 }
