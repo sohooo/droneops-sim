@@ -66,8 +66,8 @@ cue vet config/simulation.yaml schemas/simulation.cue
 ### CLI Flags
 
 - `--print-only` → Print telemetry JSON to STDOUT (ignores DB)
- - `--config` → Path to YAML config (default: config/simulation.yaml)
- - `--schema` → Path to CUE schema (default: schemas/simulation.cue)
+- `--config` → Path to YAML config (default: config/simulation.yaml)
+- `--schema` → Path to CUE schema (default: schemas/simulation.cue)
 
 ### Environment Variables
 
@@ -199,7 +199,7 @@ The `droneops-sim` project includes a Helm chart for deploying the simulator in 
 
 ### Notes
 
- - The Helm chart uses ConfigMaps to manage simulation and schema configurations.
+- The Helm chart uses ConfigMaps to manage simulation and schema configurations.
 - Ensure the Kubernetes cluster has sufficient resources to handle the configured replicas and resource limits.
 - Update the `GREPTIMEDB_ENDPOINT` and `GREPTIMEDB_TABLE` environment variables in the deployment if connecting to a real database.
 
