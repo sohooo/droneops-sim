@@ -204,3 +204,53 @@ The `droneops-sim` project includes a Helm chart for deploying the simulator in 
 - Update the `GREPTIMEDB_ENDPOINT` and `GREPTIMEDB_TABLE` environment variables in the deployment if connecting to a real database.
 
 For more details, refer to the `helm/droneops-sim` directory and the `values.yaml` file.
+
+## Mission Configuration and Visualization
+
+### Mission Objectives
+
+The `droneops-sim` project supports mission-based drone operations. Missions are defined in the `config/missions.yaml` file and include:
+
+- **ID**: Unique identifier for the mission.
+- **Name**: Catchy name matching the mission objective (e.g., "Operation: Firewall").
+- **Objective**: The main goal of the mission.
+- **Description**: A short story or background for the mission.
+- **Region**: The target area for the mission.
+
+Example mission configuration:
+
+```yaml
+missions:
+  - id: "firewall"
+    name: "Operation: Firewall"
+    objective: "Defend the area from intrusions."
+    description: "Drones patrol the perimeter to ensure no unauthorized access."
+    region:
+      name: "central-europe"
+      center_lat: 48.2
+      center_lon: 16.4
+      radius_km: 300
+```
+
+### Integration with Telemetry
+
+Each drone is associated with a mission via a `mission_id` field in its telemetry. This allows:
+
+- **Mission Visualization**: Display mission objectives and regions in Grafana.
+- **Drone Association**: Group and filter drones by mission.
+
+### Grafana Dashboard
+
+The Grafana dashboard integrates mission data to provide:
+
+- **Mission Objectives**: Display the name, objective, and description.
+- **Region Visualization**: Overlay mission regions on the Geomap panel.
+- **Drone Telemetry**: Filter and group drones by mission.
+
+### Program Logic
+
+On startup, the program:
+
+1. Loads mission data from `config/missions.yaml`.
+2. Inserts mission telemetry into stdout or GreptimeDB.
+3. Associates drones with missions using the `mission_id` field.

@@ -6,10 +6,20 @@ import (
 	"time"
 )
 
+// MissionRow represents one mission record for telemetry.
+type MissionRow struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Objective   string `json:"objective"`
+	Description string `json:"description"`
+	Region      Region `json:"region"`
+}
+
 // TelemetryRow represents one telemetry record for GreptimeDB.
 type TelemetryRow struct {
 	ClusterID  string    `json:"cluster_id"`  // TAG
 	DroneID    string    `json:"drone_id"`    // TAG
+	MissionID  string    `json:"mission_id"`  // Added field for mission association
 	Lat        float64   `json:"lat"`         // FIELD
 	Lon        float64   `json:"lon"`         // FIELD
 	Alt        float64   `json:"alt"`         // FIELD

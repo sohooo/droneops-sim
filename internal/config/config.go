@@ -2,8 +2,10 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
+	"log"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Behavior defines dynamic properties of a drone model/fleet
@@ -61,5 +63,8 @@ func Load(configPath, cueSchemaPath string) (*SimulationConfig, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+
+	log.Printf("Loaded configuration: %+v", cfg)
+
 	return &cfg, nil
 }

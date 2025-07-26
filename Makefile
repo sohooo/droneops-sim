@@ -10,9 +10,7 @@ build:
 	go build -o $(BIN) ./cmd/$(APP_NAME)
 
 run:
-	@if [ ! -f $(BIN) ]; then \
-		$(MAKE) build; \
-	fi
+	$(MAKE) build
 	$(BIN) --config config/simulation.yaml --schema schemas/simulation.cue --print-only
 
 docker:

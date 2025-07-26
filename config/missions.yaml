@@ -1,0 +1,19 @@
+missions:
+  - id: "firewall"
+    name: "Operation: Firewall"
+    objective: "Defend the area from intrusions."
+    description: "Drones patrol the perimeter to ensure no unauthorized access."
+    region:
+      name: "central-europe"
+      center_lat: 48.2
+      center_lon: 16.4
+      radius_km: 300
+  - id: "recon"
+    name: "Operation: Recon"
+    objective: "Gather intelligence in the target area."
+    description: "Drones perform reconnaissance to collect data on enemy positions."
+    region:
+      name: "northern-border"
+      center_lat: 50.1
+      center_lon: 14.4
+      radius_km: 200

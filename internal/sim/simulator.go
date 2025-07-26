@@ -43,6 +43,11 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		tickInterval: tickInterval,
 	}
 
+	// Check if zones are defined
+	if len(cfg.Zones) == 0 {
+		log.Panic("No zones defined in the configuration")
+	}
+
 	// Initialize fleets
 	for _, fleet := range cfg.Fleets {
 		f := DroneFleet{Model: fleet.Model}
