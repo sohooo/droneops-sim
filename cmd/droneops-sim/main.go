@@ -15,11 +15,11 @@ import (
 func main() {
 	// CLI flags
 	printOnly := flag.Bool("print-only", false, "Print telemetry to STDOUT instead of writing to DB")
-	configPath := flag.String("config", "config/fleet.yaml", "Path to fleet configuration YAML")
-	cueSchemaPath := flag.String("schema", "schemas/fleet.cue", "Path to CUE schema file")
+	configPath := flag.String("config", "config/simulation.yaml", "Path to simulation configuration YAML")
+	cueSchemaPath := flag.String("schema", "schemas/simulation.cue", "Path to CUE schema file")
 	flag.Parse()
 
-	// Load fleet configuration
+	// Load simulation configuration
 	cfg, err := config.Load(*configPath, *cueSchemaPath)
 	if err != nil {
 		log.Fatalf("Config load failed: %v", err)

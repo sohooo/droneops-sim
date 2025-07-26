@@ -3,13 +3,13 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
 data:
-  fleet.yaml: |
-    {{- toYaml .Values.config.fleet | nindent 4 }}
+  simulation.yaml: |
+    {{- toYaml .Values.config.simulation | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-schema
 data:
-  fleet.cue: |
-    {{- toYaml .Values.schema.fleet | nindent 4 }}
+  simulation.cue: |
+    {{- toYaml .Values.schema.simulation | nindent 4 }}

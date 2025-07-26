@@ -19,8 +19,9 @@ func (w *MockWriter) Write(row telemetry.TelemetryRow) error {
 }
 
 func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
-	cfg := &config.FleetConfig{
-		Regions: []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
+		Missions: []config.Mission{{Name: "m1", Zone: "region-1", Description: "test"}},
 		Fleets: []config.Fleet{
 			{Name: "fleet-1", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "region-1"},
 		},

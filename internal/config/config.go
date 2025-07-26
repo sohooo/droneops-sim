@@ -2,8 +2,8 @@
 package config
 
 import (
-	"os"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
 // Behavior defines dynamic properties of a drone model/fleet
@@ -32,14 +32,22 @@ type Fleet struct {
 	Behavior        Behavior `yaml:"behavior"`
 }
 
-// FleetConfig is the root configuration for regions and fleets
-type FleetConfig struct {
-	Regions []Region `yaml:"regions"`
-	Fleets  []Fleet  `yaml:"fleets"`
+// Mission describes a named mission that operates within a zone
+type Mission struct {
+	Name        string `yaml:"name"`
+	Zone        string `yaml:"zone"`
+	Description string `yaml:"description"`
+}
+
+// SimulationConfig is the root configuration for zones, missions, and fleets
+type SimulationConfig struct {
+	Zones    []Region  `yaml:"zones"`
+	Missions []Mission `yaml:"missions"`
+	Fleets   []Fleet   `yaml:"fleets"`
 }
 
 // Load loads YAML config and validates it against a CUE schema
-func Load(configPath, cueSchemaPath string) (*FleetConfig, error) {
+func Load(configPath, cueSchemaPath string) (*SimulationConfig, error) {
 	// Validate with CUE first
 	if err := ValidateWithCue(configPath, cueSchemaPath); err != nil {
 		return nil, err
@@ -49,7 +57,7 @@ func Load(configPath, cueSchemaPath string) (*FleetConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	var cfg FleetConfig
+	var cfg SimulationConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}

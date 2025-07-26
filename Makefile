@@ -13,7 +13,7 @@ run:
 	@if [ ! -f $(BIN) ]; then \
 		$(MAKE) build; \
 	fi
-	$(BIN) --config config/fleet.yaml --schema schemas/fleet.cue --print-only
+       $(BIN) --config config/simulation.yaml --schema schemas/simulation.cue --print-only
 
 docker:
 	docker build -t $(APP_NAME):latest .

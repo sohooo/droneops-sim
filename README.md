@@ -25,17 +25,23 @@ This project was designed to support visualization dashboards (e.g., Grafana Geo
 
 ## Configuration
 
-### Fleet Configuration (`config/fleet.yaml`)
+### Simulation Configuration (`config/simulation.yaml`)
 
-Defines regions and fleets:
+Defines zones, missions and fleets:
 
 ```yaml
-regions:
+zones:
   - name: central-europe
     center_lat: 48.2
     center_lon: 16.4
     radius_km: 300
-
+missions:
+  - name: surveillance-alpha
+    zone: central-europe
+    description: Recon and patrol of key areas
+  - name: cargo-beta
+    zone: central-europe
+    description: Deliver supplies between bases
 fleets:
   - name: recon-swarm
     model: small-fpv
@@ -49,24 +55,25 @@ fleets:
       speed_max_kmh: 90
 ```
 
-## Schema Validation (schemas/fleet.cue)
+## Schema Validation (schemas/simulation.cue)
 
 Configuration is validated at runtime using CUE:
 
-cue vet config/fleet.yaml schemas/fleet.cue
+cue vet config/simulation.yaml schemas/simulation.cue
 
 ## Entry Point
 
 ### CLI Flags
 
 - `--print-only` → Print telemetry JSON to STDOUT (ignores DB)
-- `--config` → Path to YAML config (default: config/fleet.yaml)
-- `--schema` → Path to CUE schema (default: schemas/fleet.cue)
+ - `--config` → Path to YAML config (default: config/simulation.yaml)
+ - `--schema` → Path to CUE schema (default: schemas/simulation.cue)
 
 ### Environment Variables
 
 - `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
 - `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
+- `MISSION_METADATA_TABLE` → Table storing mission metadata (default: mission_metadata)
 - `CLUSTER_ID` → Cluster identity tag (default: mission-01)
 
 ## Quickstart
@@ -110,7 +117,7 @@ docker run --rm \
 flowchart TD
     Start["Start"] -->|"main.go"| A["Parse flags & env"]
     A -->|"config.go"| B["Load config"]
-    B -->|"schemas/fleet.cue"| C["Validate with CUE"]
+    B -->|"schemas/simulation.cue"| C["Validate with CUE"]
     C -->|"simulator.go"| D["Create simulator"]
     D -->|"Simulator.Run loop"| E["Create drones for fleets"]
     E -->|"generator.go"| F["Generate telemetry"]
@@ -136,7 +143,7 @@ flowchart TD
 - Validate config manually:
 
 ```bash
-cue vet config/fleet.yaml schemas/fleet.cue
+cue vet config/simulation.yaml schemas/simulation.cue
 ```
 
 Test:
@@ -162,7 +169,7 @@ The `droneops-sim` project includes a Helm chart for deploying the simulator in 
 
 3. **Customize values**:
 
-   Edit the `values.yaml` file to configure replicas, image, service type, resources, and fleet configuration.
+   Edit the `values.yaml` file to configure replicas, image, service type, resources, and simulation configuration.
 
 4. **Deploy the chart**:
 
@@ -192,7 +199,7 @@ The `droneops-sim` project includes a Helm chart for deploying the simulator in 
 
 ### Notes
 
-- The Helm chart uses ConfigMaps to manage fleet and schema configurations.
+ - The Helm chart uses ConfigMaps to manage simulation and schema configurations.
 - Ensure the Kubernetes cluster has sufficient resources to handle the configured replicas and resource limits.
 - Update the `GREPTIMEDB_ENDPOINT` and `GREPTIMEDB_TABLE` environment variables in the deployment if connecting to a real database.
 
