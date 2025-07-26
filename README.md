@@ -27,21 +27,41 @@ This project was designed to support visualization dashboards (e.g., Grafana Geo
 
 ### Simulation Configuration (`config/simulation.yaml`)
 
-Defines zones, missions and fleets:
+Defines zones, missions, and fleets for the simulation:
 
 ```yaml
+# Zones define the operational areas for the simulation.
+# Each zone includes a name, center coordinates, and a radius.
 zones:
   - name: central-europe
     center_lat: 48.2
     center_lon: 16.4
     radius_km: 300
+
+# Missions define the objectives and regions for drone operations.
+# Each mission includes an ID, name, objective, description, and associated region.
 missions:
-  - name: surveillance-alpha
-    zone: central-europe
-    description: Recon and patrol of key areas
-  - name: cargo-beta
-    zone: central-europe
-    description: Deliver supplies between bases
+  - id: "firewall"
+    name: "Operation: Firewall"
+    objective: "Defend the area from intrusions."
+    description: "Drones patrol the perimeter to ensure no unauthorized access."
+    region:
+      name: "central-europe"
+      center_lat: 48.2
+      center_lon: 16.4
+      radius_km: 300
+  - id: "recon"
+    name: "Operation: Recon"
+    objective: "Gather intelligence in the target area."
+    description: "Drones perform reconnaissance to collect data on enemy positions."
+    region:
+      name: "northern-border"
+      center_lat: 50.1
+      center_lon: 14.4
+      radius_km: 200
+
+# Fleets define the drone groups used in the simulation.
+# Each fleet includes a name, model, count, movement pattern, home region, and behavior.
 fleets:
   - name: recon-swarm
     model: small-fpv
@@ -53,6 +73,26 @@ fleets:
       failure_rate: 0.02
       speed_min_kmh: 50
       speed_max_kmh: 90
+  - name: transport-squad
+    model: medium-uav
+    count: 5
+    movement_pattern: point-to-point
+    home_region: central-europe
+    behavior:
+      battery_drain_rate: 0.3
+      failure_rate: 0.01
+      speed_min_kmh: 80
+      speed_max_kmh: 140
+  - name: heavy-support
+    model: large-uav
+    count: 2
+    movement_pattern: loiter
+    home_region: central-europe
+    behavior:
+      battery_drain_rate: 0.2
+      failure_rate: 0.005
+      speed_min_kmh: 100
+      speed_max_kmh: 180
 ```
 
 ## Schema Validation (schemas/simulation.cue)

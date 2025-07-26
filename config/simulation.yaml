@@ -1,9 +1,13 @@
-# Example YAML simulation configuration
+# Zones define the operational areas for the simulation.
+# Each zone includes a name, center coordinates, and a radius.
 zones:
   - name: central-europe
     center_lat: 48.2
     center_lon: 16.4
     radius_km: 300
+
+# Missions define the objectives and regions for drone operations.
+# Each mission includes an ID, name, objective, description, and associated region.
 missions:
   - id: "firewall"
     name: "Operation: Firewall"
@@ -23,6 +27,9 @@ missions:
       center_lat: 50.1
       center_lon: 14.4
       radius_km: 200
+
+# Fleets define the drone groups used in the simulation.
+# Each fleet includes a name, model, count, movement pattern, home region, and behavior.
 fleets:
   - name: recon-swarm
     model: small-fpv
