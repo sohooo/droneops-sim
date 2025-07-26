@@ -18,17 +18,22 @@ func NewGenerator(clusterID string) *Generator {
 
 // GenerateTelemetry updates a drone's state and returns a TelemetryRow ready for DB write.
 func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
-	// Movement based on the fleet's movement pattern
+	var strategy MovementStrategy
+
+	// Select movement strategy based on drone's movement pattern
 	switch drone.MovementPattern {
 	case "patrol":
-		drone.Position = patrolMovement(drone.Position, drone.HomeRegion)
+		strategy = PatrolMovement{}
 	case "point-to-point":
-		drone.Position = pointToPointMovement(drone.Position, drone.Waypoints)
+		strategy = PointToPointMovement{}
 	case "loiter":
-		drone.Position = loiterMovement(drone.Position, drone.HomeRegion)
+		strategy = LoiterMovement{}
 	default:
-		drone.Position = randomWalk(drone.Position, drone.Model)
+		strategy = RandomWalkMovement{} // Implement RandomWalkMovement similarly
 	}
+
+	// Update drone's position using the selected strategy
+	drone.Position = strategy.Move(drone, drone.HomeRegion, drone.Waypoints)
 
 	// Battery drain
 	drone.Battery -= batteryDrain(drone.Model)
@@ -60,8 +65,15 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	}
 }
 
-// patrolMovement simulates circular movement around the home region's center.
-func patrolMovement(pos Position, region Region) Position {
+// MovementStrategy defines the interface for drone movement.
+type MovementStrategy interface {
+	Move(drone *Drone, region Region, waypoints []Position) Position
+}
+
+// PatrolMovement implements circular movement around the home region's center.
+type PatrolMovement struct{}
+
+func (p PatrolMovement) Move(drone *Drone, region Region, waypoints []Position) Position {
 	radius := region.RadiusKM * 1000 * 0.99 // Scale radius slightly to ensure position stays within bounds
 	angle := rand.Float64() * 2 * math.Pi
 	deltaLat := (radius * math.Cos(angle)) / 111000
@@ -69,40 +81,46 @@ func patrolMovement(pos Position, region Region) Position {
 	return Position{
 		Lat: region.CenterLat + deltaLat,
 		Lon: region.CenterLon + deltaLon,
-		Alt: pos.Alt,
+		Alt: drone.Position.Alt,
 	}
 }
 
-// pointToPointMovement simulates movement between predefined waypoints.
-func pointToPointMovement(pos Position, waypoints []Position) Position {
+// PointToPointMovement implements movement between predefined waypoints.
+type PointToPointMovement struct{}
+
+func (p PointToPointMovement) Move(drone *Drone, region Region, waypoints []Position) Position {
 	if len(waypoints) == 0 {
-		return pos
+		return drone.Position
 	}
 	target := waypoints[rand.Intn(len(waypoints))]
-	deltaLat := (target.Lat - pos.Lat) / 10 // Gradual movement
-	deltaLon := (target.Lon - pos.Lon) / 10
+	deltaLat := (target.Lat - drone.Position.Lat) / 10 // Gradual movement
+	deltaLon := (target.Lon - drone.Position.Lon) / 10
 	return Position{
-		Lat: pos.Lat + deltaLat,
-		Lon: pos.Lon + deltaLon,
-		Alt: pos.Alt,
+		Lat: drone.Position.Lat + deltaLat,
+		Lon: drone.Position.Lon + deltaLon,
+		Alt: drone.Position.Alt,
 	}
 }
 
-// loiterMovement simulates hovering near the home region's center.
-func loiterMovement(pos Position, region Region) Position {
+// LoiterMovement implements hovering near the home region's center.
+type LoiterMovement struct{}
+
+func (l LoiterMovement) Move(drone *Drone, region Region, waypoints []Position) Position {
 	deltaLat := rand.Float64()*0.0001 - 0.00005 // Small random movement
 	deltaLon := rand.Float64()*0.0001 - 0.00005
 	return Position{
 		Lat: region.CenterLat + deltaLat,
 		Lon: region.CenterLon + deltaLon,
-		Alt: pos.Alt,
+		Alt: drone.Position.Alt,
 	}
 }
 
-// randomWalk moves the drone in a pseudo-random direction, speed depends on model.
-func randomWalk(pos Position, model string) Position {
+// RandomWalkMovement implements random movement within the region.
+type RandomWalkMovement struct{}
+
+func (r RandomWalkMovement) Move(drone *Drone, region Region, waypoints []Position) Position {
 	var speedMin, speedMax float64 // speed range, in meters
-	switch model {
+	switch drone.Model {
 	case "small-fpv":
 		speedMin, speedMax = 15, 30
 	case "medium-uav":
@@ -120,21 +138,17 @@ func randomWalk(pos Position, model string) Position {
 	speed := rand.Float64()*(speedMax-speedMin) + speedMin // m/s
 
 	// Convert speed and heading into latitude and longitude deltas
-	// Latitude delta: speed * cos(heading) divided by Earth's approximate radius in meters (111,000 m per degree)
 	deltaLat := (speed * math.Cos(heading)) / 111000
-
-	// Longitude delta: speed * sin(heading) divided by Earth's radius adjusted for latitude
-	// The adjustment accounts for the Earth's curvature (cos(latitude in radians))
-	deltaLon := (speed * math.Sin(heading)) / (111000 * math.Cos(pos.Lat*math.Pi/180))
+	deltaLon := (speed * math.Sin(heading)) / (111000 * math.Cos(drone.Position.Lat*math.Pi/180))
 
 	// Altitude delta: random change between -1m and +1m
 	altDelta := rand.Float64()*2 - 1 // ±1m
 
 	// Return the new position, ensuring altitude is non-negative
 	return Position{
-		Lat: pos.Lat + deltaLat,            // Update latitude
-		Lon: pos.Lon + deltaLon,            // Update longitude
-		Alt: math.Max(0, pos.Alt+altDelta), // Ensure altitude is at least 0
+		Lat: drone.Position.Lat + deltaLat,
+		Lon: drone.Position.Lon + deltaLon,
+		Alt: math.Max(0, drone.Position.Alt+altDelta),
 	}
 }
 

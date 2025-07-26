@@ -40,6 +40,7 @@ func TestGenerateTelemetry(t *testing.T) {
 	}
 }
 
+// Updated tests to use MovementStrategy implementations.
 func TestPatrolMovement(t *testing.T) {
 	region := Region{
 		Name:      "test-region",
@@ -47,9 +48,11 @@ func TestPatrolMovement(t *testing.T) {
 		CenterLon: 16.3738,
 		RadiusKM:  1,
 	}
-	pos := Position{Lat: 48.2082, Lon: 16.3738, Alt: 100}
-	newPos := patrolMovement(pos, region)
-
+	drone := &Drone{
+		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
+	}
+	strategy := PatrolMovement{}
+	newPos := strategy.Move(drone, region, nil)
 	distance := calculateDistance(region.CenterLat, region.CenterLon, newPos.Lat, newPos.Lon)
 	if distance > region.RadiusKM*1000 {
 		t.Errorf("Patrol movement exceeded region radius: got %f, expected <= %f", distance, region.RadiusKM*1000)
@@ -61,12 +64,15 @@ func TestPointToPointMovement(t *testing.T) {
 		{Lat: 48.2083, Lon: 16.3740},
 		{Lat: 48.2085, Lon: 16.3750},
 	}
-	pos := Position{Lat: 48.2082, Lon: 16.3738, Alt: 100}
-	newPos := pointToPointMovement(pos, waypoints)
+	drone := &Drone{
+		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
+	}
+	strategy := PointToPointMovement{}
+	newPos := strategy.Move(drone, Region{}, waypoints)
 
 	closestWaypoint := findClosestWaypoint(newPos, waypoints)
 	distanceToWaypoint := calculateDistance(newPos.Lat, newPos.Lon, closestWaypoint.Lat, closestWaypoint.Lon)
-	if distanceToWaypoint > calculateDistance(pos.Lat, pos.Lon, closestWaypoint.Lat, closestWaypoint.Lon) {
+	if distanceToWaypoint > calculateDistance(drone.Position.Lat, drone.Position.Lon, closestWaypoint.Lat, closestWaypoint.Lon) {
 		t.Errorf("Point-to-point movement did not move closer to waypoint")
 	}
 }
@@ -78,11 +84,13 @@ func TestLoiterMovement(t *testing.T) {
 		CenterLon: 16.3738,
 		RadiusKM:  1,
 	}
-	pos := Position{Lat: 48.2082, Lon: 16.3738, Alt: 100}
-	newPos := loiterMovement(pos, region)
-
+	drone := &Drone{
+		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
+	}
+	strategy := LoiterMovement{}
+	newPos := strategy.Move(drone, region, nil)
 	distance := calculateDistance(region.CenterLat, region.CenterLon, newPos.Lat, newPos.Lon)
-	if distance > 10 { // Loiter movement should stay within 10 meters
+	if distance > 10 {
 		t.Errorf("Loiter movement exceeded allowed range: got %f, expected <= 10", distance)
 	}
 }
