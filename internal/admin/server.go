@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"droneops-sim/internal/config"
 	"droneops-sim/internal/sim"
 )
 
@@ -33,11 +34,13 @@ func (s *Server) Start(addr string) error {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	data := struct {
-		Chaos  bool
-		Fleets []sim.FleetHealth
+		Chaos        bool
+		Fleets       []sim.FleetHealth
+		FleetDetails []config.Fleet // Add detailed fleet information
 	}{
-		Chaos:  s.Sim.Chaos(),
-		Fleets: s.Sim.Health(),
+		Chaos:        s.Sim.Chaos(),
+		Fleets:       s.Sim.Health(),
+		FleetDetails: s.Sim.GetConfig().Fleets, // Use GetConfig to access fleet details
 	}
 	s.tpl.Execute(w, data)
 }
