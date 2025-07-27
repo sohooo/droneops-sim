@@ -294,3 +294,25 @@ On startup, the program:
 1. Loads mission data from `config/missions.yaml`.
 2. Inserts mission telemetry into stdout or GreptimeDB.
 3. Associates drones with missions using the `mission_id` field.
+
+## Admin WebUI
+
+### Features Overview
+
+The Admin WebUI provides a centralized interface for monitoring and managing drone fleets in real-time. It is designed to be lightweight, responsive, and user-friendly.
+
+### Features
+
+- **Fleet Overview**: Displays detailed information about each drone fleet, including model, movement pattern, battery status, and failure rates.
+- **Chaos Mode Toggle**: Allows users to enable or disable chaos mode, simulating random failures and unpredictable behavior.
+- **Drone Launch Control**: Provides an interface to launch drones for specific missions or operations.
+- **Mission Visualization**: Shows mission objectives, regions, and associated drones.
+- **Interactive Command Console**: Enables direct interaction with the simulator for advanced operations.
+
+### Access
+
+The Admin WebUI is exposed on port `8080` and can be accessed via a web browser. Ensure the Kubernetes service is correctly configured to route traffic to the Admin WebUI.
+
+### Deployment
+
+The Admin WebUI is included in the Helm chart for the `droneops-sim` project. Follow the steps in the [Deployment in Kubernetes](#deployment-in-kubernetes) section to deploy the simulator and access the Admin WebUI.
