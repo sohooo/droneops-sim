@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"strconv"
 
 	"droneops-sim/internal/config"
@@ -16,7 +18,9 @@ type Server struct {
 }
 
 func NewServer(sim *sim.Simulator) *Server {
-	tpl := template.Must(template.ParseFiles("internal/admin/templates/index.html"))
+	_, b, _, _ := runtime.Caller(0)
+	basePath := filepath.Dir(b)
+	tpl := template.Must(template.ParseFiles(filepath.Join(basePath, "templates", "index.html")))
 	return &Server{Sim: sim, tpl: tpl}
 }
 

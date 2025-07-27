@@ -1,0 +1,47 @@
+package admin
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"droneops-sim/internal/config"
+	"droneops-sim/internal/sim"
+)
+
+func TestHandleToggleChaos(t *testing.T) {
+	// Setup simulator and server
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
+		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 3}},
+	}
+	sim := sim.NewSimulator("test-cluster", cfg, nil, 1)
+	server := NewServer(sim)
+
+	// Create a request to toggle chaos
+	req := httptest.NewRequest(http.MethodPost, "/toggle-chaos", nil)
+	w := httptest.NewRecorder()
+
+	// Call the handler
+	server.handleToggleChaos(w, req)
+
+	// Check response
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Verify chaos mode is toggled
+	if !sim.Chaos() {
+		t.Errorf("Expected chaos mode to be enabled, but it was not")
+	}
+
+	// Call the handler again to toggle chaos off
+	w = httptest.NewRecorder()
+	server.handleToggleChaos(w, req)
+
+	// Verify chaos mode is toggled off
+	if sim.Chaos() {
+		t.Errorf("Expected chaos mode to be disabled, but it was enabled")
+	}
+}
