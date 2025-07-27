@@ -148,9 +148,9 @@ func (s *Simulator) LaunchSwarm(model string, count int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	region := s.cfg.Zones[0]
-	fleetName := model + "-" + time.Now().Format("150405")
+	fleetName := model // Use model name directly as fleet name
 	f := DroneFleet{Name: fleetName, Model: model}
-	for i := range count {
+	for i := 0; i < count; i++ {
 		drone := &telemetry.Drone{
 			ID:       generateDroneID(fleetName, i),
 			Model:    model,
