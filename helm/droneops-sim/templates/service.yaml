@@ -8,7 +8,7 @@ spec:
   selector:
     app: { { .Chart.Name } }
   ports:
-    - name: metrics
-      port: { { .Values.service.port } }
-      targetPort: metrics
+    - name: admin-webui
+      port: { { .Values.service.adminWebUIPort } }
+      targetPort: admin-webui
   type: { { .Values.service.type } }

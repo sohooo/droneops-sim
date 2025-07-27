@@ -36,6 +36,8 @@ spec:
         - name: schema
           mountPath: /etc/{{ .Chart.Name }}/schema
         ports:
+        - name: admin-webui
+          containerPort: {{ .Values.service.adminWebUIPort }}
         - name: metrics
           containerPort: {{ .Values.service.port }}
         resources:
