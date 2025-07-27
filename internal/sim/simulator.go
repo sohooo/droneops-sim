@@ -191,6 +191,13 @@ func (s *Simulator) Health() []FleetHealth {
 	return result
 }
 
+// GetConfig returns the simulation configuration.
+func (s *Simulator) GetConfig() *config.SimulationConfig {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg
+}
+
 func generateDroneID(fleetName string, index int) string {
 	return fleetName + "-" + time.Now().Format("150405") + "-" + string(rune('A'+index))
 }

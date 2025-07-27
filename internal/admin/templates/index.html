@@ -24,6 +24,20 @@ button:hover{background:#666;}
 <tr><td>{{.Name}}</td><td>{{.Total}}</td><td>{{.LowBattery}}</td><td>{{.Failed}}</td></tr>
 {{end}}
 </table>
+<table class="table">
+<tr><th>Fleet</th><th>Model</th><th>Movement Pattern</th><th>Home Region</th><th>Battery Drain Rate</th><th>Failure Rate</th><th>Speed Range (km/h)</th></tr>
+{{range .FleetDetails}}
+<tr>
+  <td>{{.Name}}</td>
+  <td>{{.Model}}</td>
+  <td>{{.MovementPattern}}</td>
+  <td>{{.HomeRegion}}</td>
+  <td>{{.Behavior.BatteryDrainRate}}</td>
+  <td>{{.Behavior.FailureRate}}</td>
+  <td>{{.Behavior.SpeedMinKmh}} - {{.Behavior.SpeedMaxKmh}}</td>
+</tr>
+{{end}}
+</table>
 <script>
 function launchSwarm(){
   const model = prompt('Model type:', 'small-fpv');
