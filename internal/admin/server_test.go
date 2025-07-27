@@ -45,3 +45,40 @@ func TestHandleToggleChaos(t *testing.T) {
 		t.Errorf("Expected chaos mode to be disabled, but it was enabled")
 	}
 }
+
+func TestHandleLaunchDrones(t *testing.T) {
+	// Setup simulator and server
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
+		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 3}},
+	}
+	sim := sim.NewSimulator("test-cluster", cfg, nil, 1)
+	server := NewServer(sim)
+
+	// Create a request to launch drones
+	req := httptest.NewRequest(http.MethodPost, "/launch-drones?model=medium-uav&count=5", nil)
+	w := httptest.NewRecorder()
+
+	// Call the handler
+	server.handleLaunch(w, req)
+
+	// Check response
+	resp := w.Result()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Expected status NoContent, got %v", resp.StatusCode)
+	}
+
+	// Verify drones are launched
+	fleetFound := false
+	for _, fleet := range sim.Health() {
+		if fleet.Name == "medium-uav" {
+			fleetFound = true
+			if fleet.Total != 5 {
+				t.Errorf("Expected 5 drones, got %d", fleet.Total)
+			}
+		}
+	}
+	if !fleetFound {
+		t.Errorf("Expected fleet 'medium-uav' to be found, but it was not")
+	}
+}
