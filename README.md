@@ -13,6 +13,8 @@ It supports:
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
+For development and contribution guidelines, see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
+
 ## Purpose
 
 - Provide a realistic demo data source for telemetry pipelines.
