@@ -27,75 +27,7 @@ For development and contribution guidelines, see [docs/CONTRIBUTING.md](docs/CON
 
 ## Configuration
 
-### Simulation Configuration (`config/simulation.yaml`)
-
-Defines zones, missions, and fleets for the simulation:
-
-```yaml
-# Zones define the operational areas for the simulation.
-# Each zone includes a name, center coordinates, and a radius.
-zones:
-  - name: central-europe
-    center_lat: 48.2
-    center_lon: 16.4
-    radius_km: 300
-
-# Missions define the objectives and regions for drone operations.
-# Each mission includes an ID, name, objective, description, and associated region.
-missions:
-  - id: "firewall"
-    name: "Operation: Firewall"
-    objective: "Defend the area from intrusions."
-    description: "Drones patrol the perimeter to ensure no unauthorized access."
-    region:
-      name: "central-europe"
-      center_lat: 48.2
-      center_lon: 16.4
-      radius_km: 300
-  - id: "recon"
-    name: "Operation: Recon"
-    objective: "Gather intelligence in the target area."
-    description: "Drones perform reconnaissance to collect data on enemy positions."
-    region:
-      name: "northern-border"
-      center_lat: 50.1
-      center_lon: 14.4
-      radius_km: 200
-
-# Fleets define the drone groups used in the simulation.
-# Each fleet includes a name, model, count, movement pattern, home region, and behavior.
-fleets:
-  - name: recon-swarm
-    model: small-fpv
-    count: 20
-    movement_pattern: patrol
-    home_region: central-europe
-    behavior:
-      battery_drain_rate: 0.5
-      failure_rate: 0.02
-      speed_min_kmh: 50
-      speed_max_kmh: 90
-  - name: transport-squad
-    model: medium-uav
-    count: 5
-    movement_pattern: point-to-point
-    home_region: central-europe
-    behavior:
-      battery_drain_rate: 0.3
-      failure_rate: 0.01
-      speed_min_kmh: 80
-      speed_max_kmh: 140
-  - name: heavy-support
-    model: large-uav
-    count: 2
-    movement_pattern: loiter
-    home_region: central-europe
-    behavior:
-      battery_drain_rate: 0.2
-      failure_rate: 0.005
-      speed_min_kmh: 100
-      speed_max_kmh: 180
-```
+Detailed configuration options are documented in [docs/configuration.md](docs/configuration.md).
 
 ## Schema Validation (schemas/simulation.cue)
 
@@ -120,30 +52,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 
 ## Quickstart
 
-### Local Demo (Print Only)
-
-```bash
-make build
-make run
-```
-
-### Write to GreptimeDB
-
-```bash
-export GREPTIMEDB_ENDPOINT=127.0.0.1:4001
-export GREPTIMEDB_TABLE=drone_telemetry
-./build/droneops-sim
-```
-
-Docker run:
-
-```bash
-docker build -t droneops-sim:latest .
-docker run --rm \
-    -e GREPTIMEDB_ENDPOINT=127.0.0.1:4001 \
-    -e GREPTIMEDB_TABLE=drone_telemetry \
-    droneops-sim:latest
-```
+See [docs/quickstart.md](docs/quickstart.md) for step-by-step instructions.
 
 ## Examples
 
@@ -205,56 +114,7 @@ go test ./... -v
 
 ## Deployment in Kubernetes
 
-### Using the Helm Chart
-
-The `droneops-sim` project includes a Helm chart for deploying the simulator in Kubernetes. Follow these steps to deploy:
-
-1. **Install Helm**:
-   Ensure Helm is installed on your system. Refer to the [Helm installation guide](https://helm.sh/docs/intro/install/) if needed.
-
-2. **Navigate to the Helm chart directory**:
-
-   ```bash
-   cd helm/droneops-sim
-   ```
-
-3. **Customize values**:
-
-   Edit the `values.yaml` file to configure replicas, image, service type, resources, and simulation configuration.
-
-4. **Deploy the chart**:
-
-   Run the following command to deploy:
-
-   ```bash
-   helm install droneops-sim .
-   ```
-
-   This will deploy the simulator with the default configuration.
-
-5. **Verify deployment**:
-
-   Check the status of the deployment:
-
-   ```bash
-   kubectl get all -l app=droneops-sim
-   ```
-
-6. **Access the service**:
-
-   The simulator exposes a metrics endpoint. Use the following command to get the service details:
-
-   ```bash
-   kubectl get svc droneops-sim
-   ```
-
-### Notes
-
-- The Helm chart uses ConfigMaps to manage simulation and schema configurations.
-- Ensure the Kubernetes cluster has sufficient resources to handle the configured replicas and resource limits.
-- Update the `GREPTIMEDB_ENDPOINT` and `GREPTIMEDB_TABLE` environment variables in the deployment if connecting to a real database.
-
-For more details, refer to the `helm/droneops-sim` directory and the `values.yaml` file.
+For Helm deployment instructions, see [docs/helm-deployment.md](docs/helm-deployment.md).
 
 ## Mission Configuration and Visualization
 
