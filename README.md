@@ -149,8 +149,17 @@ docker run --rm \
 
 ### STDOUT output
 
+The simulator first prints the mission metadata and then begins emitting drone
+telemetry lines. Example mission record:
+
 ```json
-{"cluster_id":"mission-01","drone_id":"recon-swarm-123456-A","lat":48.2023,"lon":16.4098,"alt":100.5,"battery":99.5,"status":"ok","synced_to_json":"[]","ts":"2025-07-23T12:34:56Z"}
+{"id":"firewall","name":"Operation: Firewall","objective":"Defend the area from intrusions.","description":"Drones patrol the perimeter to ensure no unauthorized access.","region":{"name":"central-europe","center_lat":48.2,"center_lon":16.4,"radius_km":300}}
+```
+
+Example drone telemetry line:
+
+```json
+{"cluster_id":"mission-01","drone_id":"recon-swarm-204951-A","mission_id":"","lat":48.19985399217792,"lon":16.399831683018377,"alt":99.89517965510856,"battery":99.5,"status":"ok","synced_from":"","synced_id":"","synced_at":"0001-01-01T00:00:00Z","ts":"2025-07-29T20:49:52.332081195Z"}
 ```
 
 ## Data Flow
