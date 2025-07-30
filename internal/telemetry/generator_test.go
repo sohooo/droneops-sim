@@ -95,6 +95,44 @@ func TestLoiterMovement(t *testing.T) {
 	}
 }
 
+func TestRandomWalkMovement(t *testing.T) {
+	drone := &Drone{
+		Model:    "medium-uav",
+		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 10},
+	}
+	strategy := RandomWalkMovement{}
+	newPos := strategy.Move(drone, Region{}, nil)
+	if newPos.Alt < 0 {
+		t.Errorf("altitude should not be negative: %f", newPos.Alt)
+	}
+	if newPos == drone.Position {
+		t.Errorf("expected drone position to change")
+	}
+}
+
+func TestBatteryDrain(t *testing.T) {
+	cases := map[string]float64{
+		"small-fpv":  0.5,
+		"medium-uav": 0.3,
+		"large-uav":  0.2,
+		"other":      0.4,
+	}
+	for model, want := range cases {
+		if got := batteryDrain(model); got != want {
+			t.Errorf("batteryDrain(%s)=%f, want %f", model, got, want)
+		}
+	}
+}
+
+func TestTelemetryRowTableName(t *testing.T) {
+	orig := TelemetryTableName
+	TelemetryTableName = "custom"
+	defer func() { TelemetryTableName = orig }()
+	if (TelemetryRow{}).TableName() != "custom" {
+		t.Errorf("expected custom table name, got %s", (TelemetryRow{}).TableName())
+	}
+}
+
 func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	const earthRadius = 6371000 // Earth radius in meters
 	dLat := (lat2 - lat1) * math.Pi / 180
