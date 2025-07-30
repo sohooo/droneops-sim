@@ -2,6 +2,7 @@
 package sim
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"sync"
@@ -9,6 +10,8 @@ import (
 
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/telemetry"
+
+	"github.com/google/uuid"
 )
 
 // TelemetryWriter is an interface to support different output writers.
@@ -199,5 +202,7 @@ func (s *Simulator) GetConfig() *config.SimulationConfig {
 }
 
 func generateDroneID(fleetName string, index int) string {
-	return fleetName + "-" + time.Now().Format("150405") + "-" + string(rune('A'+index))
+	// Include the drone's index along with a UUID to guarantee uniqueness
+	id := uuid.New().String()
+	return fmt.Sprintf("%s-%d-%s", fleetName, index, id)
 }
