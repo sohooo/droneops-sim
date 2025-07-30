@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -80,5 +81,30 @@ func TestHandleLaunchDrones(t *testing.T) {
 	}
 	if !fleetFound {
 		t.Errorf("Expected fleet 'medium-uav' to be found, but it was not")
+	}
+}
+
+func TestHandleHealth(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
+		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 1}},
+	}
+	simulator := sim.NewSimulator("cluster", cfg, nil, 1)
+	server := NewServer(simulator)
+
+	req := httptest.NewRequest(http.MethodGet, "/fleet-health", nil)
+	w := httptest.NewRecorder()
+	server.handleHealth(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status OK, got %v", resp.StatusCode)
+	}
+	var data []sim.FleetHealth
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(data) != 1 || data[0].Total != 1 {
+		t.Errorf("unexpected health data: %+v", data)
 	}
 }

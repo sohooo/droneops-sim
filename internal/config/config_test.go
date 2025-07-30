@@ -38,3 +38,10 @@ fleets:
 		t.Errorf("Unexpected fleet data: %+v", cfg.Fleets)
 	}
 }
+
+func TestValidateWithCue_InvalidPath(t *testing.T) {
+	err := ValidateWithCue("non-existent.yaml", "../../schemas/simulation.cue")
+	if err == nil {
+		t.Fatalf("expected error for missing YAML file")
+	}
+}
