@@ -1,11 +1,10 @@
 package admin
 
 import (
+	_ "embed"
 	"encoding/json"
 	"html/template"
 	"net/http"
-	"path/filepath"
-	"runtime"
 	"strconv"
 
 	"droneops-sim/internal/config"
@@ -17,10 +16,11 @@ type Server struct {
 	tpl *template.Template
 }
 
+//go:embed templates/index.html
+var indexHTML string
+
 func NewServer(sim *sim.Simulator) *Server {
-	_, b, _, _ := runtime.Caller(0)
-	basePath := filepath.Dir(b)
-	tpl := template.Must(template.ParseFiles(filepath.Join(basePath, "templates", "index.html")))
+	tpl := template.Must(template.New("index.html").Parse(indexHTML))
 	return &Server{Sim: sim, tpl: tpl}
 }
 
