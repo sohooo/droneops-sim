@@ -18,6 +18,7 @@ func main() {
 	printOnly := flag.Bool("print-only", false, "Print telemetry to STDOUT instead of writing to DB")
 	configPath := flag.String("config", "config/simulation.yaml", "Path to simulation configuration YAML")
 	cueSchemaPath := flag.String("schema", "schemas/simulation.cue", "Path to CUE schema file")
+	tickFlag := flag.Duration("tick", time.Second, "Telemetry tick interval (e.g. 500ms, 2s)")
 	flag.Parse()
 
 	// Load simulation configuration
@@ -47,7 +48,16 @@ func main() {
 	}
 
 	// Simulator setup
-	simulator := sim.NewSimulator(clusterID, cfg, writer, 1*time.Second)
+	tickInterval := *tickFlag
+	if envTick := os.Getenv("TICK_INTERVAL"); envTick != "" {
+		d, err := time.ParseDuration(envTick)
+		if err != nil {
+			log.Fatalf("Invalid TICK_INTERVAL: %v", err)
+		}
+		tickInterval = d
+	}
+
+	simulator := sim.NewSimulator(clusterID, cfg, writer, tickInterval)
 
 	// Start admin UI
 	go func() {

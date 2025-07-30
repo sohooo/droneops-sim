@@ -110,6 +110,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 - `--print-only` → Print telemetry JSON to STDOUT (ignores DB)
 - `--config` → Path to YAML config (default: config/simulation.yaml)
 - `--schema` → Path to CUE schema (default: schemas/simulation.cue)
+- `--tick` → Telemetry tick interval (default: 1s)
 
 ### Environment Variables
 
@@ -117,6 +118,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 - `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
 - `MISSION_METADATA_TABLE` → Table storing mission metadata (default: mission_metadata)
 - `CLUSTER_ID` → Cluster identity tag (default: mission-01)
+- `TICK_INTERVAL` → Telemetry tick interval in Go duration format (overrides `--tick`)
 
 ## Quickstart
 
