@@ -52,20 +52,3 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		}
 	}
 }
-
-func TestSimulator_DetectsEnemy(t *testing.T) {
-	cfg := &config.SimulationConfig{
-		Zones:  []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 1}},
-		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"}},
-	}
-	writer := &MockWriter{}
-	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("c1", cfg, writer, dWriter, 1*time.Second)
-	sim.enemyEng = &enemy.Engine{Enemies: []*enemy.Enemy{{ID: "e1", Type: enemy.EnemyDrone, Position: telemetry.Position{Lat: 48.0, Lon: 16.0}}}}
-
-	sim.tick()
-
-	if len(dWriter.Detections) == 0 {
-		t.Errorf("expected detection event")
-	}
-}

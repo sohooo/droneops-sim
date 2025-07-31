@@ -25,7 +25,7 @@ button:hover{background:#666;}
 {{end}}
 </table>
 <table class="table">
-<tr><th>Fleet</th><th>Model</th><th>Movement Pattern</th><th>Home Region</th><th>Battery Drain Rate</th><th>Failure Rate</th><th>Speed Range (km/h)</th></tr>
+<tr><th>Fleet</th><th>Model</th><th>Movement Pattern</th><th>Home Region</th><th>Battery Drain Rate</th><th>Failure Rate</th><th>Speed Range (km/h)</th><th>Sensor Error Rate</th><th>Dropout Rate</th><th>Battery Anomaly Rate</th></tr>
 {{range .FleetDetails}}
 <tr>
   <td>{{.Name}}</td>
@@ -35,6 +35,9 @@ button:hover{background:#666;}
   <td>{{.Behavior.BatteryDrainRate}}</td>
   <td>{{.Behavior.FailureRate}}</td>
   <td>{{.Behavior.SpeedMinKmh}} - {{.Behavior.SpeedMaxKmh}}</td>
+  <td>{{.Behavior.SensorErrorRate}}</td>
+  <td>{{.Behavior.DropoutRate}}</td>
+  <td>{{.Behavior.BatteryAnomalyRate}}</td>
 </tr>
 {{end}}
 </table>

@@ -1,5 +1,7 @@
 # DroneOps-Sim
 
+> "Slick Go-powered simulator for mission-driven drone fleets with battery and failure modeling, streaming telemetry to GreptimeDB or stdout for instant Grafana demos."
+
 ## Overview
 
 **DroneOps-Sim** is a lightweight Go-based simulator that generates realistic drone telemetry for demonstration, testing, and learning purposes.
@@ -9,6 +11,7 @@ It supports:
 - **Multiple drone fleets** (small FPV, medium UAV, large UAV)
 - **Randomized movement patterns** (random walk)
 - **Battery drain and failure simulation**
+- **Configurable sensor errors, communication dropouts, and battery anomalies**
 - **Output to GreptimeDB** using its gRPC ORM interface **or** to STDOUT for quick demos
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
