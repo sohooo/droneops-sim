@@ -29,16 +29,21 @@ func main() {
 
 	// Determine writer (GreptimeDB or STDOUT)
 	var writer sim.TelemetryWriter
+	var detectWriter sim.DetectionWriter
 	if *printOnly || os.Getenv("GREPTIMEDB_ENDPOINT") == "" {
 		log.Println("[Main] Print-only mode: telemetry will be printed to STDOUT")
-		writer = &sim.StdoutWriter{}
+		sw := &sim.StdoutWriter{}
+		writer = sw
+		detectWriter = sw
 	} else {
 		endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
 		table := os.Getenv("GREPTIMEDB_TABLE")
-		writer, err = sim.NewGreptimeDBWriter(endpoint, "public", table)
+		detTable := os.Getenv("ENEMY_DETECTION_TABLE")
+		writer, err = sim.NewGreptimeDBWriter(endpoint, "public", table, detTable)
 		if err != nil {
 			log.Fatalf("Failed to init GreptimeDB writer: %v", err)
 		}
+		detectWriter = writer.(sim.DetectionWriter)
 	}
 
 	// Cluster identity (defaults to mission-01)
@@ -57,7 +62,7 @@ func main() {
 		tickInterval = d
 	}
 
-	simulator := sim.NewSimulator(clusterID, cfg, writer, tickInterval)
+	simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval)
 
 	// Start admin UI
 	go func() {

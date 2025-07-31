@@ -189,3 +189,11 @@ The Admin WebUI is exposed on port `8080` and can be accessed via a web browser.
 ### Deployment
 
 The Admin WebUI is included in the Helm chart for the `droneops-sim` project. Follow the steps in the [Deployment in Kubernetes](#deployment-in-kubernetes) section to deploy the simulator and access the Admin WebUI.
+
+## Enemy Detection
+
+The simulator now generates random enemy entities and emits detection events when drones are within range.
+
+- An **Enemy Simulation Engine** moves enemies around the first configured zone.
+- Drones check for nearby enemies every tick (1 km radius).
+- Detection events are written to the `enemy_detection` table when using GreptimeDB or printed to STDOUT in print-only mode.

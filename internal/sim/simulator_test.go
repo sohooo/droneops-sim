@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"droneops-sim/internal/config"
+	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
 )
 
@@ -18,6 +19,15 @@ func (w *MockWriter) Write(row telemetry.TelemetryRow) error {
 	return nil
 }
 
+type MockDetectionWriter struct {
+	Detections []enemy.DetectionRow
+}
+
+func (w *MockDetectionWriter) WriteDetection(d enemy.DetectionRow) error {
+	w.Detections = append(w.Detections, d)
+	return nil
+}
+
 func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
@@ -27,7 +37,8 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		},
 	}
 	writer := &MockWriter{}
-	sim := NewSimulator("cluster-test", cfg, writer, 1*time.Second)
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
 
 	// Run one tick manually
 	sim.tick()
@@ -39,5 +50,22 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		if row.DroneID == "" || row.ClusterID == "" {
 			t.Errorf("Telemetry row has missing IDs: %+v", row)
 		}
+	}
+}
+
+func TestSimulator_DetectsEnemy(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"}},
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("c1", cfg, writer, dWriter, 1*time.Second)
+	sim.enemyEng = &enemy.Engine{Enemies: []*enemy.Enemy{{ID: "e1", Type: enemy.EnemyDrone, Position: telemetry.Position{Lat: 48.0, Lon: 16.0}}}}
+
+	sim.tick()
+
+	if len(dWriter.Detections) == 0 {
+		t.Errorf("expected detection event")
 	}
 }

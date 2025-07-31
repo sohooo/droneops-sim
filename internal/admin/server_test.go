@@ -16,7 +16,7 @@ func TestHandleToggleChaos(t *testing.T) {
 		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
 		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 3}},
 	}
-	sim := sim.NewSimulator("test-cluster", cfg, nil, 1)
+	sim := sim.NewSimulator("test-cluster", cfg, nil, nil, 1)
 	server := NewServer(sim)
 
 	// Create a request to toggle chaos
@@ -53,7 +53,7 @@ func TestHandleLaunchDrones(t *testing.T) {
 		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
 		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 3}},
 	}
-	sim := sim.NewSimulator("test-cluster", cfg, nil, 1)
+	sim := sim.NewSimulator("test-cluster", cfg, nil, nil, 1)
 	server := NewServer(sim)
 
 	// Create a request to launch drones
@@ -89,7 +89,7 @@ func TestHandleHealth(t *testing.T) {
 		Zones:  []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
 		Fleets: []config.Fleet{{Name: "fleet-1", Model: "small-fpv", Count: 1}},
 	}
-	simulator := sim.NewSimulator("cluster", cfg, nil, 1)
+	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
 	server := NewServer(simulator)
 
 	req := httptest.NewRequest(http.MethodGet, "/fleet-health", nil)

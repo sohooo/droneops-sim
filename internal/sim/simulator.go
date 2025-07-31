@@ -4,11 +4,13 @@ package sim
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"sync"
 	"time"
 
 	"droneops-sim/internal/config"
+	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
 
 	"github.com/google/uuid"
@@ -19,6 +21,16 @@ type TelemetryWriter interface {
 	Write(telemetry.TelemetryRow) error
 }
 
+// DetectionWriter handles enemy detection events.
+type DetectionWriter interface {
+	WriteDetection(enemy.DetectionRow) error
+}
+
+// Optional: Detection writers may support batch mode
+type batchDetectionWriter interface {
+	WriteDetections([]enemy.DetectionRow) error
+}
+
 // Optional: Writers can also support batch mode
 type batchWriter interface {
 	WriteBatch([]telemetry.TelemetryRow) error
@@ -26,14 +38,16 @@ type batchWriter interface {
 
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
-	clusterID    string
-	fleets       []DroneFleet
-	teleGen      *telemetry.Generator
-	writer       TelemetryWriter
-	tickInterval time.Duration
-	chaosMode    bool
-	cfg          *config.SimulationConfig
-	mu           sync.Mutex
+	clusterID       string
+	fleets          []DroneFleet
+	teleGen         *telemetry.Generator
+	writer          TelemetryWriter
+	detectionWriter DetectionWriter
+	enemyEng        *enemy.Engine
+	tickInterval    time.Duration
+	chaosMode       bool
+	cfg             *config.SimulationConfig
+	mu              sync.Mutex
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -44,13 +58,14 @@ type DroneFleet struct {
 }
 
 // NewSimulator initializes drones from fleet config.
-func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, tickInterval time.Duration) *Simulator {
+func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, dWriter DetectionWriter, tickInterval time.Duration) *Simulator {
 	sim := &Simulator{
-		clusterID:    clusterID,
-		teleGen:      telemetry.NewGenerator(clusterID),
-		writer:       writer,
-		tickInterval: tickInterval,
-		cfg:          cfg,
+		clusterID:       clusterID,
+		teleGen:         telemetry.NewGenerator(clusterID),
+		writer:          writer,
+		detectionWriter: dWriter,
+		tickInterval:    tickInterval,
+		cfg:             cfg,
 	}
 
 	// Check if zones are defined
@@ -73,6 +88,15 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		}
 		sim.fleets = append(sim.fleets, f)
 	}
+
+	// Initialize enemy engine with a few entities in the first zone
+	sim.enemyEng = enemy.NewEngine(3, telemetry.Region{
+		Name:      cfg.Zones[0].Name,
+		CenterLat: cfg.Zones[0].CenterLat,
+		CenterLon: cfg.Zones[0].CenterLon,
+		RadiusKM:  cfg.Zones[0].RadiusKM,
+	})
+
 	return sim
 }
 
@@ -96,8 +120,15 @@ func (s *Simulator) Run(stop <-chan struct{}) {
 // tick generates telemetry and writes it.
 func (s *Simulator) tick() {
 	var batch []telemetry.TelemetryRow
+	var detections []enemy.DetectionRow
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.enemyEng != nil {
+		s.enemyEng.Step()
+	}
+
 	for _, fleet := range s.fleets {
 		for _, drone := range fleet.Drones {
 			row := s.teleGen.GenerateTelemetry(drone)
@@ -114,6 +145,27 @@ func (s *Simulator) tick() {
 				row.Battery = drone.Battery
 			}
 			batch = append(batch, row)
+
+			if s.enemyEng != nil {
+				for _, en := range s.enemyEng.Enemies {
+					dist := distanceMeters(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
+					if dist <= 1000 {
+						conf := 100 * (1 - dist/1000)
+						d := enemy.DetectionRow{
+							ClusterID:  s.clusterID,
+							DroneID:    drone.ID,
+							EnemyID:    en.ID,
+							EnemyType:  en.Type,
+							Lat:        en.Position.Lat,
+							Lon:        en.Position.Lon,
+							Alt:        en.Position.Alt,
+							Confidence: conf,
+							Timestamp:  time.Now().UTC(),
+						}
+						detections = append(detections, d)
+					}
+				}
+			}
 		}
 	}
 
@@ -126,6 +178,21 @@ func (s *Simulator) tick() {
 		for _, row := range batch {
 			if err := s.writer.Write(row); err != nil {
 				log.Printf("[Simulator] write failed for drone %s: %v", row.DroneID, err)
+			}
+		}
+	}
+
+	// Write enemy detections if any
+	if len(detections) > 0 && s.detectionWriter != nil {
+		if bw, ok := s.detectionWriter.(batchDetectionWriter); ok {
+			if err := bw.WriteDetections(detections); err != nil {
+				log.Printf("[Simulator] detection batch write failed: %v", err)
+			}
+		} else {
+			for _, d := range detections {
+				if err := s.detectionWriter.WriteDetection(d); err != nil {
+					log.Printf("[Simulator] detection write failed: %v", err)
+				}
 			}
 		}
 	}
@@ -205,4 +272,14 @@ func generateDroneID(fleetName string, index int) string {
 	// Include the drone's index along with a UUID to guarantee uniqueness
 	id := uuid.New().String()
 	return fmt.Sprintf("%s-%d-%s", fleetName, index, id)
+}
+
+// distanceMeters calculates the haversine distance between two lat/lon points.
+func distanceMeters(lat1, lon1, lat2, lon2 float64) float64 {
+	const earthRadius = 6371000.0
+	dLat := (lat2 - lat1) * math.Pi / 180
+	dLon := (lon2 - lon1) * math.Pi / 180
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*math.Sin(dLon/2)*math.Sin(dLon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return earthRadius * c
 }
