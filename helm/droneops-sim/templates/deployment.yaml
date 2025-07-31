@@ -28,6 +28,8 @@ spec:
           value: "127.0.0.1:4001"
         - name: GREPTIMEDB_TABLE
           value: "drone_telemetry"
+        - name: ENEMY_DETECTION_TABLE
+          value: "enemy_detection"
         - name: CLUSTER_ID
           value: "mission-01"
         volumeMounts:

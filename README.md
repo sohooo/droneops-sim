@@ -51,6 +51,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 
 - `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
 - `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
+- `ENEMY_DETECTION_TABLE` → Table for enemy detection events (default: enemy_detection)
 - `MISSION_METADATA_TABLE` → Table storing mission metadata (default: mission_metadata)
 - `CLUSTER_ID` → Cluster identity tag (default: mission-01)
 - `TICK_INTERVAL` → Telemetry tick interval in Go duration format (overrides `--tick`)
@@ -199,4 +200,4 @@ The simulator now generates random enemy entities and emits detection events whe
 
 - An **Enemy Simulation Engine** moves enemies around the first configured zone.
 - Drones check for nearby enemies every tick (1 km radius).
-- Detection events are written to the `enemy_detection` table when using GreptimeDB or printed to STDOUT in print-only mode.
+- Detection events are written to the table specified by `ENEMY_DETECTION_TABLE` (default `enemy_detection`) when using GreptimeDB or printed to STDOUT in print-only mode.
