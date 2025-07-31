@@ -51,6 +51,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 
 - `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
 - `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
+- `ENEMY_DETECTION_TABLE` → Table for enemy detection events (default: enemy_detection)
 - `MISSION_METADATA_TABLE` → Table storing mission metadata (default: mission_metadata)
 - `ENEMY_DETECTION_TABLE` → Table storing enemy detection events (default: enemy_detection)
 - `CLUSTER_ID` → Cluster identity tag (default: mission-01)
