@@ -48,6 +48,9 @@ fleets:
       failure_rate: 0.02
       speed_min_kmh: 50
       speed_max_kmh: 90
+      sensor_error_rate: 0.01
+      dropout_rate: 0.01
+      battery_anomaly_rate: 0.01
   - name: transport-squad
     model: medium-uav
     count: 5
@@ -58,6 +61,9 @@ fleets:
       failure_rate: 0.01
       speed_min_kmh: 80
       speed_max_kmh: 140
+      sensor_error_rate: 0.01
+      dropout_rate: 0.01
+      battery_anomaly_rate: 0.01
   - name: heavy-support
     model: large-uav
     count: 2
@@ -68,5 +74,8 @@ fleets:
       failure_rate: 0.005
       speed_min_kmh: 100
       speed_max_kmh: 180
+      sensor_error_rate: 0.01
+      dropout_rate: 0.01
+      battery_anomaly_rate: 0.01
 ```
 

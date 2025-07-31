@@ -47,14 +47,17 @@ func (TelemetryRow) TableName() string {
 
 // Drone holds runtime state for a simulated drone.
 type Drone struct {
-	ID              string     // Drone ID
-	Model           string     // Drone model
-	Position        Position   // Current position
-	Battery         float64    // Battery level
-	Status          string     // Current status
-	MovementPattern string     // Movement pattern: patrol, point-to-point, loiter
-	HomeRegion      Region     // Home region for patrol and loiter
-	Waypoints       []Position // Waypoints for point-to-point movement
+	ID                 string     // Drone ID
+	Model              string     // Drone model
+	Position           Position   // Current position
+	Battery            float64    // Battery level
+	Status             string     // Current status
+	MovementPattern    string     // Movement pattern: patrol, point-to-point, loiter
+	HomeRegion         Region     // Home region for patrol and loiter
+	Waypoints          []Position // Waypoints for point-to-point movement
+	SensorErrorRate    float64
+	DropoutRate        float64
+	BatteryAnomalyRate float64
 }
 
 // Position holds latitude, longitude, and altitude.

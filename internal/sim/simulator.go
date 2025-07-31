@@ -63,11 +63,14 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		f := DroneFleet{Name: fleet.Name, Model: fleet.Model}
 		for i := 0; i < fleet.Count; i++ {
 			drone := &telemetry.Drone{
-				ID:       generateDroneID(fleet.Name, i),
-				Model:    fleet.Model,
-				Position: telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
-				Battery:  100,
-				Status:   telemetry.StatusOK,
+				ID:                 generateDroneID(fleet.Name, i),
+				Model:              fleet.Model,
+				Position:           telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
+				Battery:            100,
+				Status:             telemetry.StatusOK,
+				SensorErrorRate:    fleet.Behavior.SensorErrorRate,
+				DropoutRate:        fleet.Behavior.DropoutRate,
+				BatteryAnomalyRate: fleet.Behavior.BatteryAnomalyRate,
 			}
 			f.Drones = append(f.Drones, drone)
 		}
@@ -101,6 +104,21 @@ func (s *Simulator) tick() {
 	for _, fleet := range s.fleets {
 		for _, drone := range fleet.Drones {
 			row := s.teleGen.GenerateTelemetry(drone)
+			if rand.Float64() < drone.SensorErrorRate {
+				row.Lat += rand.Float64()*0.01 - 0.005
+				row.Lon += rand.Float64()*0.01 - 0.005
+			}
+			if rand.Float64() < drone.BatteryAnomalyRate {
+				drop := rand.Float64()*20 + 10
+				drone.Battery -= drop
+				if drone.Battery < 0 {
+					drone.Battery = 0
+				}
+				row.Battery = drone.Battery
+			}
+			if rand.Float64() < drone.DropoutRate {
+				continue
+			}
 			if s.chaosMode {
 				if rand.Float64() < 0.1 {
 					row.Status = telemetry.StatusFailure
