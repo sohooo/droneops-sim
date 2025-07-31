@@ -12,10 +12,13 @@ import (
 
 // Behavior defines dynamic properties of a drone model/fleet
 type Behavior struct {
-	BatteryDrainRate float64 `yaml:"battery_drain_rate"`
-	FailureRate      float64 `yaml:"failure_rate"`
-	SpeedMinKmh      float64 `yaml:"speed_min_kmh"`
-	SpeedMaxKmh      float64 `yaml:"speed_max_kmh"`
+	BatteryDrainRate   float64 `yaml:"battery_drain_rate"`
+	FailureRate        float64 `yaml:"failure_rate"`
+	SpeedMinKmh        float64 `yaml:"speed_min_kmh"`
+	SpeedMaxKmh        float64 `yaml:"speed_max_kmh"`
+	SensorErrorRate    float64 `yaml:"sensor_error_rate"`
+	DropoutRate        float64 `yaml:"dropout_rate"`
+	BatteryAnomalyRate float64 `yaml:"battery_anomaly_rate"`
 }
 
 // Region defines an operational region

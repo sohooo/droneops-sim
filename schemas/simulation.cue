@@ -25,5 +25,8 @@ fleets: [...{
         failure_rate?:       number & >=0 & <=1
         speed_min_kmh?:      number & >=0
         speed_max_kmh?:      number & >=0
+        sensor_error_rate?:  number & >=0 & <=1
+        dropout_rate?:       number & >=0 & <=1
+        battery_anomaly_rate?: number & >=0 & <=1
     }
 }]

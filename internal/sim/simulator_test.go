@@ -41,3 +41,18 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		}
 	}
 }
+
+func TestSimulator_Dropout(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "region-1", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Fleets: []config.Fleet{
+			{Name: "fleet-1", Model: "small-fpv", Count: 1, Behavior: config.Behavior{DropoutRate: 1}},
+		},
+	}
+	writer := &MockWriter{}
+	sim := NewSimulator("cluster", cfg, writer, time.Second)
+	sim.tick()
+	if len(writer.Rows) != 0 {
+		t.Errorf("expected no rows due to dropout, got %d", len(writer.Rows))
+	}
+}
