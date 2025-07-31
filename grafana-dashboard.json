@@ -1,7 +1,7 @@
 {
   "uid": "droneops-telemetry",
   "title": "DroneOps Telemetry Dashboard",
-  "version": 1,
+  "version": 2,
   "schemaVersion": 36,
   "style": "dark",
   "editable": true,
@@ -112,6 +112,75 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "id": 6,
+      "type": "geomap",
+      "title": "Drone & Enemy Locations",
+      "description": "Overlay of drone positions and detected enemies.",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 12 },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon FROM enemy_detection WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Drones",
+            "config": { "latField": "lat", "lonField": "lon", "color": { "fixed": "blue" }, "size": { "fixed": 4 } }
+          },
+          {
+            "type": "markers",
+            "name": "Enemies",
+            "config": { "latField": "lat", "lonField": "lon", "color": { "fixed": "red" }, "size": { "fixed": 4 } }
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Enemy Detections Over Time",
+      "description": "Count of enemy detections per time window.",
+      "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "H",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts, 1m) as time, COUNT(*) as detections FROM enemy_detection WHERE $__timeFilter(ts) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "type": "histogram",
+      "title": "Detection Confidence",
+      "description": "Distribution of detection confidence.",
+      "gridPos": { "x": 12, "y": 40, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "I",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT confidence FROM enemy_detection WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {
