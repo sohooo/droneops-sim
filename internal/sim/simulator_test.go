@@ -52,3 +52,80 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		}
 	}
 }
+
+func TestSimulator_DetectsEnemy(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
+		},
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
+	}
+
+	sim.tick()
+
+	if len(dWriter.Detections) == 0 {
+		t.Fatalf("expected enemy detection event")
+	}
+	det := dWriter.Detections[0]
+	if det.ClusterID != "cluster-test" || det.DroneID != drone.ID || det.EnemyID == "" {
+		t.Errorf("unexpected detection row: %+v", det)
+	}
+}
+
+func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
+		},
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-far", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.02, Lon: drone.Position.Lon + 0.02, Alt: 0}},
+	}
+
+	sim.tick()
+
+	if len(dWriter.Detections) != 0 {
+		t.Fatalf("expected no detections, got %d", len(dWriter.Detections))
+	}
+}
+
+func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
+		},
+	}
+	writer := &MockWriter{}
+	sim := NewSimulator("cluster-test", cfg, writer, nil, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("tick panicked with nil detection writer: %v", r)
+		}
+	}()
+
+	sim.tick()
+}
