@@ -181,6 +181,36 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Detections per Minute",
+      "gridPos": { "x": 0, "y": 48, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "J",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT COUNT(*) FROM enemy_detection WHERE $__timeFilter(ts)",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 10,
+      "type": "histogram",
+      "title": "Detection Confidence (Aggregated)",
+      "gridPos": { "x": 12, "y": 48, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "K",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT ROUND(confidence, 1) AS bucket, COUNT(*) AS count FROM enemy_detection WHERE $__timeFilter(ts) GROUP BY bucket ORDER BY bucket",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {
