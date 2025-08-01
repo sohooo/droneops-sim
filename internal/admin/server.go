@@ -1,7 +1,7 @@
 package admin
 
 import (
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -12,20 +12,24 @@ import (
 )
 
 type Server struct {
-	Sim *sim.Simulator
-	tpl *template.Template
+	Sim    *sim.Simulator
+	tpl    *template.Template
+	mapTpl *template.Template
 }
 
-//go:embed templates/index.html
-var indexHTML string
+//go:embed templates/index.html templates/map3d.html
+var content embed.FS
 
 func NewServer(sim *sim.Simulator) *Server {
-	tpl := template.Must(template.New("index.html").Parse(indexHTML))
-	return &Server{Sim: sim, tpl: tpl}
+	tpl := template.Must(template.New("index.html").ParseFS(content, "templates/index.html"))
+	mapTpl := template.Must(template.New("map3d.html").ParseFS(content, "templates/map3d.html"))
+	return &Server{Sim: sim, tpl: tpl, mapTpl: mapTpl}
 }
 
 func (s *Server) routes() {
 	http.HandleFunc("/", s.handleIndex)
+	http.HandleFunc("/3d", s.handle3D)
+	http.HandleFunc("/telemetry", s.handleTelemetry)
 	http.HandleFunc("/toggle-chaos", s.handleToggleChaos)
 	http.HandleFunc("/launch-drones", s.handleLaunch)
 	http.HandleFunc("/fleet-health", s.handleHealth)
@@ -72,4 +76,13 @@ func (s *Server) handleLaunch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.Sim.Health())
+}
+
+func (s *Server) handle3D(w http.ResponseWriter, r *http.Request) {
+	s.mapTpl.Execute(w, nil)
+}
+
+func (s *Server) handleTelemetry(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.Sim.TelemetrySnapshot())
 }

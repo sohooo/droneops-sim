@@ -8,6 +8,7 @@ import (
 
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/sim"
+	"droneops-sim/internal/telemetry"
 )
 
 func TestHandleToggleChaos(t *testing.T) {
@@ -106,5 +107,30 @@ func TestHandleHealth(t *testing.T) {
 	}
 	if len(data) != 1 || data[0].Total != 1 {
 		t.Errorf("unexpected health data: %+v", data)
+	}
+}
+
+func TestHandleTelemetry(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+	}
+	sim := sim.NewSimulator("cluster", cfg, nil, 1)
+	server := NewServer(sim)
+
+	req := httptest.NewRequest(http.MethodGet, "/telemetry", nil)
+	w := httptest.NewRecorder()
+	server.handleTelemetry(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status OK, got %v", resp.StatusCode)
+	}
+	var rows []telemetry.TelemetryRow
+	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Errorf("expected 1 telemetry row, got %d", len(rows))
 	}
 }
