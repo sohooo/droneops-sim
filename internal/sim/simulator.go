@@ -109,11 +109,18 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		f := DroneFleet{Name: fleet.Name, Model: fleet.Model}
 		for i := 0; i < fleet.Count; i++ {
 			drone := &telemetry.Drone{
-				ID:                 generateDroneID(fleet.Name, i),
-				Model:              fleet.Model,
-				Position:           telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
-				Battery:            100,
-				Status:             telemetry.StatusOK,
+				ID:              generateDroneID(fleet.Name, i),
+				Model:           fleet.Model,
+				Position:        telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
+				Battery:         100,
+				Status:          telemetry.StatusOK,
+				MovementPattern: fleet.MovementPattern,
+				HomeRegion: telemetry.Region{
+					Name:      cfg.Zones[0].Name,
+					CenterLat: cfg.Zones[0].CenterLat,
+					CenterLon: cfg.Zones[0].CenterLon,
+					RadiusKM:  cfg.Zones[0].RadiusKM,
+				},
 				SensorErrorRate:    fleet.Behavior.SensorErrorRate,
 				DropoutRate:        fleet.Behavior.DropoutRate,
 				BatteryAnomalyRate: fleet.Behavior.BatteryAnomalyRate,

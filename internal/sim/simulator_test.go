@@ -128,7 +128,7 @@ func TestSimulator_DropoutRate(t *testing.T) {
 
 func TestSimulator_DetectsEnemy(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
@@ -160,7 +160,7 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 
 func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
@@ -184,7 +184,7 @@ func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 
 func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
@@ -209,7 +209,7 @@ func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 
 func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
@@ -246,7 +246,7 @@ func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 
 func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
@@ -278,7 +278,7 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 
 func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 5}},
+		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0.1}},
 		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "point-to-point", HomeRegion: "zone"},
@@ -307,5 +307,65 @@ func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	}
 	if followers != 1 {
 		t.Fatalf("expected only detecting drone to follow, got %d", followers)
+	}
+}
+
+func TestSimulator_PatrolResponseCount(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		SwarmResponses: map[string]int{"patrol": 1},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+
+	detecting := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}}
+
+	sim.assignFollower(&sim.fleets[0], detecting, en)
+
+	followers := 0
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			followers++
+		}
+	}
+	if followers != 1 {
+		t.Fatalf("expected one drone to follow, got %d", followers)
+	}
+	if detecting.FollowTarget != nil {
+		t.Errorf("detecting drone should remain on patrol")
+	}
+}
+
+func TestSimulator_LoiterResponseCount(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 3, MovementPattern: "loiter", HomeRegion: "zone"},
+		},
+		SwarmResponses: map[string]int{"loiter": 2},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+
+	detecting := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}}
+
+	sim.assignFollower(&sim.fleets[0], detecting, en)
+
+	followers := 0
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			followers++
+		}
+	}
+	if followers != 2 {
+		t.Fatalf("expected two drones to follow, got %d", followers)
+	}
+	if detecting.FollowTarget != nil {
+		t.Errorf("detecting drone should remain on loiter path")
 	}
 }
