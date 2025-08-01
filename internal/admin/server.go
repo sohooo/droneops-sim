@@ -29,6 +29,7 @@ func NewServer(sim *sim.Simulator) *Server {
 func (s *Server) routes() {
 	http.HandleFunc("/", s.handleIndex)
 	http.HandleFunc("/3d", s.handle3D)
+	http.HandleFunc("/map-data", s.handleMapData)
 	http.HandleFunc("/telemetry", s.handleTelemetry)
 	http.HandleFunc("/toggle-chaos", s.handleToggleChaos)
 	http.HandleFunc("/launch-drones", s.handleLaunch)
@@ -85,4 +86,9 @@ func (s *Server) handle3D(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTelemetry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.Sim.TelemetrySnapshot())
+}
+
+func (s *Server) handleMapData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.Sim.MapSnapshot())
 }

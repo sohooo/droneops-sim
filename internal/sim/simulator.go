@@ -36,6 +36,33 @@ type batchWriter interface {
 	WriteBatch([]telemetry.TelemetryRow) error
 }
 
+// MapDrone is used for the 3D map data response.
+type MapDrone struct {
+	ID        string   `json:"id"`
+	Lat       float64  `json:"lat"`
+	Lon       float64  `json:"lon"`
+	Alt       float64  `json:"alt"`
+	Battery   float64  `json:"battery"`
+	FollowLat *float64 `json:"follow_lat,omitempty"`
+	FollowLon *float64 `json:"follow_lon,omitempty"`
+	FollowAlt *float64 `json:"follow_alt,omitempty"`
+}
+
+// MapEnemy represents an enemy entity for the 3D map.
+type MapEnemy struct {
+	ID   string          `json:"id"`
+	Type enemy.EnemyType `json:"type"`
+	Lat  float64         `json:"lat"`
+	Lon  float64         `json:"lon"`
+	Alt  float64         `json:"alt"`
+}
+
+// MapData aggregates drone and enemy positions for the map view.
+type MapData struct {
+	Drones  []MapDrone `json:"drones"`
+	Enemies []MapEnemy `json:"enemies"`
+}
+
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
 	clusterID        string
@@ -327,6 +354,43 @@ func (s *Simulator) TelemetrySnapshot() []telemetry.TelemetryRow {
 		}
 	}
 	return rows
+}
+
+// MapSnapshot returns simplified drone and enemy data for the 3D map.
+func (s *Simulator) MapSnapshot() MapData {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var drones []MapDrone
+	for _, fleet := range s.fleets {
+		for _, d := range fleet.Drones {
+			md := MapDrone{
+				ID:      d.ID,
+				Lat:     d.Position.Lat,
+				Lon:     d.Position.Lon,
+				Alt:     d.Position.Alt,
+				Battery: d.Battery,
+			}
+			if d.FollowTarget != nil {
+				md.FollowLat = &d.FollowTarget.Lat
+				md.FollowLon = &d.FollowTarget.Lon
+				md.FollowAlt = &d.FollowTarget.Alt
+			}
+			drones = append(drones, md)
+		}
+	}
+	var enemies []MapEnemy
+	if s.enemyEng != nil {
+		for _, e := range s.enemyEng.Enemies {
+			enemies = append(enemies, MapEnemy{
+				ID:   e.ID,
+				Type: e.Type,
+				Lat:  e.Position.Lat,
+				Lon:  e.Position.Lon,
+				Alt:  e.Position.Alt,
+			})
+		}
+	}
+	return MapData{Drones: drones, Enemies: enemies}
 }
 
 func generateDroneID(fleetName string, index int) string {
