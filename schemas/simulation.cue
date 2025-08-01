@@ -30,3 +30,5 @@ fleets: [...{
         battery_anomaly_rate?: number & >=0 & <=1
     }
 }]
+
+follow_confidence?: number & >=0 & <=100

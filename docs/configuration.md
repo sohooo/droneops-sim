@@ -77,7 +77,12 @@ fleets:
       sensor_error_rate: 0.01
       dropout_rate: 0.01
       battery_anomaly_rate: 0.01
+# Minimum confidence for drones to begin following detected enemies
+follow_confidence: 75
 ```
+
+`follow_confidence` sets the detection confidence threshold required for a drone
+to switch into follow mode.
 
 ### Enemy Detection
 

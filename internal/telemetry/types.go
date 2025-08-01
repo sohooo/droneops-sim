@@ -55,6 +55,7 @@ type Drone struct {
 	MovementPattern    string     // Movement pattern: patrol, point-to-point, loiter
 	HomeRegion         Region     // Home region for patrol and loiter
 	Waypoints          []Position // Waypoints for point-to-point movement
+	FollowTarget       *Position  // If set, drone will move toward this target
 	SensorErrorRate    float64
 	DropoutRate        float64
 	BatteryAnomalyRate float64

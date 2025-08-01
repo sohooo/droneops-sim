@@ -15,6 +15,7 @@ a drone is within range.
 3. Every drone checks for enemies within **1&nbsp;km**. When an enemy is detected an event is generated with a
    confidence value that decreases with distance.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
+5. If the detection confidence exceeds `follow_confidence` (see `config/simulation.yaml`), drones may switch to follow mode.
 
 The event structure is defined in `internal/enemy/types.go` and contains fields such as `enemy_id`,
 `enemy_type`, latitude/longitude, confidence and timestamp.
