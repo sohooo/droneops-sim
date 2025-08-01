@@ -16,7 +16,7 @@
         {
           "refId": "A",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
           "format": "table"
         }
       ],
@@ -63,7 +63,7 @@
         {
           "refId": "B",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
           "format": "table"
         }
       ]
@@ -78,7 +78,7 @@
         {
           "refId": "C",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
           "format": "table"
         }
       ]
@@ -93,7 +93,7 @@
         {
           "refId": "D",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 50",
+          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv})) ORDER BY ts DESC LIMIT 50",
           "format": "table"
         }
       ]
@@ -123,7 +123,7 @@
         {
           "refId": "F",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
           "format": "table"
         },
         {
@@ -181,6 +181,122 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 9,
+      "type": "geomap",
+      "title": "Velocity Vectors",
+      "description": "Directional lines showing drone speed and heading.",
+      "gridPos": { "x": 0, "y": 48, "w": 24, "h": 10 },
+      "targets": [
+        {
+          "refId": "J",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon, speed, heading FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "lines",
+            "name": "Velocity",
+            "config": {
+              "latField": "lat",
+              "lonField": "lon",
+              "directionField": "heading",
+              "speedField": "speed",
+              "colorScheme": "Turbo"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "geomap",
+      "title": "Flight Corridors",
+      "description": "Planned flight paths for mission drones.",
+      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 10 },
+      "targets": [
+        {
+          "refId": "K",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT path FROM flight_corridors",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "lines",
+            "name": "Corridors",
+            "config": { "coordsField": "path", "color": { "fixed": "yellow" } }
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": "histogram",
+      "title": "Altitude Distribution",
+      "description": "Histogram of drone altitude readings.",
+      "gridPos": { "x": 0, "y": 68, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "L",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT alt FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 12,
+      "type": "histogram",
+      "title": "Battery Level Distribution",
+      "description": "Distribution of drone battery levels.",
+      "gridPos": { "x": 12, "y": 68, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "M",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT battery FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 13,
+      "type": "geomap",
+      "title": "Swarm Density Heatmap",
+      "description": "Heatmap indicating drone density across the region.",
+      "gridPos": { "x": 0, "y": 76, "w": 24, "h": 12 },
+      "targets": [
+        {
+          "refId": "N",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$cluster_id' = 'all' OR cluster_id IN (${cluster_id:csv})) AND ('$status' = 'all' OR status IN (${status:csv}))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "heatmap",
+            "name": "Density",
+            "config": { "latField": "lat", "lonField": "lon", "radius": 20 }
+          }
+        ]
+      }
     }
   ],
   "templating": {
@@ -194,7 +310,8 @@
         "query": "SELECT DISTINCT cluster_id FROM drone_telemetry",
         "refresh": 1,
         "includeAll": true,
-        "multi": true
+        "multi": true,
+        "allValue": "all"
       },
       {
         "type": "query",
@@ -205,7 +322,8 @@
         "query": "SELECT DISTINCT status FROM drone_telemetry",
         "refresh": 1,
         "includeAll": true,
-        "multi": true
+        "multi": true,
+        "allValue": "all"
       }
     ]
   },

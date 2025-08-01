@@ -100,6 +100,9 @@ flowchart TD
 - lat, lon as coordinates
 - status, battery as extra fields
 - Combine with filters (cluster_id, model) and aggregate views.
+- Visualize velocity vectors and flight corridors.
+- Include altitude and battery histograms.
+- Add heatmaps for swarm density or signal coverage.
 
 ## Debugging
 
