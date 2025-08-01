@@ -215,6 +215,7 @@ func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
 		FollowConfidence: 50,
+		SwarmResponses:   map[string]int{"patrol": 1},
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
@@ -251,6 +252,7 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
 		FollowConfidence: 50,
+		SwarmResponses:   map[string]int{"patrol": 1},
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
@@ -271,5 +273,39 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 		if d.FollowTarget != nil {
 			t.Fatalf("expected no drone to have follow target due to low confidence")
 		}
+	}
+}
+
+func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "point-to-point", HomeRegion: "zone"},
+		},
+		FollowConfidence: 50,
+		SwarmResponses:   map[string]int{"point-to-point": 0},
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.fleets[0].Drones[1].Position.Lat += 0.05
+	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon}}}
+
+	sim.tick()
+
+	if drone.FollowTarget == nil {
+		t.Fatalf("detecting drone should follow target")
+	}
+	followers := 0
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			followers++
+		}
+	}
+	if followers != 1 {
+		t.Fatalf("expected only detecting drone to follow, got %d", followers)
 	}
 }

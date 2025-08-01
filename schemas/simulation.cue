@@ -32,3 +32,5 @@ fleets: [...{
 }]
 
 follow_confidence?: number & >=0 & <=100
+
+swarm_responses?: { [=~"patrol|point-to-point|loiter"]: int }

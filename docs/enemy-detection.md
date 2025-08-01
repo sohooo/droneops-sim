@@ -16,9 +16,12 @@ a drone is within range.
    confidence value that decreases with distance.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
 5. If the detection confidence exceeds `follow_confidence` (see `config/simulation.yaml`), drones may switch to follow mode.
+6. The number of drones that follow depends on the `swarm_responses` setting for their movement pattern.
 
 The event structure is defined in `internal/enemy/types.go` and contains fields such as `enemy_id`,
 `enemy_type`, latitude/longitude, confidence and timestamp.
+
+Drone telemetry rows now include a `follow` field indicating whether the drone is actively tracking a target.
 
 ## Configuration Options
 
