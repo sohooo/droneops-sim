@@ -96,6 +96,14 @@ flowchart TD
 - status, battery as extra fields
 - Combine with filters (cluster_id, model) and aggregate views.
 
+The bundled dashboard also provides:
+ - Velocity vector overlays to show drone movement between ticks.
+ - Flight corridor lines for mission planning.
+ - Histogram panels for altitude and battery distribution.
+ - A swarm density heatmap.
+
+Use the `cluster_id` template variable to filter all panels by cluster.
+
 ## Debugging
 
 - Print mode (--print-only) helps verify telemetry without DB access.

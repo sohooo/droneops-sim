@@ -16,7 +16,7 @@
         {
           "refId": "A",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
           "format": "table"
         }
       ],
@@ -63,7 +63,7 @@
         {
           "refId": "B",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
           "format": "table"
         }
       ]
@@ -78,7 +78,7 @@
         {
           "refId": "C",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
           "format": "table"
         }
       ]
@@ -93,7 +93,7 @@
         {
           "refId": "D",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 50",
+          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv}) ORDER BY ts DESC LIMIT 50",
           "format": "table"
         }
       ]
@@ -112,6 +112,127 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "id": 6,
+      "type": "geomap",
+      "title": "Drone Velocity",
+      "description": "Displays velocity vectors between consecutive telemetry points.",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon, LAG(lat) OVER (PARTITION BY drone_id ORDER BY ts) AS prev_lat, LAG(lon) OVER (PARTITION BY drone_id ORDER BY ts) AS prev_lon FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "lines",
+            "config": {
+              "sourceLatField": "prev_lat",
+              "sourceLonField": "prev_lon",
+              "destLatField": "lat",
+              "destLonField": "lon",
+              "arrowSize": 6,
+              "lineColor": "orange"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "geomap",
+      "title": "Flight Corridors",
+      "description": "Predefined flight corridor paths for missions.",
+      "gridPos": { "x": 0, "y": 36, "w": 24, "h": 8 },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "geojson",
+            "config": {
+              "data": {
+                "type": "FeatureCollection",
+                "features": [
+                  {
+                    "type": "Feature",
+                    "geometry": {
+                      "type": "LineString",
+                      "coordinates": [[16.4,48.2],[14.4,50.1]]
+                    },
+                    "properties": { "name": "Corridor A" }
+                  }
+                ]
+              },
+              "style": { "lineColor": "blue", "lineWidth": 2 }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "histogram",
+      "title": "Altitude Distribution",
+      "description": "Histogram showing distribution of drone altitude values.",
+      "gridPos": { "x": 0, "y": 44, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT alt FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "histogram",
+      "title": "Battery Life Distribution",
+      "description": "Histogram showing battery level distribution across drones.",
+      "gridPos": { "x": 12, "y": 44, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "H",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT battery FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv})",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "geomap",
+      "title": "Swarm Density Heatmap",
+      "description": "Heatmap showing density of drone positions.",
+      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 9 },
+      "targets": [
+        {
+          "refId": "I",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT FLOOR(lat*10)/10 AS grid_lat, FLOOR(lon*10)/10 AS grid_lon, COUNT(*) AS density FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN (${cluster_id:csv}) GROUP BY grid_lat, grid_lon",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "heatmap",
+            "config": {
+              "latField": "grid_lat",
+              "lonField": "grid_lon",
+              "valueField": "density",
+              "radius": 20
+            }
+          }
+        ]
+      }
     }
   ],
   "templating": {
