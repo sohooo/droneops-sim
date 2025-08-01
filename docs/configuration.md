@@ -79,6 +79,12 @@ fleets:
       battery_anomaly_rate: 0.01
 # Minimum confidence for drones to begin following detected enemies
 follow_confidence: 75
+
+# Swarm response rules per movement pattern
+swarm_responses:
+  patrol: 1           # one additional drone follows
+  point-to-point: 0   # detecting drone follows
+  loiter: 2           # two drones converge
 ```
 
 `follow_confidence` sets the detection confidence threshold required for a drone

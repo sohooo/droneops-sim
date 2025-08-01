@@ -31,6 +31,7 @@ For development and contribution guidelines, see [docs/CONTRIBUTING.md](docs/CON
 ## Configuration
 
 Detailed configuration options are documented in [docs/configuration.md](docs/configuration.md).
+See [docs/swarm-response.md](docs/swarm-response.md) for how drone swarms react to enemy detections.
 
 ## Schema Validation (schemas/simulation.cue)
 

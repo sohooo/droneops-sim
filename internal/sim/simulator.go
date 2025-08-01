@@ -75,6 +75,7 @@ type Simulator struct {
 	chaosMode        bool
 	cfg              *config.SimulationConfig
 	followConfidence float64
+	swarmResponses   map[string]int
 	mu               sync.Mutex
 }
 
@@ -95,6 +96,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		tickInterval:     tickInterval,
 		cfg:              cfg,
 		followConfidence: cfg.FollowConfidence,
+		swarmResponses:   cfg.SwarmResponses,
 	}
 
 	// Check if zones are defined
@@ -250,17 +252,37 @@ func (s *Simulator) tick() {
 
 func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy) {
 	target := en.Position
-	if detecting.MovementPattern == "patrol" {
+	count, ok := s.swarmResponses[detecting.MovementPattern]
+	if !ok {
+		count = 0
+	}
+	if count == 0 {
+		cp := target
+		detecting.FollowTarget = &cp
+		return
+	}
+	if count < 0 {
 		for _, d := range fleet.Drones {
 			if d.FollowTarget == nil {
 				cp := target
 				d.FollowTarget = &cp
+			}
+		}
+		return
+	}
+	assigned := 0
+	for _, d := range fleet.Drones {
+		if d == detecting {
+			continue
+		}
+		if d.FollowTarget == nil {
+			cp := target
+			d.FollowTarget = &cp
+			assigned++
+			if assigned >= count {
 				break
 			}
 		}
-	} else {
-		cp := target
-		detecting.FollowTarget = &cp
 	}
 }
 
@@ -349,6 +371,7 @@ func (s *Simulator) TelemetrySnapshot() []telemetry.TelemetryRow {
 				Alt:       drone.Position.Alt,
 				Battery:   drone.Battery,
 				Status:    drone.Status,
+				Follow:    drone.FollowTarget != nil,
 				Timestamp: time.Now().UTC(),
 			})
 		}

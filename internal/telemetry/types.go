@@ -25,6 +25,7 @@ type TelemetryRow struct {
 	Alt        float64   `json:"alt"`         // FIELD
 	Battery    float64   `json:"battery"`     // FIELD
 	Status     string    `json:"status"`      // FIELD
+	Follow     bool      `json:"follow"`      // FIELD indicates active follow mode
 	SyncedFrom string    `json:"synced_from"` // Added by sync process
 	SyncedID   string    `json:"synced_id"`   // Added by sync process
 	SyncedAt   time.Time `json:"synced_at"`   // Added by sync process

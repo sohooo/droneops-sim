@@ -48,10 +48,11 @@ type Mission struct {
 
 // SimulationConfig is the root configuration for zones, missions, and fleets
 type SimulationConfig struct {
-	Zones            []Region  `yaml:"zones"`
-	Missions         []Mission `yaml:"missions"`
-	Fleets           []Fleet   `yaml:"fleets"`
-	FollowConfidence float64   `yaml:"follow_confidence"`
+	Zones            []Region       `yaml:"zones"`
+	Missions         []Mission      `yaml:"missions"`
+	Fleets           []Fleet        `yaml:"fleets"`
+	FollowConfidence float64        `yaml:"follow_confidence"`
+	SwarmResponses   map[string]int `yaml:"swarm_responses"`
 }
 
 // Load loads YAML config and validates it against a CUE schema

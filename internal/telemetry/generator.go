@@ -63,6 +63,7 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 		Alt:        drone.Position.Alt,
 		Battery:    drone.Battery,
 		Status:     drone.Status,
+		Follow:     drone.FollowTarget != nil,
 		SyncedFrom: "",
 		SyncedID:   "",
 		SyncedAt:   time.Time{},
