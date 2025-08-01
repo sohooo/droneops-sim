@@ -206,3 +206,70 @@ func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 
 	sim.tick()
 }
+
+func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		FollowConfidence: 50,
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
+	}
+
+	sim.tick()
+
+	if len(dWriter.Detections) == 0 {
+		t.Fatalf("expected enemy detection event")
+	}
+
+	found := false
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected at least one drone to have follow target")
+	}
+}
+
+func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		FollowConfidence: 50,
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.007, Lon: drone.Position.Lon, Alt: 0}},
+	}
+
+	sim.tick()
+
+	if len(dWriter.Detections) == 0 {
+		t.Fatalf("expected enemy detection event")
+	}
+
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			t.Fatalf("expected no drone to have follow target due to low confidence")
+		}
+	}
+}
