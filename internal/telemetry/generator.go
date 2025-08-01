@@ -20,16 +20,21 @@ func NewGenerator(clusterID string) *Generator {
 func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	var strategy MovementStrategy
 
-	// Select movement strategy based on drone's movement pattern
-	switch drone.MovementPattern {
-	case "patrol":
-		strategy = PatrolMovement{}
-	case "point-to-point":
-		strategy = PointToPointMovement{}
-	case "loiter":
-		strategy = LoiterMovement{}
-	default:
-		strategy = RandomWalkMovement{} // Implement RandomWalkMovement similarly
+	// If a follow target is set, override movement pattern
+	if drone.FollowTarget != nil {
+		strategy = FollowMovement{Target: *drone.FollowTarget}
+	} else {
+		// Select movement strategy based on drone's movement pattern
+		switch drone.MovementPattern {
+		case "patrol":
+			strategy = PatrolMovement{}
+		case "point-to-point":
+			strategy = PointToPointMovement{}
+		case "loiter":
+			strategy = LoiterMovement{}
+		default:
+			strategy = RandomWalkMovement{} // Implement RandomWalkMovement similarly
+		}
 	}
 
 	// Update drone's position using the selected strategy
@@ -149,6 +154,30 @@ func (r RandomWalkMovement) Move(drone *Drone, region Region, waypoints []Positi
 		Lat: drone.Position.Lat + deltaLat,
 		Lon: drone.Position.Lon + deltaLon,
 		Alt: math.Max(0, drone.Position.Alt+altDelta),
+	}
+}
+
+// FollowMovement moves the drone toward a target position.
+type FollowMovement struct{ Target Position }
+
+func (f FollowMovement) Move(drone *Drone, region Region, waypoints []Position) Position {
+	const step = 50.0 // meters per tick
+	dLat := (f.Target.Lat - drone.Position.Lat) * 111000
+	dLon := (f.Target.Lon - drone.Position.Lon) * 111000 * math.Cos(drone.Position.Lat*math.Pi/180)
+	dist := math.Hypot(dLat, dLon)
+	if dist == 0 {
+		return drone.Position
+	}
+	factor := step / dist
+	if factor > 1 {
+		factor = 1
+	}
+	deltaLat := (dLat * factor) / 111000
+	deltaLon := (dLon * factor) / (111000 * math.Cos(drone.Position.Lat*math.Pi/180))
+	return Position{
+		Lat: drone.Position.Lat + deltaLat,
+		Lon: drone.Position.Lon + deltaLon,
+		Alt: drone.Position.Alt,
 	}
 }
 

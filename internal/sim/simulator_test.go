@@ -124,7 +124,8 @@ func TestSimulator_DropoutRate(t *testing.T) {
 	if len(writer.Rows) != 0 {
 		t.Fatalf("expected no telemetry due to dropout, got %d rows", len(writer.Rows))
 	}
-  
+}
+
 func TestSimulator_DetectsEnemy(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 5}},
@@ -132,6 +133,7 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
+		FollowConfidence: 50,
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
@@ -150,6 +152,9 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 	det := dWriter.Detections[0]
 	if det.ClusterID != "cluster-test" || det.DroneID != drone.ID || det.EnemyID == "" {
 		t.Errorf("unexpected detection row: %+v", det)
+	}
+	if drone.FollowTarget == nil {
+		t.Errorf("expected drone to receive follow target")
 	}
 }
 

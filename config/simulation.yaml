@@ -70,3 +70,6 @@ fleets:
       sensor_error_rate: 0.01
       dropout_rate: 0.01
       battery_anomaly_rate: 0.01
+
+# Minimum confidence for drones to engage follow mode
+follow_confidence: 75

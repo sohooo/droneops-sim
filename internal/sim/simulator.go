@@ -38,16 +38,17 @@ type batchWriter interface {
 
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
-	clusterID       string
-	fleets          []DroneFleet
-	teleGen         *telemetry.Generator
-	writer          TelemetryWriter
-	detectionWriter DetectionWriter
-	enemyEng        *enemy.Engine
-	tickInterval    time.Duration
-	chaosMode       bool
-	cfg             *config.SimulationConfig
-	mu              sync.Mutex
+	clusterID        string
+	fleets           []DroneFleet
+	teleGen          *telemetry.Generator
+	writer           TelemetryWriter
+	detectionWriter  DetectionWriter
+	enemyEng         *enemy.Engine
+	tickInterval     time.Duration
+	chaosMode        bool
+	cfg              *config.SimulationConfig
+	followConfidence float64
+	mu               sync.Mutex
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -60,12 +61,13 @@ type DroneFleet struct {
 // NewSimulator initializes drones from fleet config.
 func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, dWriter DetectionWriter, tickInterval time.Duration) *Simulator {
 	sim := &Simulator{
-		clusterID:       clusterID,
-		teleGen:         telemetry.NewGenerator(clusterID),
-		writer:          writer,
-		detectionWriter: dWriter,
-		tickInterval:    tickInterval,
-		cfg:             cfg,
+		clusterID:        clusterID,
+		teleGen:          telemetry.NewGenerator(clusterID),
+		writer:           writer,
+		detectionWriter:  dWriter,
+		tickInterval:     tickInterval,
+		cfg:              cfg,
+		followConfidence: cfg.FollowConfidence,
 	}
 
 	// Check if zones are defined
@@ -181,6 +183,9 @@ func (s *Simulator) tick() {
 							Timestamp:  time.Now().UTC(),
 						}
 						detections = append(detections, d)
+						if conf >= s.followConfidence {
+							s.assignFollower(&fleet, drone, en)
+						}
 					}
 				}
 			}
@@ -213,6 +218,22 @@ func (s *Simulator) tick() {
 				}
 			}
 		}
+	}
+}
+
+func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy) {
+	target := en.Position
+	if detecting.MovementPattern == "patrol" {
+		for _, d := range fleet.Drones {
+			if d.FollowTarget == nil {
+				cp := target
+				d.FollowTarget = &cp
+				break
+			}
+		}
+	} else {
+		cp := target
+		detecting.FollowTarget = &cp
 	}
 }
 
