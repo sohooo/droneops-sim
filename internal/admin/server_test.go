@@ -115,6 +115,7 @@ func TestHandleTelemetry(t *testing.T) {
 		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
 	}
+
 	sim := sim.NewSimulator("cluster", cfg, nil, nil, 1)
 	server := NewServer(sim)
 
