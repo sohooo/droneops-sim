@@ -286,6 +286,28 @@ func (s *Simulator) GetConfig() *config.SimulationConfig {
 	return s.cfg
 }
 
+// TelemetrySnapshot returns the latest state for all drones.
+func (s *Simulator) TelemetrySnapshot() []telemetry.TelemetryRow {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var rows []telemetry.TelemetryRow
+	for _, fleet := range s.fleets {
+		for _, drone := range fleet.Drones {
+			rows = append(rows, telemetry.TelemetryRow{
+				ClusterID: s.clusterID,
+				DroneID:   drone.ID,
+				Lat:       drone.Position.Lat,
+				Lon:       drone.Position.Lon,
+				Alt:       drone.Position.Alt,
+				Battery:   drone.Battery,
+				Status:    drone.Status,
+				Timestamp: time.Now().UTC(),
+			})
+		}
+	}
+	return rows
+}
+
 func generateDroneID(fleetName string, index int) string {
 	// Include the drone's index along with a UUID to guarantee uniqueness
 	id := uuid.New().String()
