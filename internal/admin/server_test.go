@@ -116,8 +116,8 @@ func TestHandleTelemetry(t *testing.T) {
 		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
 	}
 
-	sim := sim.NewSimulator("cluster", cfg, nil, nil, 1)
-	server := NewServer(sim)
+	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
+	server := NewServer(simulator)
 
 	req := httptest.NewRequest(http.MethodGet, "/telemetry", nil)
 	w := httptest.NewRecorder()
@@ -133,5 +133,34 @@ func TestHandleTelemetry(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("expected 1 telemetry row, got %d", len(rows))
+	}
+}
+
+func TestHandleMapData(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+	}
+
+	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
+	server := NewServer(simulator)
+
+	req := httptest.NewRequest(http.MethodGet, "/map-data", nil)
+	w := httptest.NewRecorder()
+	server.handleMapData(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status OK, got %v", resp.StatusCode)
+	}
+	var data sim.MapData
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(data.Drones) != 1 {
+		t.Errorf("expected 1 drone, got %d", len(data.Drones))
+	}
+	if len(data.Enemies) == 0 {
+		t.Errorf("expected enemies to be included")
 	}
 }

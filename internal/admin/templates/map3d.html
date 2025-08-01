@@ -12,15 +12,37 @@
 <script>
 const viewer = new Cesium.Viewer('cesiumContainer');
 async function load(){
-  const res = await fetch('/telemetry');
+  const res = await fetch('/map-data');
   const data = await res.json();
   viewer.entities.removeAll();
-  data.forEach(d => {
+
+  data.enemies.forEach(e => {
+    viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(e.lon, e.lat, e.alt),
+      point: { pixelSize: 8, color: Cesium.Color.RED },
+      label: { text: e.type, pixelOffset: new Cesium.Cartesian2(0, 20) }
+    });
+  });
+
+  data.drones.forEach(d => {
     viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(d.lon, d.lat, d.alt),
       point: { pixelSize: 6, color: Cesium.Color.CYAN },
-      label: { text: d.drone_id, pixelOffset: new Cesium.Cartesian2(0, -20) }
+      label: { text: d.id, pixelOffset: new Cesium.Cartesian2(0, -20) },
+      description: `Battery: ${d.battery.toFixed(1)}%`
     });
+    if(d.follow_lat !== undefined){
+      viewer.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+            d.lon, d.lat, d.alt,
+            d.follow_lon, d.follow_lat, d.follow_alt
+          ]),
+          width: 2,
+          material: Cesium.Color.YELLOW
+        }
+      });
+    }
   });
 }
 setInterval(load, 1000);
