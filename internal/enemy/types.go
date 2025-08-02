@@ -13,6 +13,7 @@ const (
 	EnemyVehicle EnemyType = "vehicle"
 	EnemyPerson  EnemyType = "person"
 	EnemyDrone   EnemyType = "drone"
+	EnemyDecoy   EnemyType = "decoy"
 )
 
 // Enemy represents one simulated enemy entity.
@@ -21,6 +22,7 @@ type Enemy struct {
 	Type       EnemyType
 	Position   telemetry.Position
 	Confidence float64
+	Region     telemetry.Region
 }
 
 // DetectionRow describes a drone enemy detection event.

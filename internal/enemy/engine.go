@@ -12,22 +12,25 @@ import (
 
 // Engine maintains and updates simulated enemy entities.
 type Engine struct {
-	region  telemetry.Region
+	regions []telemetry.Region
 	Enemies []*Enemy
 }
 
-// NewEngine creates an engine with a given number of enemies in the region.
-func NewEngine(count int, region telemetry.Region) *Engine {
-	e := &Engine{region: region}
+// NewEngine creates an engine with a given number of enemies per region.
+func NewEngine(count int, regions []telemetry.Region) *Engine {
+	e := &Engine{regions: regions}
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < count; i++ {
-		en := &Enemy{
-			ID:         uuid.New().String(),
-			Type:       randomType(),
-			Position:   randomPosition(region),
-			Confidence: 100,
+	for _, r := range regions {
+		for i := 0; i < count; i++ {
+			en := &Enemy{
+				ID:         uuid.New().String(),
+				Type:       randomType(),
+				Position:   randomPosition(r),
+				Confidence: 100,
+				Region:     r,
+			}
+			e.Enemies = append(e.Enemies, en)
 		}
-		e.Enemies = append(e.Enemies, en)
 	}
 	return e
 }
@@ -51,9 +54,96 @@ func randomStep(pos telemetry.Position) telemetry.Position {
 	return telemetry.Position{Lat: pos.Lat + dLat, Lon: pos.Lon + dLon, Alt: pos.Alt}
 }
 
-// Step moves all enemies slightly using a random walk.
-func (e *Engine) Step() {
+func distance(a, b telemetry.Position) float64 {
+	dLat := a.Lat - b.Lat
+	dLon := a.Lon - b.Lon
+	return math.Sqrt(dLat*dLat + dLon*dLon)
+}
+
+func moveAway(pos, threat telemetry.Position) telemetry.Position {
+	vecLat := pos.Lat - threat.Lat
+	vecLon := pos.Lon - threat.Lon
+	norm := math.Sqrt(vecLat*vecLat + vecLon*vecLon)
+	if norm == 0 {
+		return randomStep(pos)
+	}
+	factor := 0.001 / norm
+	return telemetry.Position{Lat: pos.Lat + vecLat*factor, Lon: pos.Lon + vecLon*factor, Alt: pos.Alt}
+}
+
+func moveTowards(pos, target telemetry.Position) telemetry.Position {
+	vecLat := target.Lat - pos.Lat
+	vecLon := target.Lon - pos.Lon
+	norm := math.Sqrt(vecLat*vecLat + vecLon*vecLon)
+	if norm == 0 {
+		return pos
+	}
+	factor := 0.001 / norm
+	return telemetry.Position{Lat: pos.Lat + vecLat*factor, Lon: pos.Lon + vecLon*factor, Alt: pos.Alt}
+}
+
+func (e *Engine) spawnDecoy(parent *Enemy) {
+	decoy := &Enemy{
+		ID:         uuid.New().String(),
+		Type:       EnemyDecoy,
+		Position:   randomStep(parent.Position),
+		Confidence: parent.Confidence * 0.5,
+		Region:     parent.Region,
+	}
+	e.Enemies = append(e.Enemies, decoy)
+}
+
+func nearestDrone(pos telemetry.Position, drones []*telemetry.Drone) (*telemetry.Drone, float64) {
+	var closest *telemetry.Drone
+	min := math.MaxFloat64
+	for _, d := range drones {
+		dist := distance(pos, d.Position)
+		if dist < min {
+			min = dist
+			closest = d
+		}
+	}
+	return closest, min
+}
+
+func nearestEnemy(cur *Enemy, enemies []*Enemy) (*Enemy, float64) {
+	var closest *Enemy
+	min := math.MaxFloat64
+	for _, e := range enemies {
+		if e == cur {
+			continue
+		}
+		dist := distance(cur.Position, e.Position)
+		if dist < min {
+			min = dist
+			closest = e
+		}
+	}
+	return closest, min
+}
+
+// Step updates enemies based on drone positions and tactics.
+func (e *Engine) Step(drones []*telemetry.Drone) {
 	for _, en := range e.Enemies {
-		en.Position = randomStep(en.Position)
+		nearest, dist := nearestDrone(en.Position, drones)
+		if nearest != nil && dist < 0.005 { // ~500m
+			en.Position = moveAway(en.Position, nearest.Position)
+			if rand.Float64() < 0.3 {
+				e.spawnDecoy(en)
+			}
+		} else if rand.Float64() < 0.1 && len(e.Enemies) > 1 {
+			other, _ := nearestEnemy(en, e.Enemies)
+			if other != nil {
+				en.Position = moveTowards(en.Position, other.Position)
+			}
+		} else {
+			en.Position = randomStep(en.Position)
+		}
+		if en.Region.RadiusKM > 0 {
+			center := telemetry.Position{Lat: en.Region.CenterLat, Lon: en.Region.CenterLon}
+			if distance(en.Position, center) > en.Region.RadiusKM/111 {
+				en.Position = randomPosition(en.Region)
+			}
+		}
 	}
 }
