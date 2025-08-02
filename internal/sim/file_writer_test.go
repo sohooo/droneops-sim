@@ -1,0 +1,59 @@
+package sim
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"droneops-sim/internal/enemy"
+	"droneops-sim/internal/telemetry"
+)
+
+func TestFileWriter(t *testing.T) {
+	dir := t.TempDir()
+	telePath := filepath.Join(dir, "telemetry.json")
+	detPath := filepath.Join(dir, "detections.json")
+	fw, err := NewFileWriter(telePath, detPath)
+	if err != nil {
+		t.Fatalf("NewFileWriter: %v", err)
+	}
+	defer fw.Close()
+
+	tRow := telemetry.TelemetryRow{ClusterID: "c1", DroneID: "d1", Timestamp: time.Unix(0, 0)}
+	if err := fw.Write(tRow); err != nil {
+		t.Fatalf("Write telemetry: %v", err)
+	}
+	dRow := enemy.DetectionRow{ClusterID: "c1", DroneID: "d1", EnemyID: "e1", EnemyType: enemy.EnemyVehicle, Timestamp: time.Unix(0, 0)}
+	if err := fw.WriteDetection(dRow); err != nil {
+		t.Fatalf("Write detection: %v", err)
+	}
+
+	fw.Close()
+
+	// Verify telemetry file
+	tData, err := os.ReadFile(telePath)
+	if err != nil {
+		t.Fatalf("read tele: %v", err)
+	}
+	var gotT telemetry.TelemetryRow
+	if err := json.Unmarshal(tData, &gotT); err != nil {
+		t.Fatalf("decode tele: %v", err)
+	}
+	if gotT.DroneID != tRow.DroneID {
+		t.Fatalf("unexpected telemetry row: %+v", gotT)
+	}
+
+	dData, err := os.ReadFile(detPath)
+	if err != nil {
+		t.Fatalf("read det: %v", err)
+	}
+	var gotD enemy.DetectionRow
+	if err := json.Unmarshal(dData, &gotD); err != nil {
+		t.Fatalf("decode det: %v", err)
+	}
+	if gotD.EnemyID != dRow.EnemyID {
+		t.Fatalf("unexpected detection row: %+v", gotD)
+	}
+}
