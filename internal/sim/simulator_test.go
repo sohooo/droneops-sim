@@ -637,3 +637,25 @@ func TestSimulator_FollowerFailover(t *testing.T) {
 		t.Fatalf("expected replacement follower to be assigned")
 	}
 }
+
+func TestObserverTools(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+	}
+	sim := NewSimulator("cluster", cfg, nil, nil, 1)
+	sim.ObserverInjectCommand("test")
+	events := sim.ObserverEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	ev, ok := sim.ObserverStep(0)
+	if !ok || ev.Type != "command" {
+		t.Fatalf("unexpected step result: %+v", ev)
+	}
+	droneID := sim.TelemetrySnapshot()[0].DroneID
+	sim.ObserverSetPerspective(droneID)
+	if sim.ObserverPerspective() != droneID {
+		t.Fatalf("expected perspective %s, got %s", droneID, sim.ObserverPerspective())
+	}
+}

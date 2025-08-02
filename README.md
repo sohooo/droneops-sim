@@ -14,6 +14,7 @@ It supports:
 - **Configurable sensor errors, communication dropouts, and battery anomalies**
 - **Output to GreptimeDB** using its gRPC ORM interface **or** to STDOUT for quick demos
 - **Mission scenarios** scripted with a lightweight DSL for phases and enemy objectives
+- **Observer dashboard** for stepping through mission events, switching perspectives, and injecting commands
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 

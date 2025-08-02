@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Observer Dashboard</title>
+<style>
+body{background:#111;color:#eee;font-family:Arial,Helvetica,sans-serif;margin:0;padding:20px;}
+button{padding:8px 16px;margin:5px;background:#444;color:#fff;border:none;cursor:pointer;}
+button:hover{background:#666;}
+input{padding:5px;margin:5px;background:#222;color:#fff;border:1px solid #444;}
+#events{list-style:none;padding:0;}
+#events li{padding:4px 0;}
+#events li.active{font-weight:bold;}
+</style>
+</head>
+<body>
+<h1>Observer Dashboard</h1>
+<ul id="events"></ul>
+<button onclick="prev()">Prev</button>
+<button onclick="next()">Next</button>
+<div>
+  <input id="droneId" placeholder="Drone ID">
+  <button onclick="setPerspective()">Set Perspective</button>
+</div>
+<div>
+  <input id="cmd" placeholder="Scripted command">
+  <button onclick="inject()">Inject</button>
+</div>
+<script>
+let events=[];let idx=0;
+function loadEvents(){
+ fetch('/observer/events').then(r=>r.json()).then(data=>{events=data;render();});
+}
+function render(){
+ const list=document.getElementById('events');
+ list.innerHTML='';
+ events.forEach((e,i)=>{
+  const li=document.createElement('li');
+  li.textContent=i+': '+e.type+' '+(e.details||'');
+  if(i===idx)li.className='active';
+  list.appendChild(li);
+ });
+}
+function step(){fetch('/observer/step?index='+idx,{method:'POST'}).then(render);}
+function prev(){if(idx>0){idx--;step();}}
+function next(){if(idx<events.length-1){idx++;step();}}
+function setPerspective(){const id=document.getElementById('droneId').value;fetch('/observer/perspective?drone='+id,{method:'POST'});}
+function inject(){const c=document.getElementById('cmd').value;fetch('/observer/command?cmd='+encodeURIComponent(c),{method:'POST'}).then(loadEvents);}
+loadEvents();
+</script>
+</body>
+</html>
