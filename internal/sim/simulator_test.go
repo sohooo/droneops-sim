@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -325,6 +326,44 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 		if d.FollowTarget != nil {
 			t.Fatalf("expected no drone to have follow target due to low confidence")
 		}
+	}
+}
+
+func TestSimulator_DetectionFactorsReduceConfidence(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
+		},
+		DetectionRadiusM: 1000,
+		FollowConfidence: 75,
+		SensorNoise:      0,
+		TerrainOcclusion: 0.3,
+		WeatherImpact:    0.4,
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{
+		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
+	}
+
+	sim.tick()
+
+	if len(dWriter.Detections) == 0 {
+		t.Fatalf("expected enemy detection event")
+	}
+	det := dWriter.Detections[0]
+	dist := distanceMeters(drone.Position.Lat, drone.Position.Lon, det.Lat, det.Lon)
+	expected := 100 * (1 - dist/cfg.DetectionRadiusM) * (1 - cfg.TerrainOcclusion) * (1 - cfg.WeatherImpact)
+	if math.Abs(det.Confidence-expected) > 0.01 {
+		t.Errorf("expected confidence %.2f, got %.2f", expected, det.Confidence)
+	}
+	if drone.FollowTarget != nil {
+		t.Fatalf("expected no follow target due to reduced confidence")
 	}
 }
 

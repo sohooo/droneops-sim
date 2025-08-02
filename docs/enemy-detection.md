@@ -13,7 +13,7 @@ a drone is within range.
 1. On startup the simulator creates `enemy_count` enemies inside the first zone defined in `config/simulation.yaml` (default: 3).
 2. Each tick the enemies take a small random step within that zone.
 3. Every drone checks for enemies within the configured `detection_radius_m` (default: **1000&nbsp;m**). When an enemy is detected an event is generated with a
-   confidence value that decreases with distance.
+   confidence value that decreases with distance and is further modified by sensor noise, terrain occlusion and weather impact.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
 5. If the detection confidence exceeds `follow_confidence` (see `config/simulation.yaml`), drones may switch to follow mode.
 6. The number of drones that follow depends on the `swarm_responses` setting for their movement pattern.
@@ -33,6 +33,9 @@ The following fields in `config/simulation.yaml` control the enemy detection beh
 |---------------------|--------------------------------------------------|---------|
 | `enemy_count`       | Number of simulated enemies in the zone          | `3`     |
 | `detection_radius_m`| Radius in meters for enemy detection checks      | `1000`  |
+| `sensor_noise`      | Standard deviation of sensor noise (fraction)    | `0`     |
+| `terrain_occlusion` | Terrain occlusion factor (0-1)                   | `0`     |
+| `weather_impact`    | Weather impact factor (0-1)                      | `0`     |
 
 ### GreptimeDB Output
 

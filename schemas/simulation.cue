@@ -38,3 +38,6 @@ swarm_responses?: { [=~"patrol|point-to-point|loiter"]: int }
 enemy_count?: int & >=0
 
 detection_radius_m?: number & >0
+sensor_noise?: number & >=0
+terrain_occlusion?: number & >=0 & <=1
+weather_impact?: number & >=0 & <=1

@@ -76,6 +76,9 @@ type Simulator struct {
 	cfg              *config.SimulationConfig
 	followConfidence float64
 	detectionRadiusM float64
+	sensorNoise      float64
+	terrainOcclusion float64
+	weatherImpact    float64
 	swarmResponses   map[string]int
 	mu               sync.Mutex
 }
@@ -93,6 +96,22 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 	if radius <= 0 {
 		radius = 1000
 	}
+	sNoise := cfg.SensorNoise
+	if sNoise < 0 {
+		sNoise = 0
+	}
+	terrain := cfg.TerrainOcclusion
+	if terrain < 0 {
+		terrain = 0
+	} else if terrain > 1 {
+		terrain = 1
+	}
+	weather := cfg.WeatherImpact
+	if weather < 0 {
+		weather = 0
+	} else if weather > 1 {
+		weather = 1
+	}
 	sim := &Simulator{
 		clusterID:        clusterID,
 		teleGen:          telemetry.NewGenerator(clusterID),
@@ -102,6 +121,9 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		cfg:              cfg,
 		followConfidence: cfg.FollowConfidence,
 		detectionRadiusM: radius,
+		sensorNoise:      sNoise,
+		terrainOcclusion: terrain,
+		weatherImpact:    weather,
 		swarmResponses:   cfg.SwarmResponses,
 	}
 
@@ -217,6 +239,16 @@ func (s *Simulator) tick() {
 					dist := distanceMeters(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
 					if dist <= s.detectionRadiusM {
 						conf := 100 * (1 - dist/s.detectionRadiusM)
+						conf *= 1 - s.terrainOcclusion
+						conf *= 1 - s.weatherImpact
+						if s.sensorNoise > 0 {
+							conf += rand.NormFloat64() * s.sensorNoise * conf
+						}
+						if conf < 0 {
+							conf = 0
+						} else if conf > 100 {
+							conf = 100
+						}
 						d := enemy.DetectionRow{
 							ClusterID:  s.clusterID,
 							DroneID:    drone.ID,
