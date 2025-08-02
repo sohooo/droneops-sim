@@ -9,9 +9,16 @@ zones: [...{
 }]
 
 missions: [...{
+    id:          string & !=""
     name:        string & !=""
-    zone:        string
+    objective:   string
     description: string
+    region: {
+        name:       string & !=""
+        center_lat: number
+        center_lon: number
+        radius_km:  number & >0
+    }
 }]
 
 fleets: [...{

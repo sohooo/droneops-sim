@@ -43,9 +43,11 @@ type Fleet struct {
 
 // Mission describes a named mission that operates within a zone
 type Mission struct {
+	ID          string `yaml:"id"`
 	Name        string `yaml:"name"`
-	Zone        string `yaml:"zone"`
+	Objective   string `yaml:"objective"`
 	Description string `yaml:"description"`
+	Region      Region `yaml:"region"`
 }
 
 // SimulationConfig is the root configuration for zones, missions, and fleets

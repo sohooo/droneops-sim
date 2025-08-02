@@ -15,9 +15,15 @@ zones:
     center_lon: 16.4
     radius_km: 50
 missions:
-  - name: test-mission
-    zone: region-x
+  - id: test
+    name: test-mission
+    objective: test
     description: test
+    region:
+      name: region-x
+      center_lat: 48.2
+      center_lon: 16.4
+      radius_km: 50
 fleets:
   - name: fleet-x
     model: small-fpv
@@ -35,6 +41,9 @@ fleets:
 	}
 	if len(cfg.Fleets) != 1 || cfg.Fleets[0].Name != "fleet-x" {
 		t.Errorf("Unexpected fleet data: %+v", cfg.Fleets)
+	}
+	if len(cfg.Missions) != 1 || cfg.Missions[0].ID != "test" {
+		t.Errorf("Unexpected mission data: %+v", cfg.Missions)
 	}
 }
 
