@@ -17,7 +17,7 @@ grouping, and decoy tactics. A detection event is emitted whenever a drone is wi
    confidence value that decreases with distance and is further modified by sensor noise, terrain occlusion and weather impact.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
 5. If the detection confidence exceeds `follow_confidence` (see `config/simulation.yaml`), drones may switch to follow mode.
-6. The number of drones that follow depends on the `swarm_responses` setting for their movement pattern.
+6. The number of drones that follow depends on the base `swarm_responses` setting and may increase with detection confidence, enemy type, or mission criticality.
 
 The event structure is defined in `internal/enemy/types.go` and contains fields such as `enemy_id`,
 `enemy_type`, latitude/longitude, confidence and timestamp.

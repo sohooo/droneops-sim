@@ -74,6 +74,9 @@ fleets:
 # Minimum confidence for drones to engage follow mode
 follow_confidence: 75
 
+# Overall mission criticality influencing follow aggressiveness
+mission_criticality: medium
+
 # Swarm response rules per movement pattern
 swarm_responses:
   patrol: 1           # one additional drone follows

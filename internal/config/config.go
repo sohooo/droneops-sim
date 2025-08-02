@@ -48,16 +48,17 @@ type Mission struct {
 
 // SimulationConfig is the root configuration for zones, missions, and fleets
 type SimulationConfig struct {
-	Zones            []Region       `yaml:"zones"`
-	Missions         []Mission      `yaml:"missions"`
-	Fleets           []Fleet        `yaml:"fleets"`
-	EnemyCount       int            `yaml:"enemy_count"`
-	DetectionRadiusM float64        `yaml:"detection_radius_m"`
-	SensorNoise      float64        `yaml:"sensor_noise"`
-	TerrainOcclusion float64        `yaml:"terrain_occlusion"`
-	WeatherImpact    float64        `yaml:"weather_impact"`
-	FollowConfidence float64        `yaml:"follow_confidence"`
-	SwarmResponses   map[string]int `yaml:"swarm_responses"`
+	Zones              []Region       `yaml:"zones"`
+	Missions           []Mission      `yaml:"missions"`
+	Fleets             []Fleet        `yaml:"fleets"`
+	EnemyCount         int            `yaml:"enemy_count"`
+	DetectionRadiusM   float64        `yaml:"detection_radius_m"`
+	SensorNoise        float64        `yaml:"sensor_noise"`
+	TerrainOcclusion   float64        `yaml:"terrain_occlusion"`
+	WeatherImpact      float64        `yaml:"weather_impact"`
+	FollowConfidence   float64        `yaml:"follow_confidence"`
+	SwarmResponses     map[string]int `yaml:"swarm_responses"`
+	MissionCriticality string         `yaml:"mission_criticality"`
 }
 
 // Load loads YAML config and validates it against a CUE schema

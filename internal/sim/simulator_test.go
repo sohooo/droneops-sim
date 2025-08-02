@@ -383,7 +383,7 @@ func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 
 	drone := sim.fleets[0].Drones[0]
 	sim.fleets[0].Drones[1].Position.Lat += 0.05
-	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon}}}
+	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: drone.Position.Lat + 0.001, Lon: drone.Position.Lon}}}
 
 	sim.tick()
 
@@ -413,9 +413,9 @@ func TestSimulator_PatrolResponseCount(t *testing.T) {
 	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
 
 	detecting := sim.fleets[0].Drones[0]
-	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}}
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
 
-	sim.assignFollower(&sim.fleets[0], detecting, en)
+	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
 
 	followers := 0
 	for _, d := range sim.fleets[0].Drones {
@@ -443,9 +443,9 @@ func TestSimulator_LoiterResponseCount(t *testing.T) {
 	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
 
 	detecting := sim.fleets[0].Drones[0]
-	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}}
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
 
-	sim.assignFollower(&sim.fleets[0], detecting, en)
+	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
 
 	followers := 0
 	for _, d := range sim.fleets[0].Drones {
@@ -458,5 +458,33 @@ func TestSimulator_LoiterResponseCount(t *testing.T) {
 	}
 	if detecting.FollowTarget != nil {
 		t.Errorf("detecting drone should remain on loiter path")
+	}
+}
+
+func TestSimulator_ThreatAdaptiveFollowers(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
+		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 4, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		SwarmResponses:     map[string]int{"patrol": 1},
+		MissionCriticality: "high",
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+
+	detecting := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyDrone, Position: telemetry.Position{Lat: 0, Lon: 0}}
+
+	sim.assignFollower(&sim.fleets[0], detecting, en, 95)
+
+	followers := 0
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			followers++
+		}
+	}
+	if followers != 3 {
+		t.Fatalf("expected 3 drones to follow under high threat, got %d", followers)
 	}
 }
