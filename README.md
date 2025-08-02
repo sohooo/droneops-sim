@@ -36,6 +36,7 @@ Detailed configuration options are documented in [docs/configuration.md](docs/co
 See [docs/swarm-response.md](docs/swarm-response.md) for how drone swarms react to enemy detections.
 Scenarios can be authored using the [Scenario DSL](docs/scenario.md) to drive mission phases and triggers.
 Common narrative patterns such as escort and search-and-rescue are available as built-in [story arcs](docs/story-arcs.md).
+For tips on shaping these scenarios into compelling presentations, see [docs/demo-best-practices.md](docs/demo-best-practices.md).
 
 ## Schema Validation (schemas/simulation.cue)
 
