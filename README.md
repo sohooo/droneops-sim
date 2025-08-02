@@ -13,6 +13,7 @@ It supports:
 - **Battery drain and failure simulation**
 - **Configurable sensor errors, communication dropouts, and battery anomalies**
 - **Output to GreptimeDB** using its gRPC ORM interface **or** to STDOUT for quick demos
+- **Mission scenarios** scripted with a lightweight DSL for phases and enemy objectives
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
@@ -32,6 +33,7 @@ For development and contribution guidelines, see [docs/CONTRIBUTING.md](docs/CON
 
 Detailed configuration options are documented in [docs/configuration.md](docs/configuration.md).
 See [docs/swarm-response.md](docs/swarm-response.md) for how drone swarms react to enemy detections.
+Scenarios can be authored using the [Scenario DSL](docs/scenario.md) to drive mission phases and triggers.
 
 ## Schema Validation (schemas/simulation.cue)
 

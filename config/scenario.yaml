@@ -1,0 +1,26 @@
+# Example scenario definition for the simulator
+phases:
+  - name: patrol
+    description: initial area security
+    enemy_objectives:
+      - id: enemy-1
+        action: patrol
+    triggers:
+      - event: time_elapsed
+        value: 60
+        next: intercept
+  - name: intercept
+    description: aggressive move toward base
+    enemy_objectives:
+      - id: enemy-1
+        action: attack
+        target: base
+    triggers:
+      - event: enemy_destroyed
+        value: 1
+        next: retreat
+  - name: retreat
+    description: enemy forces withdraw
+    enemy_objectives:
+      - id: enemy-1
+        action: retreat

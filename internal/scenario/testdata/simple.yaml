@@ -1,0 +1,14 @@
+phases:
+  - name: patrol
+    enemy_objectives:
+      - id: e1
+        action: patrol
+    triggers:
+      - event: time_elapsed
+        value: 30
+        next: attack
+  - name: attack
+    enemy_objectives:
+      - id: e1
+        action: attack
+        target: base
