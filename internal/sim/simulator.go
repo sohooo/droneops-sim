@@ -82,6 +82,7 @@ type Simulator struct {
 	weatherImpact      float64
 	swarmResponses     map[string]int
 	missionCriticality int
+	enemyPrevPositions map[string]telemetry.Position
 	mu                 sync.Mutex
 }
 
@@ -135,6 +136,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		weatherImpact:      weather,
 		swarmResponses:     cfg.SwarmResponses,
 		missionCriticality: crit,
+		enemyPrevPositions: make(map[string]telemetry.Position),
 	}
 
 	// Check if zones are defined
@@ -217,6 +219,9 @@ func (s *Simulator) tick() {
 		allDrones = append(allDrones, f.Drones...)
 	}
 	if s.enemyEng != nil {
+		for _, en := range s.enemyEng.Enemies {
+			s.enemyPrevPositions[en.ID] = en.Position
+		}
 		s.enemyEng.Step(allDrones)
 	}
 
@@ -318,7 +323,6 @@ func (s *Simulator) tick() {
 }
 
 func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy, conf float64) {
-	target := en.Position
 	count, ok := s.swarmResponses[detecting.MovementPattern]
 	if !ok {
 		count = 0
@@ -338,40 +342,88 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		count += s.missionCriticality
 	}
 	if count == 0 {
-		cp := target
-		detecting.FollowTarget = &cp
+		pts := s.interceptPoints(en, 1)
+		detecting.FollowTarget = &pts[0]
 		s.rebalanceFormation(fleet)
 		return
 	}
 	if count < 0 {
+		var unassigned []*telemetry.Drone
 		for _, d := range fleet.Drones {
 			if d.FollowTarget == nil {
-				cp := target
-				d.FollowTarget = &cp
+				unassigned = append(unassigned, d)
 			}
+		}
+		if len(unassigned) == 0 {
+			return
+		}
+		pts := s.interceptPoints(en, len(unassigned))
+		for i, d := range unassigned {
+			cp := pts[i]
+			d.FollowTarget = &cp
 		}
 		s.rebalanceFormation(fleet)
 		return
 	}
-	assigned := 0
+	var followers []*telemetry.Drone
 	for _, d := range fleet.Drones {
 		if d == detecting {
 			continue
 		}
 		if d.FollowTarget == nil {
-			cp := target
-			d.FollowTarget = &cp
-			assigned++
-			if assigned >= count {
+			followers = append(followers, d)
+			if len(followers) >= count {
 				break
 			}
 		}
 	}
-	if assigned == 0 {
-		cp := target
-		detecting.FollowTarget = &cp
+	if len(followers) == 0 {
+		pts := s.interceptPoints(en, 1)
+		detecting.FollowTarget = &pts[0]
+		s.rebalanceFormation(fleet)
+		return
+	}
+	pts := s.interceptPoints(en, len(followers))
+	for i, d := range followers {
+		cp := pts[i]
+		d.FollowTarget = &cp
 	}
 	s.rebalanceFormation(fleet)
+}
+
+func (s *Simulator) interceptPoints(en *enemy.Enemy, n int) []telemetry.Position {
+	points := make([]telemetry.Position, n)
+	target := en.Position
+	prev, ok := s.enemyPrevPositions[en.ID]
+	velLat := 0.0
+	velLon := 0.0
+	if ok {
+		velLat = target.Lat - prev.Lat
+		velLon = target.Lon - prev.Lon
+	}
+	predicted := telemetry.Position{Lat: target.Lat + velLat*5, Lon: target.Lon + velLon*5, Alt: target.Alt}
+	if n == 1 {
+		points[0] = predicted
+		return points
+	}
+	norm := math.Hypot(velLat, velLon)
+	var perpLat, perpLon float64
+	if norm != 0 {
+		perpLat = -velLon / norm
+		perpLon = velLat / norm
+	}
+	lateral := 50.0
+	latStep := lateral / 111000
+	lonStep := lateral / (111000 * math.Cos(predicted.Lat*math.Pi/180))
+	for i := 0; i < n; i++ {
+		offset := float64(i) - float64(n-1)/2
+		points[i] = telemetry.Position{
+			Lat: predicted.Lat + offset*perpLat*latStep,
+			Lon: predicted.Lon + offset*perpLon*lonStep,
+			Alt: predicted.Alt,
+		}
+	}
+	return points
 }
 
 func (s *Simulator) rebalanceFormation(fleet *DroneFleet) {

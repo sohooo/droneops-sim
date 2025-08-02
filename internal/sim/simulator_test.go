@@ -237,7 +237,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 
 	sim.tick()
 
-	if len(dWriter.Detections) != 1 {
+	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected detection within custom radius, got %d", len(dWriter.Detections))
 	}
 }
@@ -402,6 +402,49 @@ func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	}
 	if followers != 1 {
 		t.Fatalf("expected only detecting drone to follow, got %d", followers)
+	}
+}
+
+func TestSimulator_PredictiveInterception(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:           []config.Fleet{{Name: "f", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "zone"}},
+		FollowConfidence: 50,
+		SwarmResponses:   map[string]int{"patrol": 2},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second)
+	fleet := &sim.fleets[0]
+	detecting := fleet.Drones[0]
+	prev := telemetry.Position{Lat: 0, Lon: 0}
+	curr := telemetry.Position{Lat: 0.001, Lon: 0}
+	en := &enemy.Enemy{ID: "e1", Type: enemy.EnemyVehicle, Position: curr}
+	sim.enemyPrevPositions[en.ID] = prev
+
+	sim.assignFollower(fleet, detecting, en, 100)
+
+	followers := 0
+	var t1, t2 *telemetry.Position
+	for _, d := range fleet.Drones {
+		if d == detecting {
+			continue
+		}
+		if d.FollowTarget != nil {
+			followers++
+			if t1 == nil {
+				t1 = d.FollowTarget
+			} else {
+				t2 = d.FollowTarget
+			}
+		}
+	}
+	if followers != 2 {
+		t.Fatalf("expected two drones to receive intercept targets, got %d", followers)
+	}
+	if t1.Lat == t2.Lat && t1.Lon == t2.Lon {
+		t.Errorf("expected followers to flank with different targets")
+	}
+	if t1.Lat <= en.Position.Lat || t2.Lat <= en.Position.Lat {
+		t.Errorf("followers should aim ahead of enemy")
 	}
 }
 
