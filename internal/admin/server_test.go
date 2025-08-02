@@ -169,3 +169,55 @@ func TestHandleMapData(t *testing.T) {
 		t.Errorf("expected mission annotations")
 	}
 }
+
+func TestObserverEndpoints(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+	}
+	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
+	server := NewServer(simulator)
+
+	// inject command
+	req := httptest.NewRequest(http.MethodPost, "/observer/command?cmd=test", nil)
+	w := httptest.NewRecorder()
+	server.handleObserverCommand(w, req)
+	if w.Result().StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status NoContent, got %v", w.Result().StatusCode)
+	}
+
+	// retrieve events
+	req = httptest.NewRequest(http.MethodGet, "/observer/events", nil)
+	w = httptest.NewRecorder()
+	server.handleObserverEvents(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected status OK, got %v", w.Result().StatusCode)
+	}
+	var events []sim.ObserverEvent
+	if err := json.NewDecoder(w.Body).Decode(&events); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(events) == 0 {
+		t.Fatalf("expected events to be returned")
+	}
+
+	// step through
+	req = httptest.NewRequest(http.MethodPost, "/observer/step?index=0", nil)
+	w = httptest.NewRecorder()
+	server.handleObserverStep(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected status OK, got %v", w.Result().StatusCode)
+	}
+
+	// perspective switch
+	droneID := simulator.TelemetrySnapshot()[0].DroneID
+	req = httptest.NewRequest(http.MethodPost, "/observer/perspective?drone="+droneID, nil)
+	w = httptest.NewRecorder()
+	server.handleObserverPerspective(w, req)
+	if w.Result().StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status NoContent, got %v", w.Result().StatusCode)
+	}
+	if simulator.ObserverPerspective() != droneID {
+		t.Fatalf("expected perspective to be set")
+	}
+}
