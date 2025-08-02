@@ -1,5 +1,7 @@
 ## Quickstart
 
+Refer to the [Environment Variables](../README.md#environment-variables) table for more configuration options.
+
 ### Local Demo (Print Only)
 
 ```bash

@@ -50,13 +50,16 @@ cue vet config/simulation.yaml schemas/simulation.cue
 
 ### Environment Variables
 
-- `GREPTIMEDB_ENDPOINT` → If set, telemetry is written to this GreptimeDB endpoint
-- `GREPTIMEDB_TABLE` → Target table for telemetry (default: drone_telemetry)
-- `ENEMY_DETECTION_TABLE` → Table for enemy detection events (default: enemy_detection)
-- `MISSION_METADATA_TABLE` → Table storing mission metadata (default: mission_metadata)
-- `ENEMY_DETECTION_TABLE` → Table storing enemy detection events (default: enemy_detection)
-- `CLUSTER_ID` → Cluster identity tag (default: mission-01)
-- `TICK_INTERVAL` → Telemetry tick interval in Go duration format (overrides `--tick`)
+The simulator can be configured through the following environment variables:
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `GREPTIMEDB_ENDPOINT` | _none_ | Yes (for GreptimeDB) | GreptimeDB gRPC endpoint. If unset, telemetry is printed to STDOUT. |
+| `GREPTIMEDB_TABLE` | `drone_telemetry` | No | Table for drone telemetry records. |
+| `ENEMY_DETECTION_TABLE` | `enemy_detection` | No | Table storing enemy detection events. |
+| `MISSION_METADATA_TABLE` | `mission_metadata` | No | Table storing mission metadata. |
+| `CLUSTER_ID` | `mission-01` | No | Cluster identity tag added to each telemetry line. |
+| `TICK_INTERVAL` | `1s` | No | Telemetry tick interval (Go duration). Overrides the `--tick` flag. |
 
 ## Quickstart
 
