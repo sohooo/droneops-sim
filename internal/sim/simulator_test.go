@@ -221,6 +221,7 @@ func TestSimulator_EnemyCountConfig(t *testing.T) {
 }
 
 func TestSimulator_CustomDetectionRadius(t *testing.T) {
+	rand.Seed(1)
 	cfg := &config.SimulationConfig{
 		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets:           []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"}},
@@ -229,6 +230,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
 	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+	rand.Seed(1)
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.002, Lon: drone.Position.Lon, Alt: 0}}}
@@ -241,6 +243,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 }
 
 func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
+	rand.Seed(1)
 	cfg := &config.SimulationConfig{
 		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets:           []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"}},
@@ -249,6 +252,7 @@ func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
 	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+	rand.Seed(1)
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.006, Lon: drone.Position.Lon, Alt: 0}}}
@@ -486,5 +490,47 @@ func TestSimulator_ThreatAdaptiveFollowers(t *testing.T) {
 	}
 	if followers != 3 {
 		t.Fatalf("expected 3 drones to follow under high threat, got %d", followers)
+	}
+}
+
+func TestSimulator_RebalanceFormation(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 4, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+
+	// First drone breaks formation to follow an enemy
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0.001, Lon: 0}}
+	sim.fleets[0].Drones[0].FollowTarget = &en.Position
+
+	orig := sim.fleets[0].Drones[1].HomeRegion
+	sim.rebalanceFormation(&sim.fleets[0])
+
+	var centers []telemetry.Position
+	for i, d := range sim.fleets[0].Drones {
+		if i == 0 {
+			continue
+		}
+		if d.FollowTarget != nil {
+			t.Fatalf("drone %d should not be following", i)
+		}
+		centers = append(centers, telemetry.Position{Lat: d.HomeRegion.CenterLat, Lon: d.HomeRegion.CenterLon})
+	}
+	if len(centers) != 3 {
+		t.Fatalf("expected 3 drones to be reassigned, got %d", len(centers))
+	}
+
+	region := orig
+	radius := region.RadiusKM * 1000 * 0.5
+	for i, c := range centers {
+		angle := float64(i) / float64(len(centers)) * 2 * math.Pi
+		expLat := region.CenterLat + (radius*math.Cos(angle))/111000
+		expLon := region.CenterLon + (radius*math.Sin(angle))/(111000*math.Cos(region.CenterLat*math.Pi/180))
+		if math.Abs(c.Lat-expLat) > 1e-6 || math.Abs(c.Lon-expLon) > 1e-6 {
+			t.Errorf("drone %d center (%.6f, %.6f), expected (%.6f, %.6f)", i, c.Lat, c.Lon, expLat, expLon)
+		}
 	}
 }
