@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+	cueyaml "cuelang.org/go/encoding/yaml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -88,16 +90,19 @@ func Load(configPath, cueSchemaPath string) (*SimulationConfig, error) {
 func ValidateWithCue(configFile, cueFile string) error {
 	ctx := cuecontext.New()
 
-	// Read YAML config
+	// Read YAML config and convert to CUE
 	yamlBytes, err := os.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("cannot read YAML config: %w", err)
 	}
-	var configData map[string]interface{}
-	if err := yaml.Unmarshal(yamlBytes, &configData); err != nil {
-		return fmt.Errorf("cannot unmarshal YAML config: %w", err)
+	file, err := cueyaml.Extract(configFile, yamlBytes)
+	if err != nil {
+		return fmt.Errorf("cannot convert YAML to CUE: %w", err)
 	}
-	configVal := ctx.CompileBytes(yamlBytes)
+	configVal := ctx.BuildFile(file)
+	if err := configVal.Validate(cue.All()); err != nil {
+		return fmt.Errorf("invalid YAML config: %w", err)
+	}
 
 	// Read CUE schema
 	schemaBytes, err := os.ReadFile(cueFile)
@@ -105,9 +110,12 @@ func ValidateWithCue(configFile, cueFile string) error {
 		return fmt.Errorf("cannot read CUE schema: %w", err)
 	}
 	schemaVal := ctx.CompileBytes(schemaBytes)
+	if err := schemaVal.Validate(cue.All()); err != nil {
+		return fmt.Errorf("invalid CUE schema: %w", err)
+	}
 
 	// Validate config against schema
-	if err := schemaVal.Subsume(configVal); err != nil {
+	if err := schemaVal.Unify(configVal).Validate(cue.All()); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
