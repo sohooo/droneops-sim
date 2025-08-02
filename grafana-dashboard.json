@@ -1,7 +1,7 @@
 {
   "uid": "droneops-telemetry",
   "title": "DroneOps Telemetry Dashboard",
-  "version": 2,
+  "version": 3,
   "schemaVersion": 36,
   "style": "dark",
   "editable": true,
@@ -16,7 +16,7 @@
         {
           "refId": "A",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT lat, lon, status, battery, cluster_id, drone_id FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
           "format": "table"
         }
       ],
@@ -63,7 +63,7 @@
         {
           "refId": "B",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT COUNT(DISTINCT drone_id) AS total_drones FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
           "format": "table"
         }
       ]
@@ -78,7 +78,7 @@
         {
           "refId": "C",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT AVG(battery) AS avg_battery FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
           "format": "table"
         }
       ]
@@ -93,7 +93,7 @@
         {
           "refId": "D",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 50",
+          "rawSql": "SELECT ts, cluster_id, drone_id, lat, lon, alt, battery, status FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) ORDER BY ts DESC LIMIT 50",
           "format": "table"
         }
       ]
@@ -123,7 +123,7 @@
         {
           "refId": "F",
           "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
-          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts)",
+          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
           "format": "table"
         },
         {
@@ -186,6 +186,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "Detections per Minute",
+      "description": "Number of enemy detections per minute.",
       "gridPos": { "x": 0, "y": 48, "w": 12, "h": 8 },
       "targets": [
         {
@@ -202,6 +203,7 @@
       "type": "histogram",
       "title": "Detection Confidence (Aggregated)",
       "gridPos": { "x": 12, "y": 48, "w": 12, "h": 8 },
+      "description": "Histogram of detection confidence aggregated by 0.1 intervals.",
       "targets": [
         {
           "refId": "K",
@@ -211,6 +213,125 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 11,
+      "type": "geomap",
+      "title": "Drone Velocity Vectors",
+      "description": "Shows velocity vectors for each drone based on successive positions.",
+      "gridPos": { "x": 0, "y": 56, "w": 12, "h": 12 },
+      "targets": [
+        {
+          "refId": "L",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon, LAG(lat) OVER (PARTITION BY drone_id ORDER BY ts) AS prev_lat, LAG(lon) OVER (PARTITION BY drone_id ORDER BY ts) AS prev_lon FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "lines",
+            "config": {
+              "startLatField": "prev_lat",
+              "startLonField": "prev_lon",
+              "endLatField": "lat",
+              "endLonField": "lon",
+              "color": "yellow"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": "geomap",
+      "title": "Flight Corridors",
+      "description": "Planned flight corridors for missions.",
+      "gridPos": { "x": 12, "y": 56, "w": 12, "h": 12 },
+      "targets": [
+        {
+          "refId": "M",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT corridor_id, lat, lon, seq FROM flight_corridors ORDER BY corridor_id, seq",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "lines",
+            "config": {
+              "latField": "lat",
+              "lonField": "lon",
+              "groupBy": "corridor_id",
+              "lineWidth": 2,
+              "color": "cyan"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": "histogram",
+      "title": "Altitude Distribution",
+      "description": "Distribution of drone altitude readings.",
+      "gridPos": { "x": 0, "y": 68, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "N",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT alt FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 14,
+      "type": "histogram",
+      "title": "Battery Level Distribution",
+      "description": "Distribution of battery levels across the fleet.",
+      "gridPos": { "x": 12, "y": 68, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "O",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT battery FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 15,
+      "type": "geomap",
+      "title": "Swarm Density Heatmap",
+      "description": "Heatmap showing drone density across the region.",
+      "gridPos": { "x": 0, "y": 76, "w": 24, "h": 12 },
+      "targets": [
+        {
+          "refId": "P",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT lat, lon FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "lat": 48.2, "lon": 16.4, "zoom": 5 },
+        "layers": [
+          {
+            "type": "heatmap",
+            "config": { "latField": "lat", "lonField": "lon" }
+          }
+        ]
+      }
     }
   ],
   "templating": {
