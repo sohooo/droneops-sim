@@ -83,6 +83,7 @@
     {
       "type": "stat",
       "title": "Active Drones",
+      "description": "Current number of drones reporting telemetry.",
       "datasource": {
         "type": "postgres",
         "uid": "YOUR_DATASOURCE_UID"
@@ -105,6 +106,7 @@
     {
       "type": "stat",
       "title": "Last Sync Time by Command",
+      "description": "Most recent synchronization time for each command cluster.",
       "datasource": {
         "type": "postgres",
         "uid": "YOUR_DATASOURCE_UID"
@@ -127,6 +129,7 @@
     {
       "type": "table",
       "title": "Sync Audit (per Sync Job)",
+      "description": "Detailed audit of synchronization jobs.",
       "datasource": {
         "type": "postgres",
         "uid": "YOUR_DATASOURCE_UID"
