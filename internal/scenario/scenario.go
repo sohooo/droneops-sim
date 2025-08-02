@@ -7,9 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Scenario defines a mission scenario with ordered phases.
+// Scenario defines a mission scenario with ordered phases and an overall description.
 type Scenario struct {
-	Phases []Phase `yaml:"phases"`
+	Name        string  `yaml:"name,omitempty"`
+	Description string  `yaml:"description,omitempty"`
+	Phases      []Phase `yaml:"phases"`
 }
 
 // Phase describes a stage in the mission with objectives and triggers for transitions.

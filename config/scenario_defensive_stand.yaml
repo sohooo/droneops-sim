@@ -1,0 +1,31 @@
+name: defensive-stand
+description: Hold a critical relay station against waves of hostile drones.
+phases:
+  - name: setup
+    description: Defenders fortify the station and establish fields of fire.
+    triggers:
+      - event: time_elapsed
+        value: 30
+        next: escalation
+  - name: escalation
+    description: The first wave tests the defenses.
+    enemy_objectives:
+      - id: wave1
+        action: attack
+        target: station
+    triggers:
+      - event: enemy_destroyed
+        value: 5
+        next: climax
+  - name: climax
+    description: A massive assault threatens to overwhelm the defenders.
+    enemy_objectives:
+      - id: wave2
+        action: attack
+        target: station
+    triggers:
+      - event: time_elapsed
+        value: 120
+        next: resolution
+  - name: resolution
+    description: Enemy forces withdraw and the station remains secure.

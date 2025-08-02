@@ -1,0 +1,27 @@
+name: search-and-rescue
+description: Locate and recover a downed pilot before hostile forces arrive.
+phases:
+  - name: setup
+    description: Rescue team briefs and launches into the search area.
+    triggers:
+      - event: time_elapsed
+        value: 20
+        next: escalation
+  - name: escalation
+    description: Search intensifies as signs of the pilot are found.
+    triggers:
+      - event: survivor_found
+        value: 1
+        next: climax
+  - name: climax
+    description: Enemy patrols close in while the extraction is attempted.
+    enemy_objectives:
+      - id: enemy-patrol
+        action: attack
+        target: rescue-team
+    triggers:
+      - event: survivor_extracted
+        value: 1
+        next: resolution
+  - name: resolution
+    description: Team departs the area with the survivor; remaining enemies retreat.
