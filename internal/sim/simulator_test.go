@@ -231,7 +231,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
 
 	drone := sim.fleets[0].Drones[0]
-	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.004, Lon: drone.Position.Lon, Alt: 0}}}
+	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.002, Lon: drone.Position.Lon, Alt: 0}}}
 
 	sim.tick()
 

@@ -97,7 +97,7 @@ swarm_responses:
 `follow_confidence` sets the detection confidence threshold required for a drone
 to switch into follow mode.
 
-`enemy_count` controls how many hostile entities are simulated in the first zone and `detection_radius_m` sets the detection range in meters for each drone. `sensor_noise`, `terrain_occlusion`, and `weather_impact` modify detection confidence to account for sensor errors and environmental effects.
+`enemy_count` controls how many hostile entities are simulated in each zone and `detection_radius_m` sets the detection range in meters for each drone. `sensor_noise`, `terrain_occlusion`, and `weather_impact` modify detection confidence to account for sensor errors and environmental effects.
 
 ### Enemy Detection
 

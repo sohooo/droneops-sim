@@ -5,13 +5,14 @@ This feature simulates hostile objects ("enemies") and reports when drones spot 
 ## Purpose
 
 Enemy detections allow you to test how your monitoring stack reacts to potential threats. The simulator
-randomly moves a few enemy entities around the first configured zone and emits a detection event whenever
-a drone is within range.
+spawns enemy entities across all configured zones and makes them react to nearby drones using evasive,
+grouping, and decoy tactics. A detection event is emitted whenever a drone is within range.
 
 ## How It Works
 
-1. On startup the simulator creates `enemy_count` enemies inside the first zone defined in `config/simulation.yaml` (default: 3).
-2. Each tick the enemies take a small random step within that zone.
+1. On startup the simulator creates `enemy_count` enemies in **each** zone defined in `config/simulation.yaml` (default: 3).
+2. Each tick the enemies update their position. When drones are nearby they attempt evasive maneuvers,
+   may group with other enemies, or spawn decoys to distract pursuers.
 3. Every drone checks for enemies within the configured `detection_radius_m` (default: **1000&nbsp;m**). When an enemy is detected an event is generated with a
    confidence value that decreases with distance and is further modified by sensor noise, terrain occlusion and weather impact.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
@@ -31,7 +32,7 @@ The following fields in `config/simulation.yaml` control the enemy detection beh
 
 | Field               | Description                                      | Default |
 |---------------------|--------------------------------------------------|---------|
-| `enemy_count`       | Number of simulated enemies in the zone          | `3`     |
+| `enemy_count`       | Number of simulated enemies per zone             | `3`     |
 | `detection_radius_m`| Radius in meters for enemy detection checks      | `1000`  |
 | `sensor_noise`      | Standard deviation of sensor noise (fraction)    | `0`     |
 | `terrain_occlusion` | Terrain occlusion factor (0-1)                   | `0`     |

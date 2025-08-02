@@ -158,17 +158,21 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		sim.fleets = append(sim.fleets, f)
 	}
 
-	// Initialize enemy engine with entities in the first zone
+	// Initialize enemy engine across all zones
 	count := cfg.EnemyCount
 	if count <= 0 {
 		count = 3
 	}
-	sim.enemyEng = enemy.NewEngine(count, telemetry.Region{
-		Name:      cfg.Zones[0].Name,
-		CenterLat: cfg.Zones[0].CenterLat,
-		CenterLon: cfg.Zones[0].CenterLon,
-		RadiusKM:  cfg.Zones[0].RadiusKM,
-	})
+	regions := make([]telemetry.Region, len(cfg.Zones))
+	for i, z := range cfg.Zones {
+		regions[i] = telemetry.Region{
+			Name:      z.Name,
+			CenterLat: z.CenterLat,
+			CenterLon: z.CenterLon,
+			RadiusKM:  z.RadiusKM,
+		}
+	}
+	sim.enemyEng = enemy.NewEngine(count, regions)
 
 	return sim
 }
@@ -198,8 +202,12 @@ func (s *Simulator) tick() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var allDrones []*telemetry.Drone
+	for _, f := range s.fleets {
+		allDrones = append(allDrones, f.Drones...)
+	}
 	if s.enemyEng != nil {
-		s.enemyEng.Step()
+		s.enemyEng.Step(allDrones)
 	}
 
 	for _, fleet := range s.fleets {
