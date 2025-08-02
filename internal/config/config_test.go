@@ -29,7 +29,6 @@ fleets:
 		t.Fatalf("failed to write temp file: %v", err)
 	}
 
-	// This test skips full CUE validation for speed, uses ValidateWithCue = no-op or mocked.
 	cfg, err := Load(tmpFile, "../../schemas/simulation.cue")
 	if err != nil {
 		t.Fatalf("Load() returned error: %v", err)
@@ -43,5 +42,27 @@ func TestValidateWithCue_InvalidPath(t *testing.T) {
 	err := ValidateWithCue("non-existent.yaml", "../../schemas/simulation.cue")
 	if err == nil {
 		t.Fatalf("expected error for missing YAML file")
+	}
+}
+
+func TestValidateWithCue_InvalidConfig(t *testing.T) {
+	tmpFile := "invalid-config.yaml"
+	defer os.Remove(tmpFile)
+	yaml := `
+zones:
+  - name: region-x
+    center_lat: 48.2
+    center_lon: 16.4
+    radius_km: -5
+missions: []
+fleets: []
+`
+	if err := os.WriteFile(tmpFile, []byte(yaml), 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	err := ValidateWithCue(tmpFile, "../../schemas/simulation.cue")
+	if err == nil {
+		t.Fatalf("expected validation error for invalid config")
 	}
 }
