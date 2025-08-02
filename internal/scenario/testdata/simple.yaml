@@ -1,3 +1,5 @@
+name: example
+description: basic test scenario
 phases:
   - name: patrol
     enemy_objectives:

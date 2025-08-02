@@ -1,0 +1,31 @@
+name: escort
+description: Protect a vulnerable convoy as it travels to the forward operating base.
+phases:
+  - name: setup
+    description: Convoy forms up and prepares to depart.
+    triggers:
+      - event: time_elapsed
+        value: 30
+        next: escalation
+  - name: escalation
+    description: Light enemy forces probe the escort.
+    enemy_objectives:
+      - id: bandits
+        action: harass
+        target: convoy
+    triggers:
+      - event: enemy_destroyed
+        value: 3
+        next: climax
+  - name: climax
+    description: A coordinated ambush hits the convoy near a choke point.
+    enemy_objectives:
+      - id: ambush
+        action: attack
+        target: convoy
+    triggers:
+      - event: enemy_destroyed
+        value: 5
+        next: resolution
+  - name: resolution
+    description: Remaining threats fall back as the convoy reaches safety.
