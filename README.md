@@ -44,13 +44,26 @@ cue vet config/simulation.yaml schemas/simulation.cue
 
 ## Entry Point
 
-### CLI Flags
+The `droneops-sim` binary exposes subcommands:
+
+- `simulate` – run the real-time simulator.
+- `replay` – play back a previously recorded telemetry log.
+
+Use `droneops-sim <command> --help` to see all options.
+
+### Simulator Flags
 
 - `--print-only` → Print telemetry JSON to STDOUT (ignores DB)
 - `--config` → Path to YAML config (default: config/simulation.yaml)
 - `--schema` → Path to CUE schema (default: schemas/simulation.cue)
 - `--tick` → Telemetry tick interval (default: 1s)
 - `--log-file` → Optional path to write telemetry and detection logs (JSONL)
+
+### Replay Flags
+
+- `--input` → Path to telemetry log file (required)
+- `--speed` → Playback speed multiplier (default: 1.0)
+- `--print-only` → Print telemetry to STDOUT instead of writing to DB
 
 ### Environment Variables
 
@@ -72,10 +85,10 @@ See [docs/quickstart.md](docs/quickstart.md) for step-by-step instructions.
 ## Log Export & Playback
 
 - Use `--log-file` to export telemetry and enemy detection events as JSONL files.
-- Replay a recorded mission with the `replay` command:
+- Replay a recorded mission:
 
 ```bash
-go run cmd/replay/main.go --input mission.log --print-only
+droneops-sim replay --input mission.log --print-only
 ```
 
 - Control playback rate using `--speed` (e.g., `--speed 2` for 2x).
@@ -98,6 +111,7 @@ Example drone telemetry line:
 ```
 
 ## Data Flow
+
 
 ```mermaid
 flowchart TD
