@@ -84,6 +84,8 @@ detection_radius_m: 1000
 sensor_noise: 0.05
 terrain_occlusion: 0.1
 weather_impact: 0.2
+communication_loss: 0.05
+bandwidth_limit: 10
 # Minimum confidence for drones to begin following detected enemies
 follow_confidence: 75
 
@@ -102,6 +104,7 @@ to switch into follow mode. `mission_criticality` (`low`, `medium`, `high`)
 adjusts how aggressively the swarm adds followers when a threat is detected.
 
 `enemy_count` controls how many hostile entities are simulated in each zone and `detection_radius_m` sets the detection range in meters for each drone. `sensor_noise`, `terrain_occlusion`, and `weather_impact` modify detection confidence to account for sensor errors and environmental effects.
+`communication_loss` introduces the probability that control messages drop or signals fail, and `bandwidth_limit` caps how many commands can be issued per tick, modeling constrained links between drones.
 
 ### Enemy Detection
 

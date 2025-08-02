@@ -43,3 +43,5 @@ detection_radius_m?: number & >0
 sensor_noise?: number & >=0
 terrain_occlusion?: number & >=0 & <=1
 weather_impact?: number & >=0 & <=1
+communication_loss?: number & >=0 & <=1
+bandwidth_limit?: int & >=0

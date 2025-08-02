@@ -66,24 +66,33 @@ type MapData struct {
 
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
-	clusterID          string
-	fleets             []DroneFleet
-	teleGen            *telemetry.Generator
-	writer             TelemetryWriter
-	detectionWriter    DetectionWriter
-	enemyEng           *enemy.Engine
-	tickInterval       time.Duration
-	chaosMode          bool
-	cfg                *config.SimulationConfig
-	followConfidence   float64
-	detectionRadiusM   float64
-	sensorNoise        float64
-	terrainOcclusion   float64
-	weatherImpact      float64
-	swarmResponses     map[string]int
-	missionCriticality int
-	enemyPrevPositions map[string]telemetry.Position
-	mu                 sync.Mutex
+	clusterID            string
+	fleets               []DroneFleet
+	teleGen              *telemetry.Generator
+	writer               TelemetryWriter
+	detectionWriter      DetectionWriter
+	enemyEng             *enemy.Engine
+	tickInterval         time.Duration
+	chaosMode            bool
+	cfg                  *config.SimulationConfig
+	followConfidence     float64
+	detectionRadiusM     float64
+	sensorNoise          float64
+	terrainOcclusion     float64
+	weatherImpact        float64
+	swarmResponses       map[string]int
+	missionCriticality   int
+	enemyPrevPositions   map[string]telemetry.Position
+	commLoss             float64
+	bandwidthLimit       int
+	messagesSent         int
+	enemyFollowers       map[string][]string
+	droneAssignments     map[string]string
+	enemyFollowerTargets map[string]int
+	enemyObjects         map[string]*enemy.Enemy
+	droneIndex           map[string]*telemetry.Drone
+	droneFleet           map[string]*DroneFleet
+	mu                   sync.Mutex
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -123,20 +132,28 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		crit = 2
 	}
 	sim := &Simulator{
-		clusterID:          clusterID,
-		teleGen:            telemetry.NewGenerator(clusterID),
-		writer:             writer,
-		detectionWriter:    dWriter,
-		tickInterval:       tickInterval,
-		cfg:                cfg,
-		followConfidence:   cfg.FollowConfidence,
-		detectionRadiusM:   radius,
-		sensorNoise:        sNoise,
-		terrainOcclusion:   terrain,
-		weatherImpact:      weather,
-		swarmResponses:     cfg.SwarmResponses,
-		missionCriticality: crit,
-		enemyPrevPositions: make(map[string]telemetry.Position),
+		clusterID:            clusterID,
+		teleGen:              telemetry.NewGenerator(clusterID),
+		writer:               writer,
+		detectionWriter:      dWriter,
+		tickInterval:         tickInterval,
+		cfg:                  cfg,
+		followConfidence:     cfg.FollowConfidence,
+		detectionRadiusM:     radius,
+		sensorNoise:          sNoise,
+		terrainOcclusion:     terrain,
+		weatherImpact:        weather,
+		swarmResponses:       cfg.SwarmResponses,
+		missionCriticality:   crit,
+		enemyPrevPositions:   make(map[string]telemetry.Position),
+		commLoss:             cfg.CommunicationLoss,
+		bandwidthLimit:       cfg.BandwidthLimit,
+		enemyFollowers:       make(map[string][]string),
+		droneAssignments:     make(map[string]string),
+		enemyFollowerTargets: make(map[string]int),
+		enemyObjects:         make(map[string]*enemy.Enemy),
+		droneIndex:           make(map[string]*telemetry.Drone),
+		droneFleet:           make(map[string]*DroneFleet),
 	}
 
 	// Check if zones are defined
@@ -168,6 +185,14 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 			f.Drones = append(f.Drones, drone)
 		}
 		sim.fleets = append(sim.fleets, f)
+	}
+
+	for i := range sim.fleets {
+		f := &sim.fleets[i]
+		for _, d := range f.Drones {
+			sim.droneIndex[d.ID] = d
+			sim.droneFleet[d.ID] = f
+		}
 	}
 
 	// Initialize enemy engine across all zones
@@ -214,6 +239,8 @@ func (s *Simulator) tick() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.messagesSent = 0
+
 	var allDrones []*telemetry.Drone
 	for _, f := range s.fleets {
 		allDrones = append(allDrones, f.Drones...)
@@ -227,6 +254,9 @@ func (s *Simulator) tick() {
 
 	for _, fleet := range s.fleets {
 		for _, drone := range fleet.Drones {
+			if drone.FollowTarget != nil && (rand.Float64() < s.commLoss || drone.Status == telemetry.StatusFailure) {
+				s.removeAssignment(drone)
+			}
 			row := s.teleGen.GenerateTelemetry(drone)
 			if rand.Float64() < drone.SensorErrorRate {
 				row.Lat += rand.Float64()*0.01 - 0.005
@@ -293,6 +323,8 @@ func (s *Simulator) tick() {
 		}
 	}
 
+	s.reassignFollowers()
+
 	// Batch support if writer implements WriteBatch
 	if bw, ok := s.writer.(batchWriter); ok {
 		if err := bw.WriteBatch(batch); err != nil {
@@ -322,7 +354,101 @@ func (s *Simulator) tick() {
 	}
 }
 
+func (s *Simulator) sendCommand() bool {
+	if s.bandwidthLimit > 0 && s.messagesSent >= s.bandwidthLimit {
+		return false
+	}
+	s.messagesSent++
+	if rand.Float64() < s.commLoss {
+		return false
+	}
+	return true
+}
+
+func (s *Simulator) removeAssignment(drone *telemetry.Drone) {
+	enemyID, ok := s.droneAssignments[drone.ID]
+	if ok {
+		followers := s.enemyFollowers[enemyID]
+		nf := followers[:0]
+		for _, id := range followers {
+			if id != drone.ID {
+				nf = append(nf, id)
+			}
+		}
+		if len(nf) == 0 {
+			delete(s.enemyFollowers, enemyID)
+			delete(s.enemyFollowerTargets, enemyID)
+		} else {
+			s.enemyFollowers[enemyID] = nf
+		}
+		delete(s.droneAssignments, drone.ID)
+	}
+	drone.FollowTarget = nil
+}
+
+func (s *Simulator) selectReplacement() *telemetry.Drone {
+	var best *telemetry.Drone
+	for _, f := range s.fleets {
+		for _, d := range f.Drones {
+			if d.Status != telemetry.StatusOK || d.FollowTarget != nil {
+				continue
+			}
+			if _, assigned := s.droneAssignments[d.ID]; assigned {
+				continue
+			}
+			if best == nil || d.Battery > best.Battery {
+				best = d
+			}
+		}
+	}
+	return best
+}
+
+func (s *Simulator) reassignFollowers() {
+	for enemyID, followers := range s.enemyFollowers {
+		desired := s.enemyFollowerTargets[enemyID]
+		active := followers[:0]
+		for _, id := range followers {
+			d := s.droneIndex[id]
+			if d != nil && d.FollowTarget != nil && d.Status == telemetry.StatusOK {
+				active = append(active, id)
+				continue
+			}
+			delete(s.droneAssignments, id)
+			if d != nil {
+				d.FollowTarget = nil
+			}
+		}
+		s.enemyFollowers[enemyID] = active
+		missing := desired - len(active)
+		if missing <= 0 {
+			if len(active) == 0 {
+				delete(s.enemyFollowers, enemyID)
+				delete(s.enemyFollowerTargets, enemyID)
+			}
+			continue
+		}
+		en := s.enemyObjects[enemyID]
+		for missing > 0 {
+			cand := s.selectReplacement()
+			if cand == nil || !s.sendCommand() {
+				break
+			}
+			pts := s.interceptPoints(en, 1)
+			cand.FollowTarget = &pts[0]
+			s.enemyFollowers[enemyID] = append(s.enemyFollowers[enemyID], cand.ID)
+			s.droneAssignments[cand.ID] = enemyID
+			missing--
+		}
+		if len(s.enemyFollowers[enemyID]) == 0 {
+			delete(s.enemyFollowers, enemyID)
+			delete(s.enemyFollowerTargets, enemyID)
+		}
+	}
+}
+
 func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy, conf float64) {
+	s.enemyObjects[en.ID] = en
 	count, ok := s.swarmResponses[detecting.MovementPattern]
 	if !ok {
 		count = 0
@@ -343,8 +469,13 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 	}
 	if count == 0 {
 		pts := s.interceptPoints(en, 1)
-		detecting.FollowTarget = &pts[0]
-		s.rebalanceFormation(fleet)
+		if s.sendCommand() {
+			detecting.FollowTarget = &pts[0]
+			s.droneAssignments[detecting.ID] = en.ID
+			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], detecting.ID)
+			s.rebalanceFormation(fleet)
+			s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
+		}
 		return
 	}
 	if count < 0 {
@@ -359,10 +490,16 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		}
 		pts := s.interceptPoints(en, len(unassigned))
 		for i, d := range unassigned {
+			if !s.sendCommand() {
+				continue
+			}
 			cp := pts[i]
 			d.FollowTarget = &cp
+			s.droneAssignments[d.ID] = en.ID
+			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], d.ID)
 		}
 		s.rebalanceFormation(fleet)
+		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		return
 	}
 	var followers []*telemetry.Drone
@@ -379,16 +516,27 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 	}
 	if len(followers) == 0 {
 		pts := s.interceptPoints(en, 1)
-		detecting.FollowTarget = &pts[0]
-		s.rebalanceFormation(fleet)
+		if s.sendCommand() {
+			detecting.FollowTarget = &pts[0]
+			s.droneAssignments[detecting.ID] = en.ID
+			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], detecting.ID)
+			s.rebalanceFormation(fleet)
+		}
+		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		return
 	}
 	pts := s.interceptPoints(en, len(followers))
 	for i, d := range followers {
+		if !s.sendCommand() {
+			continue
+		}
 		cp := pts[i]
 		d.FollowTarget = &cp
+		s.droneAssignments[d.ID] = en.ID
+		s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], d.ID)
 	}
 	s.rebalanceFormation(fleet)
+	s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 }
 
 func (s *Simulator) interceptPoints(en *enemy.Enemy, n int) []telemetry.Position {

@@ -59,6 +59,8 @@ type SimulationConfig struct {
 	FollowConfidence   float64        `yaml:"follow_confidence"`
 	SwarmResponses     map[string]int `yaml:"swarm_responses"`
 	MissionCriticality string         `yaml:"mission_criticality"`
+	CommunicationLoss  float64        `yaml:"communication_loss"`
+	BandwidthLimit     int            `yaml:"bandwidth_limit"`
 }
 
 // Load loads YAML config and validates it against a CUE schema
