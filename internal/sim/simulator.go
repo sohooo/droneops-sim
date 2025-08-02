@@ -340,6 +340,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 	if count == 0 {
 		cp := target
 		detecting.FollowTarget = &cp
+		s.rebalanceFormation(fleet)
 		return
 	}
 	if count < 0 {
@@ -349,6 +350,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 				d.FollowTarget = &cp
 			}
 		}
+		s.rebalanceFormation(fleet)
 		return
 	}
 	assigned := 0
@@ -368,6 +370,29 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 	if assigned == 0 {
 		cp := target
 		detecting.FollowTarget = &cp
+	}
+	s.rebalanceFormation(fleet)
+}
+
+func (s *Simulator) rebalanceFormation(fleet *DroneFleet) {
+	var remaining []*telemetry.Drone
+	for _, d := range fleet.Drones {
+		if d.FollowTarget == nil {
+			remaining = append(remaining, d)
+		}
+	}
+	n := len(remaining)
+	if n == 0 {
+		return
+	}
+	region := remaining[0].HomeRegion
+	radius := region.RadiusKM * 1000 * 0.5
+	for i, d := range remaining {
+		angle := float64(i) / float64(n) * 2 * math.Pi
+		deltaLat := (radius * math.Cos(angle)) / 111000
+		deltaLon := (radius * math.Sin(angle)) / (111000 * math.Cos(region.CenterLat*math.Pi/180))
+		d.HomeRegion.CenterLat = region.CenterLat + deltaLat
+		d.HomeRegion.CenterLon = region.CenterLon + deltaLon
 	}
 }
 

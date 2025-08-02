@@ -16,3 +16,7 @@ The simulator adjusts the follower count when:
 
 Configure the base mapping under `swarm_responses` and the mission importance with `mission_criticality` in `config/simulation.yaml`.
 
+## Formation Reconfiguration
+
+When drones peel off to pursue a target, the remaining units automatically reposition around the home region. This reconfiguration keeps surveillance coverage balanced by assigning new patrol points to the drones still in formation.
+
