@@ -207,6 +207,58 @@ func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 	sim.tick()
 }
 
+func TestSimulator_EnemyCountConfig(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:      []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:     []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"}},
+		EnemyCount: 5,
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	if len(sim.enemyEng.Enemies) != 5 {
+		t.Fatalf("expected 5 enemies, got %d", len(sim.enemyEng.Enemies))
+	}
+}
+
+func TestSimulator_CustomDetectionRadius(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:           []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"}},
+		DetectionRadiusM: 500,
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.004, Lon: drone.Position.Lon, Alt: 0}}}
+
+	sim.tick()
+
+	if len(dWriter.Detections) != 1 {
+		t.Fatalf("expected detection within custom radius, got %d", len(dWriter.Detections))
+	}
+}
+
+func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:           []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"}},
+		DetectionRadiusM: 500,
+	}
+	writer := &MockWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+
+	drone := sim.fleets[0].Drones[0]
+	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.006, Lon: drone.Position.Lon, Alt: 0}}}
+
+	sim.tick()
+
+	if len(dWriter.Detections) != 0 {
+		t.Fatalf("expected no detections outside custom radius, got %d", len(dWriter.Detections))
+	}
+}
+
 func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},

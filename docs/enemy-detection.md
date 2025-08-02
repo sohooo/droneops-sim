@@ -10,9 +10,9 @@ a drone is within range.
 
 ## How It Works
 
-1. On startup the simulator creates three enemies inside the first zone defined in `config/simulation.yaml`.
+1. On startup the simulator creates `enemy_count` enemies inside the first zone defined in `config/simulation.yaml` (default: 3).
 2. Each tick the enemies take a small random step within that zone.
-3. Every drone checks for enemies within **1&nbsp;km**. When an enemy is detected an event is generated with a
+3. Every drone checks for enemies within the configured `detection_radius_m` (default: **1000&nbsp;m**). When an enemy is detected an event is generated with a
    confidence value that decreases with distance.
 4. Detection events are either printed to STDOUT (print-only mode) or inserted into GreptimeDB.
 5. If the detection confidence exceeds `follow_confidence` (see `config/simulation.yaml`), drones may switch to follow mode.
@@ -25,6 +25,17 @@ Drone telemetry rows now include a `follow` field indicating whether the drone i
 
 ## Configuration Options
 
+### Simulation Settings
+
+The following fields in `config/simulation.yaml` control the enemy detection behaviour:
+
+| Field               | Description                                      | Default |
+|---------------------|--------------------------------------------------|---------|
+| `enemy_count`       | Number of simulated enemies in the zone          | `3`     |
+| `detection_radius_m`| Radius in meters for enemy detection checks      | `1000`  |
+
+### GreptimeDB Output
+
 The enemy detection subsystem has a single configuration value when writing to GreptimeDB:
 
 | Environment Variable      | Description                                               | Default            |
@@ -34,8 +45,6 @@ The enemy detection subsystem has a single configuration value when writing to G
 If the variable is unset the default table name `enemy_detection` is used. In print-only mode this value has
 no effect.
 
-Currently the number of enemies and detection radius are fixed in code. Future versions may expose these as
-configurable parameters.
 
 ## Example Event
 

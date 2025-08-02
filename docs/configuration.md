@@ -77,6 +77,9 @@ fleets:
       sensor_error_rate: 0.01
       dropout_rate: 0.01
       battery_anomaly_rate: 0.01
+# Enemy detection settings
+enemy_count: 3
+detection_radius_m: 1000
 # Minimum confidence for drones to begin following detected enemies
 follow_confidence: 75
 
@@ -89,6 +92,8 @@ swarm_responses:
 
 `follow_confidence` sets the detection confidence threshold required for a drone
 to switch into follow mode.
+
+`enemy_count` controls how many hostile entities are simulated in the first zone and `detection_radius_m` sets the detection range in meters for each drone.
 
 ### Enemy Detection
 
