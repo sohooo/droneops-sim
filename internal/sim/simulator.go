@@ -58,10 +58,20 @@ type MapEnemy struct {
 	Alt  float64         `json:"alt"`
 }
 
-// MapData aggregates drone and enemy positions for the map view.
+// MapMission represents a mission region for annotations on the map.
+type MapMission struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	RadiusKM float64 `json:"radius_km"`
+}
+
+// MapData aggregates drone, enemy, and mission positions for the map view.
 type MapData struct {
-	Drones  []MapDrone `json:"drones"`
-	Enemies []MapEnemy `json:"enemies"`
+	Drones   []MapDrone   `json:"drones"`
+	Enemies  []MapEnemy   `json:"enemies"`
+	Missions []MapMission `json:"missions"`
 }
 
 // Simulator orchestrates fleet telemetry generation and writing.
@@ -723,7 +733,19 @@ func (s *Simulator) MapSnapshot() MapData {
 			})
 		}
 	}
-	return MapData{Drones: drones, Enemies: enemies}
+	var missions []MapMission
+	if s.cfg != nil {
+		for _, m := range s.cfg.Missions {
+			missions = append(missions, MapMission{
+				ID:       m.ID,
+				Name:     m.Name,
+				Lat:      m.Region.CenterLat,
+				Lon:      m.Region.CenterLon,
+				RadiusKM: m.Region.RadiusKM,
+			})
+		}
+	}
+	return MapData{Drones: drones, Enemies: enemies, Missions: missions}
 }
 
 func generateDroneID(fleetName string, index int) string {

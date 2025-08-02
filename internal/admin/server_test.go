@@ -112,8 +112,9 @@ func TestHandleHealth(t *testing.T) {
 
 func TestHandleTelemetry(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
-		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+		Zones:    []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:   []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "o", Description: "d", Region: config.Region{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
 	}
 
 	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
@@ -138,8 +139,9 @@ func TestHandleTelemetry(t *testing.T) {
 
 func TestHandleMapData(t *testing.T) {
 	cfg := &config.SimulationConfig{
-		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
-		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+		Zones:    []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:   []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "o", Description: "d", Region: config.Region{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
 	}
 
 	simulator := sim.NewSimulator("cluster", cfg, nil, nil, 1)
@@ -162,5 +164,8 @@ func TestHandleMapData(t *testing.T) {
 	}
 	if len(data.Enemies) == 0 {
 		t.Errorf("expected enemies to be included")
+	}
+	if len(data.Missions) != 1 || data.Missions[0].ID != "m1" {
+		t.Errorf("expected mission annotations")
 	}
 }

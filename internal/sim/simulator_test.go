@@ -33,7 +33,7 @@ func (w *MockDetectionWriter) WriteDetection(d enemy.DetectionRow) error {
 func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
-		Missions: []config.Mission{{Name: "m1", Zone: "region-1", Description: "test"}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "test", Region: config.Region{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet-1", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "region-1"},
 		},
@@ -130,7 +130,7 @@ func TestSimulator_DropoutRate(t *testing.T) {
 func TestSimulator_DetectsEnemy(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
@@ -162,7 +162,7 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
@@ -186,7 +186,7 @@ func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
@@ -267,7 +267,7 @@ func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
 func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
@@ -304,7 +304,7 @@ func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
@@ -336,7 +336,7 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 func TestSimulator_DetectionFactorsReduceConfidence(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 1, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
@@ -374,7 +374,7 @@ func TestSimulator_DetectionFactorsReduceConfidence(t *testing.T) {
 func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0.1}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "point-to-point", HomeRegion: "zone"},
 		},
@@ -451,7 +451,7 @@ func TestSimulator_PredictiveInterception(t *testing.T) {
 func TestSimulator_PatrolResponseCount(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
@@ -481,7 +481,7 @@ func TestSimulator_PatrolResponseCount(t *testing.T) {
 func TestSimulator_LoiterResponseCount(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 3, MovementPattern: "loiter", HomeRegion: "zone"},
 		},
@@ -511,7 +511,7 @@ func TestSimulator_LoiterResponseCount(t *testing.T) {
 func TestSimulator_ThreatAdaptiveFollowers(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 0}},
-		Missions: []config.Mission{{Name: "m1", Zone: "zone", Description: ""}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
 		Fleets: []config.Fleet{
 			{Name: "fleet", Model: "small-fpv", Count: 4, MovementPattern: "patrol", HomeRegion: "zone"},
 		},

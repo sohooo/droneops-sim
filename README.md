@@ -218,7 +218,7 @@ The Admin WebUI provides a centralized interface for monitoring and managing dro
 - **Chaos Mode Toggle**: Allows users to enable or disable chaos mode, simulating random failures and unpredictable behavior.
 - **Drone Launch Control**: Provides an interface to launch drones for specific missions or operations.
 - **Mission Visualization**: Shows mission objectives, regions, and associated drones.
-- **3D Map Option**: View drone positions on a CesiumJS-based map at `/3d`.
+- **3D Map Option**: Explore an interactive CesiumJS scene with textured terrain, dynamic lighting, and mission annotations at `/3d`.
 - **Interactive Command Console**: Enables direct interaction with the simulator for advanced operations.
 
 ### Access
