@@ -87,6 +87,9 @@ weather_impact: 0.2
 # Minimum confidence for drones to begin following detected enemies
 follow_confidence: 75
 
+# Overall mission criticality influencing follow aggressiveness
+mission_criticality: medium
+
 # Swarm response rules per movement pattern
 swarm_responses:
   patrol: 1           # one additional drone follows
@@ -95,7 +98,8 @@ swarm_responses:
 ```
 
 `follow_confidence` sets the detection confidence threshold required for a drone
-to switch into follow mode.
+to switch into follow mode. `mission_criticality` (`low`, `medium`, `high`)
+adjusts how aggressively the swarm adds followers when a threat is detected.
 
 `enemy_count` controls how many hostile entities are simulated in each zone and `detection_radius_m` sets the detection range in meters for each drone. `sensor_noise`, `terrain_occlusion`, and `weather_impact` modify detection confidence to account for sensor errors and environmental effects.
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,22 +66,23 @@ type MapData struct {
 
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
-	clusterID        string
-	fleets           []DroneFleet
-	teleGen          *telemetry.Generator
-	writer           TelemetryWriter
-	detectionWriter  DetectionWriter
-	enemyEng         *enemy.Engine
-	tickInterval     time.Duration
-	chaosMode        bool
-	cfg              *config.SimulationConfig
-	followConfidence float64
-	detectionRadiusM float64
-	sensorNoise      float64
-	terrainOcclusion float64
-	weatherImpact    float64
-	swarmResponses   map[string]int
-	mu               sync.Mutex
+	clusterID          string
+	fleets             []DroneFleet
+	teleGen            *telemetry.Generator
+	writer             TelemetryWriter
+	detectionWriter    DetectionWriter
+	enemyEng           *enemy.Engine
+	tickInterval       time.Duration
+	chaosMode          bool
+	cfg                *config.SimulationConfig
+	followConfidence   float64
+	detectionRadiusM   float64
+	sensorNoise        float64
+	terrainOcclusion   float64
+	weatherImpact      float64
+	swarmResponses     map[string]int
+	missionCriticality int
+	mu                 sync.Mutex
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -112,19 +114,27 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 	} else if weather > 1 {
 		weather = 1
 	}
+	crit := 0
+	switch strings.ToLower(cfg.MissionCriticality) {
+	case "medium":
+		crit = 1
+	case "high":
+		crit = 2
+	}
 	sim := &Simulator{
-		clusterID:        clusterID,
-		teleGen:          telemetry.NewGenerator(clusterID),
-		writer:           writer,
-		detectionWriter:  dWriter,
-		tickInterval:     tickInterval,
-		cfg:              cfg,
-		followConfidence: cfg.FollowConfidence,
-		detectionRadiusM: radius,
-		sensorNoise:      sNoise,
-		terrainOcclusion: terrain,
-		weatherImpact:    weather,
-		swarmResponses:   cfg.SwarmResponses,
+		clusterID:          clusterID,
+		teleGen:            telemetry.NewGenerator(clusterID),
+		writer:             writer,
+		detectionWriter:    dWriter,
+		tickInterval:       tickInterval,
+		cfg:                cfg,
+		followConfidence:   cfg.FollowConfidence,
+		detectionRadiusM:   radius,
+		sensorNoise:        sNoise,
+		terrainOcclusion:   terrain,
+		weatherImpact:      weather,
+		swarmResponses:     cfg.SwarmResponses,
+		missionCriticality: crit,
 	}
 
 	// Check if zones are defined
@@ -270,7 +280,7 @@ func (s *Simulator) tick() {
 						}
 						detections = append(detections, d)
 						if conf >= s.followConfidence {
-							s.assignFollower(&fleet, drone, en)
+							s.assignFollower(&fleet, drone, en, conf)
 						}
 					}
 				}
@@ -307,11 +317,25 @@ func (s *Simulator) tick() {
 	}
 }
 
-func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy) {
+func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone, en *enemy.Enemy, conf float64) {
 	target := en.Position
 	count, ok := s.swarmResponses[detecting.MovementPattern]
 	if !ok {
 		count = 0
+	}
+	if count >= 0 {
+		if conf > 90 {
+			count++
+		}
+		switch en.Type {
+		case enemy.EnemyVehicle, enemy.EnemyDrone:
+			count++
+		case enemy.EnemyDecoy:
+			if count > 0 {
+				count--
+			}
+		}
+		count += s.missionCriticality
 	}
 	if count == 0 {
 		cp := target
@@ -340,6 +364,10 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 				break
 			}
 		}
+	}
+	if assigned == 0 {
+		cp := target
+		detecting.FollowTarget = &cp
 	}
 }
 
