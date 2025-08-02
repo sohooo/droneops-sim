@@ -50,6 +50,7 @@ cue vet config/simulation.yaml schemas/simulation.cue
 - `--config` → Path to YAML config (default: config/simulation.yaml)
 - `--schema` → Path to CUE schema (default: schemas/simulation.cue)
 - `--tick` → Telemetry tick interval (default: 1s)
+- `--log-file` → Optional path to write telemetry and detection logs (JSONL)
 
 ### Environment Variables
 
@@ -67,6 +68,17 @@ The simulator can be configured through the following environment variables:
 ## Quickstart
 
 See [docs/quickstart.md](docs/quickstart.md) for step-by-step instructions.
+
+## Log Export & Playback
+
+- Use `--log-file` to export telemetry and enemy detection events as JSONL files.
+- Replay a recorded mission with the `replay` command:
+
+```bash
+go run cmd/replay/main.go --input mission.log --print-only
+```
+
+- Control playback rate using `--speed` (e.g., `--speed 2` for 2x).
 
 ## Examples
 

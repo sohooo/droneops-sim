@@ -19,6 +19,7 @@ func main() {
 	configPath := flag.String("config", "config/simulation.yaml", "Path to simulation configuration YAML")
 	cueSchemaPath := flag.String("schema", "schemas/simulation.cue", "Path to CUE schema file")
 	tickFlag := flag.Duration("tick", time.Second, "Telemetry tick interval (e.g. 500ms, 2s)")
+	logFile := flag.String("log-file", "", "Path to export telemetry/detection logs (JSONL)")
 	flag.Parse()
 
 	// Load simulation configuration
@@ -44,6 +45,18 @@ func main() {
 			log.Fatalf("Failed to init GreptimeDB writer: %v", err)
 		}
 		detectWriter = writer.(sim.DetectionWriter)
+	}
+
+	// Optional log export
+	if *logFile != "" {
+		fw, err := sim.NewFileWriter(*logFile, *logFile+".detections")
+		if err != nil {
+			log.Fatalf("Failed to create log file: %v", err)
+		}
+		defer fw.Close()
+		mw := sim.NewMultiWriter([]sim.TelemetryWriter{writer, fw}, []sim.DetectionWriter{detectWriter, fw})
+		writer = mw
+		detectWriter = mw
 	}
 
 	// Cluster identity (defaults to mission-01)
