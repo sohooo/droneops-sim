@@ -24,3 +24,9 @@ Configuration files can be validated with:
 cue vet config/simulation.yaml schemas/simulation.cue
 ```
 
+## Additional Guidelines
+- When making changes, update all relevant documentation, configuration files, Helm charts, and similar resources.
+- Write multiple robust tests to verify the behavior.
+- Verify the changes by executing the test suite.
+- When creating a pull request, use Conventional Commit formatting for commit messages.
+
