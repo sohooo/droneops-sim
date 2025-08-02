@@ -201,8 +201,8 @@ The Admin WebUI is included in the Helm chart for the `droneops-sim` project. Fo
 
 The simulator includes an enemy detection subsystem used to test how drones react to hostile objects.
 
-- An **Enemy Simulation Engine** spawns a handful of enemies in the first configured zone and moves them each tick using a random walk.
-- Every drone checks for enemies within a 1&nbsp;km radius each tick. The closer the enemy, the higher the confidence value reported.
+- An **Enemy Simulation Engine** spawns a configurable number of enemies in the first configured zone and moves them each tick using a random walk.
+- Every drone checks for enemies within a configurable detection radius (default: 1&nbsp;km) each tick. The closer the enemy, the higher the confidence value reported.
 - Detection events are written to the table specified by `ENEMY_DETECTION_TABLE` when writing to GreptimeDB, or printed to STDOUT in print-only mode.
 
 See [docs/enemy-detection.md](docs/enemy-detection.md) for more details on the available settings and event format.

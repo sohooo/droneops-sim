@@ -51,6 +51,8 @@ type SimulationConfig struct {
 	Zones            []Region       `yaml:"zones"`
 	Missions         []Mission      `yaml:"missions"`
 	Fleets           []Fleet        `yaml:"fleets"`
+	EnemyCount       int            `yaml:"enemy_count"`
+	DetectionRadiusM float64        `yaml:"detection_radius_m"`
 	FollowConfidence float64        `yaml:"follow_confidence"`
 	SwarmResponses   map[string]int `yaml:"swarm_responses"`
 }

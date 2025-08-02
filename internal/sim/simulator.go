@@ -75,6 +75,7 @@ type Simulator struct {
 	chaosMode        bool
 	cfg              *config.SimulationConfig
 	followConfidence float64
+	detectionRadiusM float64
 	swarmResponses   map[string]int
 	mu               sync.Mutex
 }
@@ -88,6 +89,10 @@ type DroneFleet struct {
 
 // NewSimulator initializes drones from fleet config.
 func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, dWriter DetectionWriter, tickInterval time.Duration) *Simulator {
+	radius := cfg.DetectionRadiusM
+	if radius <= 0 {
+		radius = 1000
+	}
 	sim := &Simulator{
 		clusterID:        clusterID,
 		teleGen:          telemetry.NewGenerator(clusterID),
@@ -96,6 +101,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		tickInterval:     tickInterval,
 		cfg:              cfg,
 		followConfidence: cfg.FollowConfidence,
+		detectionRadiusM: radius,
 		swarmResponses:   cfg.SwarmResponses,
 	}
 
@@ -130,8 +136,12 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		sim.fleets = append(sim.fleets, f)
 	}
 
-	// Initialize enemy engine with a few entities in the first zone
-	sim.enemyEng = enemy.NewEngine(3, telemetry.Region{
+	// Initialize enemy engine with entities in the first zone
+	count := cfg.EnemyCount
+	if count <= 0 {
+		count = 3
+	}
+	sim.enemyEng = enemy.NewEngine(count, telemetry.Region{
 		Name:      cfg.Zones[0].Name,
 		CenterLat: cfg.Zones[0].CenterLat,
 		CenterLon: cfg.Zones[0].CenterLon,
@@ -205,8 +215,8 @@ func (s *Simulator) tick() {
 			if s.enemyEng != nil {
 				for _, en := range s.enemyEng.Enemies {
 					dist := distanceMeters(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
-					if dist <= 1000 {
-						conf := 100 * (1 - dist/1000)
+					if dist <= s.detectionRadiusM {
+						conf := 100 * (1 - dist/s.detectionRadiusM)
 						d := enemy.DetectionRow{
 							ClusterID:  s.clusterID,
 							DroneID:    drone.ID,

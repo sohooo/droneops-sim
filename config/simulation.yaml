@@ -79,3 +79,7 @@ swarm_responses:
   patrol: 1           # one additional drone follows
   point-to-point: 0   # detecting drone follows
   loiter: 2           # two drones converge
+
+# Enemy detection settings
+enemy_count: 3
+detection_radius_m: 1000

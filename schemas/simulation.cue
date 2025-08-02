@@ -34,3 +34,7 @@ fleets: [...{
 follow_confidence?: number & >=0 & <=100
 
 swarm_responses?: { [=~"patrol|point-to-point|loiter"]: int }
+
+enemy_count?: int & >=0
+
+detection_radius_m?: number & >0

@@ -72,6 +72,9 @@ config:
           dropout_rate: 0.01
           battery_anomaly_rate: 0.01
 
+    # Enemy detection settings
+    enemy_count: 3
+    detection_radius_m: 1000
 schema:
   simulation:
     package: schemas
@@ -98,3 +101,5 @@ schema:
           sensor_error_rate: number
           dropout_rate: number
           battery_anomaly_rate: number
+    enemy_count: int
+    detection_radius_m: number
