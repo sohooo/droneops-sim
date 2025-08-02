@@ -80,6 +80,10 @@ fleets:
 # Enemy detection settings
 enemy_count: 3
 detection_radius_m: 1000
+# Additional detection factors
+sensor_noise: 0.05
+terrain_occlusion: 0.1
+weather_impact: 0.2
 # Minimum confidence for drones to begin following detected enemies
 follow_confidence: 75
 
@@ -93,7 +97,7 @@ swarm_responses:
 `follow_confidence` sets the detection confidence threshold required for a drone
 to switch into follow mode.
 
-`enemy_count` controls how many hostile entities are simulated in the first zone and `detection_radius_m` sets the detection range in meters for each drone.
+`enemy_count` controls how many hostile entities are simulated in the first zone and `detection_radius_m` sets the detection range in meters for each drone. `sensor_noise`, `terrain_occlusion`, and `weather_impact` modify detection confidence to account for sensor errors and environmental effects.
 
 ### Enemy Detection
 

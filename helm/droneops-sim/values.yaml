@@ -75,6 +75,9 @@ config:
     # Enemy detection settings
     enemy_count: 3
     detection_radius_m: 1000
+    sensor_noise: 0
+    terrain_occlusion: 0
+    weather_impact: 0
 schema:
   simulation:
     package: schemas
@@ -103,3 +106,6 @@ schema:
           battery_anomaly_rate: number
     enemy_count: int
     detection_radius_m: number
+    sensor_noise: number
+    terrain_occlusion: number
+    weather_impact: number
