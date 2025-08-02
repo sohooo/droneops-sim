@@ -577,3 +577,63 @@ func TestSimulator_RebalanceFormation(t *testing.T) {
 		}
 	}
 }
+
+func TestSimulator_CommunicationLossPreventsAssignment(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		SwarmResponses:    map[string]int{"patrol": 1},
+		CommunicationLoss: 1.0,
+		BandwidthLimit:    10,
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	detecting := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
+	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil {
+			t.Fatalf("expected no followers due to comm loss")
+		}
+	}
+}
+
+func TestSimulator_FollowerFailover(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{
+			{Name: "fleet", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		SwarmResponses:    map[string]int{"patrol": 1},
+		CommunicationLoss: 0,
+		BandwidthLimit:    10,
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	detecting := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
+	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
+	var follower *telemetry.Drone
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil && d != detecting {
+			follower = d
+		}
+	}
+	if follower == nil {
+		t.Fatalf("expected a follower to be assigned")
+	}
+	follower.Status = telemetry.StatusFailure
+	sim.reassignFollowers()
+	if follower.FollowTarget != nil {
+		t.Errorf("failed follower should have no target")
+	}
+	var replacement *telemetry.Drone
+	for _, d := range sim.fleets[0].Drones {
+		if d.FollowTarget != nil && d != follower {
+			replacement = d
+		}
+	}
+	if replacement == nil {
+		t.Fatalf("expected replacement follower to be assigned")
+	}
+}
