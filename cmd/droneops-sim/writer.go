@@ -20,11 +20,15 @@ func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string) (s
 		return writer, detectWriter, cleanup, nil
 	}
 
-	fw, err := sim.NewFileWriter(logFile, logFile+".detections")
+	fw, err := sim.NewFileWriter(logFile, logFile+".detections", logFile+".swarm")
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	mw := sim.NewMultiWriter([]sim.TelemetryWriter{writer, fw}, []sim.DetectionWriter{detectWriter, fw})
+	sws := []sim.SwarmEventWriter{fw}
+	if sw, ok := writer.(sim.SwarmEventWriter); ok {
+		sws = append(sws, sw)
+	}
+	mw := sim.NewMultiWriter([]sim.TelemetryWriter{writer, fw}, []sim.DetectionWriter{detectWriter, fw}, sws)
 	cleanup = func() { fw.Close() }
 	return mw, mw, cleanup, nil
 }
@@ -39,7 +43,8 @@ func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWri
 	endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
 	table := os.Getenv("GREPTIMEDB_TABLE")
 	detTable := os.Getenv("ENEMY_DETECTION_TABLE")
-	w, err := sim.NewGreptimeDBWriter(endpoint, "public", table, detTable)
+	swarmTable := os.Getenv("SWARM_EVENT_TABLE")
+	w, err := sim.NewGreptimeDBWriter(endpoint, "public", table, detTable, swarmTable)
 	if err != nil {
 		return nil, nil, err
 	}

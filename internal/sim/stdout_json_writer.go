@@ -49,3 +49,18 @@ func (w *JSONStdoutWriter) WriteDetections(rows []enemy.DetectionRow) error {
 	}
 	return nil
 }
+
+// WriteSwarmEvent outputs a swarm event in JSON format.
+func (w *JSONStdoutWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	data, _ := json.Marshal(e)
+	fmt.Fprintln(w.out, string(data))
+	return nil
+}
+
+// WriteSwarmEvents outputs multiple swarm events in JSON format.
+func (w *JSONStdoutWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
+	for _, r := range rows {
+		_ = w.WriteSwarmEvent(r)
+	}
+	return nil
+}

@@ -15,7 +15,8 @@ func TestFileWriter(t *testing.T) {
 	dir := t.TempDir()
 	telePath := filepath.Join(dir, "telemetry.json")
 	detPath := filepath.Join(dir, "detections.json")
-	fw, err := NewFileWriter(telePath, detPath)
+	swarmPath := filepath.Join(dir, "swarm.json")
+	fw, err := NewFileWriter(telePath, detPath, swarmPath)
 	if err != nil {
 		t.Fatalf("NewFileWriter: %v", err)
 	}
@@ -45,6 +46,10 @@ func TestFileWriter(t *testing.T) {
 	if err := fw.WriteDetection(dRow); err != nil {
 		t.Fatalf("Write detection: %v", err)
 	}
+	sRow := telemetry.SwarmEventRow{ClusterID: "c1", EventType: telemetry.SwarmEventAssignment, DroneIDs: []string{"d1"}, EnemyID: "e1", Timestamp: time.Unix(0, 0)}
+	if err := fw.WriteSwarmEvent(sRow); err != nil {
+		t.Fatalf("Write swarm: %v", err)
+	}
 
 	fw.Close()
 
@@ -71,5 +76,17 @@ func TestFileWriter(t *testing.T) {
 	}
 	if gotD.EnemyID != dRow.EnemyID || gotD.DistanceM != dRow.DistanceM {
 		t.Fatalf("unexpected detection row: %+v", gotD)
+	}
+
+	sData, err := os.ReadFile(swarmPath)
+	if err != nil {
+		t.Fatalf("read swarm: %v", err)
+	}
+	var gotS telemetry.SwarmEventRow
+	if err := json.Unmarshal(sData, &gotS); err != nil {
+		t.Fatalf("decode swarm: %v", err)
+	}
+	if gotS.EventType != sRow.EventType || gotS.EnemyID != sRow.EnemyID {
+		t.Fatalf("unexpected swarm row: %+v", gotS)
 	}
 }

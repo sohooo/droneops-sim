@@ -7,13 +7,14 @@ import (
 
 // MultiWriter fan-outs telemetry and detection rows to multiple writers.
 type MultiWriter struct {
-	telewriters []TelemetryWriter
-	detwriters  []DetectionWriter
+	telewriters  []TelemetryWriter
+	detwriters   []DetectionWriter
+	swarmwriters []SwarmEventWriter
 }
 
 // NewMultiWriter creates a new MultiWriter.
-func NewMultiWriter(tws []TelemetryWriter, dws []DetectionWriter) *MultiWriter {
-	return &MultiWriter{telewriters: tws, detwriters: dws}
+func NewMultiWriter(tws []TelemetryWriter, dws []DetectionWriter, sws []SwarmEventWriter) *MultiWriter {
+	return &MultiWriter{telewriters: tws, detwriters: dws, swarmwriters: sws}
 }
 
 // Write sends a telemetry row to all writers.
@@ -65,6 +66,34 @@ func (mw *MultiWriter) WriteDetections(rows []enemy.DetectionRow) error {
 		}
 		for _, r := range rows {
 			if err := w.WriteDetection(r); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// WriteSwarmEvent sends a swarm event row to all swarm writers.
+func (mw *MultiWriter) WriteSwarmEvent(row telemetry.SwarmEventRow) error {
+	for _, w := range mw.swarmwriters {
+		if err := w.WriteSwarmEvent(row); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WriteSwarmEvents sends multiple swarm events, using batch mode if supported.
+func (mw *MultiWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
+	for _, w := range mw.swarmwriters {
+		if bw, ok := w.(batchSwarmEventWriter); ok {
+			if err := bw.WriteSwarmEvents(rows); err != nil {
+				return err
+			}
+			continue
+		}
+		for _, r := range rows {
+			if err := w.WriteSwarmEvent(r); err != nil {
 				return err
 			}
 		}

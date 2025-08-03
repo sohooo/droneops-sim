@@ -24,6 +24,10 @@ When several drones pursue a moving enemy, they no longer trail the target. Inst
 
 When drones peel off to pursue a target, the remaining units automatically reposition around the home region. This reconfiguration keeps surveillance coverage balanced by assigning new patrol points to the drones still in formation.
 
+## Swarm Event Telemetry
+
+Follower assignments, releases, and formation adjustments generate `swarm_event` records. Each event captures the affected drone IDs, related enemy, and a timestamp. These rows can be stored in GreptimeDB or written to JSONL logs for downstream analysis.
+
 ## Communication Constraints and Failover
 
 Swarms operate over lossy channels. The simulator can drop follow commands or telemetry updates based on a `communication_loss` probability and limits the number of commands per tick with `bandwidth_limit`. When a follower drops out or fails, the remaining drones reach consensus by selecting the highest-battery idle unit to take over tracking so priorities remain aligned despite signal issues.

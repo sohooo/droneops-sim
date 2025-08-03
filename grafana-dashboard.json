@@ -348,6 +348,54 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Follower Count",
+      "description": "Net follower assignments over time.",
+      "gridPos": { "x": 0, "y": 96, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "R",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts, 1m) AS time, SUM(CASE WHEN event_type='assignment' THEN 1 WHEN event_type='unassignment' THEN -1 ELSE 0 END) AS followers FROM swarm_events WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Reassignment Frequency",
+      "description": "Unassignment events per minute.",
+      "gridPos": { "x": 12, "y": 96, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts, 1m) AS time, COUNT(*) AS unassign FROM swarm_events WHERE $__timeFilter(ts) AND event_type='unassignment' AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Formation Changes",
+      "description": "Formation reconfiguration events.",
+      "gridPos": { "x": 0, "y": 104, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "T",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts, 1m) AS time, COUNT(*) AS changes FROM swarm_events WHERE $__timeFilter(ts) AND event_type='formation_change' AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {

@@ -3,6 +3,7 @@ package sim
 import (
 	"context"
 	log "log/slog"
+	"strings"
 
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
@@ -18,10 +19,11 @@ type GreptimeDBWriter struct {
 	db             string
 	table          string
 	detectionTable string
+	swarmTable     string
 }
 
 // NewGreptimeDBWriter creates a new GreptimeDB writer.
-func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string) (*GreptimeDBWriter, error) {
+func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string, swarmTable string) (*GreptimeDBWriter, error) {
 	cfg := greptime.NewConfig(endpoint).
 		WithPort(4001).
 		WithDatabase(database)
@@ -38,12 +40,16 @@ func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string
 	if detectionTable == "" {
 		detectionTable = "enemy_detection"
 	}
+	if swarmTable == "" {
+		swarmTable = "swarm_events"
+	}
 
 	return &GreptimeDBWriter{
 		client:         client,
 		db:             database,
 		table:          table,
 		detectionTable: detectionTable,
+		swarmTable:     swarmTable,
 	}, nil
 }
 
@@ -168,5 +174,51 @@ func (w *GreptimeDBWriter) WriteDetections(rows []enemy.DetectionRow) error {
 	}
 
 	log.Info("GreptimeDBWriter wrote enemy detections", "count", len(rows))
+	return nil
+}
+
+// WriteSwarmEvent inserts a single swarm event row.
+func (w *GreptimeDBWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	return w.WriteSwarmEvents([]telemetry.SwarmEventRow{e})
+}
+
+// WriteSwarmEvents inserts multiple swarm event rows.
+func (w *GreptimeDBWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	tbl, err := table.New(w.swarmTable)
+	if err != nil {
+		return err
+	}
+	tbl.AddTagColumn("cluster_id", types.STRING)
+	tbl.AddTagColumn("event_type", types.STRING)
+	tbl.AddFieldColumn("drone_ids", types.STRING)
+	tbl.AddTagColumn("enemy_id", types.STRING)
+	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
+
+	for _, r := range rows {
+		err := tbl.AddRow(
+			r.ClusterID,
+			r.EventType,
+			strings.Join(r.DroneIDs, ","),
+			r.EnemyID,
+			r.Timestamp,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = w.client.Write(ctx, tbl)
+	if err != nil {
+		log.Error("GreptimeDBWriter swarm event write failed", "err", err)
+		return err
+	}
+
+	log.Info("GreptimeDBWriter wrote swarm events", "count", len(rows))
 	return nil
 }
