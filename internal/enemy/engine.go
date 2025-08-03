@@ -12,13 +12,14 @@ import (
 
 // Engine maintains and updates simulated enemy entities.
 type Engine struct {
-	regions []telemetry.Region
-	Enemies []*Enemy
+	regions   []telemetry.Region
+	Enemies   []*Enemy
+	randFloat func() float64
 }
 
 // NewEngine creates an engine with a given number of enemies per region.
 func NewEngine(count int, regions []telemetry.Region) *Engine {
-	e := &Engine{regions: regions}
+	e := &Engine{regions: regions, randFloat: rand.Float64}
 	rand.Seed(time.Now().UnixNano())
 	for _, r := range regions {
 		for i := 0; i < count; i++ {
@@ -122,28 +123,51 @@ func nearestEnemy(cur *Enemy, enemies []*Enemy) (*Enemy, float64) {
 	return closest, min
 }
 
+func (e *Engine) respondToNearbyDrone(en *Enemy, drones []*telemetry.Drone) bool {
+	nearest, dist := nearestDrone(en.Position, drones)
+	if nearest != nil && dist < 0.005 { // ~500m
+		en.Position = moveAway(en.Position, nearest.Position)
+		if e.randFloat() < 0.3 {
+			e.spawnDecoy(en)
+		}
+		return true
+	}
+	return false
+}
+
+func (e *Engine) pursueAnotherEnemy(en *Enemy) bool {
+	if e.randFloat() < 0.1 && len(e.Enemies) > 1 {
+		other, _ := nearestEnemy(en, e.Enemies)
+		if other != nil {
+			en.Position = moveTowards(en.Position, other.Position)
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Engine) handleRegionBounds(en *Enemy) {
+	if en.Region.RadiusKM > 0 {
+		center := telemetry.Position{Lat: en.Region.CenterLat, Lon: en.Region.CenterLon}
+		if distance(en.Position, center) > en.Region.RadiusKM/111 {
+			en.Position = randomPosition(en.Region)
+		}
+	}
+}
+
 // Step updates enemies based on drone positions and tactics.
 func (e *Engine) Step(drones []*telemetry.Drone) {
+	if e.randFloat == nil {
+		e.randFloat = rand.Float64
+	}
 	for _, en := range e.Enemies {
-		nearest, dist := nearestDrone(en.Position, drones)
-		if nearest != nil && dist < 0.005 { // ~500m
-			en.Position = moveAway(en.Position, nearest.Position)
-			if rand.Float64() < 0.3 {
-				e.spawnDecoy(en)
-			}
-		} else if rand.Float64() < 0.1 && len(e.Enemies) > 1 {
-			other, _ := nearestEnemy(en, e.Enemies)
-			if other != nil {
-				en.Position = moveTowards(en.Position, other.Position)
-			}
-		} else {
+		handled := e.respondToNearbyDrone(en, drones)
+		if !handled {
+			handled = e.pursueAnotherEnemy(en)
+		}
+		if !handled {
 			en.Position = randomStep(en.Position)
 		}
-		if en.Region.RadiusKM > 0 {
-			center := telemetry.Position{Lat: en.Region.CenterLat, Lon: en.Region.CenterLon}
-			if distance(en.Position, center) > en.Region.RadiusKM/111 {
-				en.Position = randomPosition(en.Region)
-			}
-		}
+		e.handleRegionBounds(en)
 	}
 }
