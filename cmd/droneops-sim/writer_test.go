@@ -24,6 +24,21 @@ func TestNewWritersPrintOnly(t *testing.T) {
 	}
 }
 
+func TestNewWritersGreptimeFallback(t *testing.T) {
+	t.Setenv("GREPTIMEDB_ENDPOINT", "")
+	tw, dw, cleanup, err := newWriters(false, "")
+	if err != nil {
+		t.Fatalf("newWriters returned error: %v", err)
+	}
+	cleanup()
+	if _, ok := tw.(*sim.StdoutWriter); !ok {
+		t.Fatalf("expected *sim.StdoutWriter, got %T", tw)
+	}
+	if _, ok := dw.(*sim.StdoutWriter); !ok {
+		t.Fatalf("expected *sim.StdoutWriter, got %T", dw)
+	}
+}
+
 func TestNewWritersLogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "telemetry.log")
