@@ -16,11 +16,11 @@ func TestNewWritersPrintOnly(t *testing.T) {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
 	cleanup()
-	if _, ok := tw.(*sim.StdoutWriter); !ok {
-		t.Fatalf("expected *sim.StdoutWriter, got %T", tw)
+	if _, ok := tw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", tw)
 	}
-	if _, ok := dw.(*sim.StdoutWriter); !ok {
-		t.Fatalf("expected *sim.StdoutWriter, got %T", dw)
+	if _, ok := dw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", dw)
 	}
 }
 
@@ -31,11 +31,11 @@ func TestNewWritersGreptimeFallback(t *testing.T) {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
 	cleanup()
-	if _, ok := tw.(*sim.StdoutWriter); !ok {
-		t.Fatalf("expected *sim.StdoutWriter, got %T", tw)
+	if _, ok := tw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", tw)
 	}
-	if _, ok := dw.(*sim.StdoutWriter); !ok {
-		t.Fatalf("expected *sim.StdoutWriter, got %T", dw)
+	if _, ok := dw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", dw)
 	}
 }
 
