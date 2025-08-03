@@ -443,42 +443,82 @@ func (s *Simulator) selectReplacement() *telemetry.Drone {
 	return best
 }
 
+// cleanupFollowers removes invalid followers for an enemy and returns remaining active IDs.
+func (s *Simulator) cleanupFollowers(enemyID string, followers []string) []string {
+	active := followers[:0]
+	for _, id := range followers {
+		d := s.droneIndex[id]
+		if d != nil && d.FollowTarget != nil && d.Status == telemetry.StatusOK {
+			active = append(active, id)
+			continue
+		}
+		delete(s.droneAssignments, id)
+		if d != nil {
+			d.FollowTarget = nil
+		}
+	}
+	return active
+}
+
+// selectCandidates finds up to missing replacement drones and reserves their assignments.
+func (s *Simulator) selectCandidates(missing int) []*telemetry.Drone {
+	var cands []*telemetry.Drone
+	for missing > 0 {
+		cand := s.selectReplacement()
+		if cand == nil || !s.sendCommand() {
+			break
+		}
+		s.droneAssignments[cand.ID] = "" // reserve to avoid reselection
+		cands = append(cands, cand)
+		missing--
+	}
+	return cands
+}
+
+// filterSendable reserves and returns drones that can receive a command.
+func (s *Simulator) filterSendable(cands []*telemetry.Drone) []*telemetry.Drone {
+	var selected []*telemetry.Drone
+	for _, c := range cands {
+		if s.sendCommand() {
+			s.droneAssignments[c.ID] = "" // reserve
+			selected = append(selected, c)
+		}
+	}
+	return selected
+}
+
+// applyAssignments finalizes assignments of candidates to an enemy.
+func (s *Simulator) applyAssignments(enemyID string, en *enemy.Enemy, cands []*telemetry.Drone) {
+	if len(cands) == 0 {
+		return
+	}
+	pts := s.interceptPoints(en, len(cands))
+	for i, d := range cands {
+		cp := pts[i]
+		d.FollowTarget = &cp
+		s.enemyFollowers[enemyID] = append(s.enemyFollowers[enemyID], d.ID)
+		s.droneAssignments[d.ID] = enemyID
+	}
+}
+
 func (s *Simulator) reassignFollowers() {
 	for enemyID, followers := range s.enemyFollowers {
+		active := s.cleanupFollowers(enemyID, followers)
 		desired := s.enemyFollowerTargets[enemyID]
-		active := followers[:0]
-		for _, id := range followers {
-			d := s.droneIndex[id]
-			if d != nil && d.FollowTarget != nil && d.Status == telemetry.StatusOK {
-				active = append(active, id)
-				continue
-			}
-			delete(s.droneAssignments, id)
-			if d != nil {
-				d.FollowTarget = nil
-			}
-		}
-		s.enemyFollowers[enemyID] = active
 		missing := desired - len(active)
 		if missing <= 0 {
 			if len(active) == 0 {
 				delete(s.enemyFollowers, enemyID)
 				delete(s.enemyFollowerTargets, enemyID)
+			} else {
+				s.enemyFollowers[enemyID] = active
 			}
 			continue
 		}
+		s.enemyFollowers[enemyID] = active
 		en := s.enemyObjects[enemyID]
-		for missing > 0 {
-			cand := s.selectReplacement()
-			if cand == nil || !s.sendCommand() {
-				break
-			}
-			pts := s.interceptPoints(en, 1)
-			cand.FollowTarget = &pts[0]
-			s.enemyFollowers[enemyID] = append(s.enemyFollowers[enemyID], cand.ID)
-			s.droneAssignments[cand.ID] = enemyID
-			missing--
-		}
+		cands := s.selectCandidates(missing)
+		s.applyAssignments(enemyID, en, cands)
 		if len(s.enemyFollowers[enemyID]) == 0 {
 			delete(s.enemyFollowers, enemyID)
 			delete(s.enemyFollowerTargets, enemyID)
@@ -507,14 +547,12 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		count += s.missionCriticality
 	}
 	if count == 0 {
-		pts := s.interceptPoints(en, 1)
-		if s.sendCommand() {
-			detecting.FollowTarget = &pts[0]
-			s.droneAssignments[detecting.ID] = en.ID
-			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], detecting.ID)
+		cands := s.filterSendable([]*telemetry.Drone{detecting})
+		s.applyAssignments(en.ID, en, cands)
+		if len(cands) > 0 {
 			s.rebalanceFormation(fleet)
-			s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		}
+		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		return
 	}
 	if count < 0 {
@@ -524,20 +562,11 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 				unassigned = append(unassigned, d)
 			}
 		}
-		if len(unassigned) == 0 {
-			return
+		selected := s.filterSendable(unassigned)
+		s.applyAssignments(en.ID, en, selected)
+		if len(selected) > 0 {
+			s.rebalanceFormation(fleet)
 		}
-		pts := s.interceptPoints(en, len(unassigned))
-		for i, d := range unassigned {
-			if !s.sendCommand() {
-				continue
-			}
-			cp := pts[i]
-			d.FollowTarget = &cp
-			s.droneAssignments[d.ID] = en.ID
-			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], d.ID)
-		}
-		s.rebalanceFormation(fleet)
 		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		return
 	}
@@ -554,27 +583,19 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		}
 	}
 	if len(followers) == 0 {
-		pts := s.interceptPoints(en, 1)
-		if s.sendCommand() {
-			detecting.FollowTarget = &pts[0]
-			s.droneAssignments[detecting.ID] = en.ID
-			s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], detecting.ID)
+		cands := s.filterSendable([]*telemetry.Drone{detecting})
+		s.applyAssignments(en.ID, en, cands)
+		if len(cands) > 0 {
 			s.rebalanceFormation(fleet)
 		}
 		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 		return
 	}
-	pts := s.interceptPoints(en, len(followers))
-	for i, d := range followers {
-		if !s.sendCommand() {
-			continue
-		}
-		cp := pts[i]
-		d.FollowTarget = &cp
-		s.droneAssignments[d.ID] = en.ID
-		s.enemyFollowers[en.ID] = append(s.enemyFollowers[en.ID], d.ID)
+	selected := s.filterSendable(followers)
+	s.applyAssignments(en.ID, en, selected)
+	if len(selected) > 0 {
+		s.rebalanceFormation(fleet)
 	}
-	s.rebalanceFormation(fleet)
 	s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
 }
 
