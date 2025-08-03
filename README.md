@@ -1,6 +1,6 @@
 # DroneOps-Sim
 
-> "Slick Go-powered simulator for mission-driven drone fleets with battery and failure modeling, streaming telemetry to GreptimeDB or stdout for instant Grafana demos."
+> "Story-driven drone swarms that react to enemy maneuvers, chart evolving missions, and stream every dramatic turn to GreptimeDB or your console."
 
 ## Overview
 
