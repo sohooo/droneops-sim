@@ -20,10 +20,18 @@ grouping, and decoy tactics. A detection event is emitted whenever a drone is wi
 6. The number of drones that follow depends on the base `swarm_responses` setting and may increase with detection confidence, enemy type, or mission criticality.
 7. Drones that remain in formation are automatically reassigned to new patrol points to keep coverage balanced.
 
-The event structure is defined in `internal/enemy/types.go` and contains fields such as `enemy_id`,
-`enemy_type`, latitude/longitude, confidence and timestamp.
+The event structure is defined in `internal/enemy/types.go` and now also includes the detecting drone's
+coordinates, distance to the target, relative bearing, and estimated enemy velocity in meters per second.
 
 Drone telemetry rows now include a `follow` field indicating whether the drone is actively tracking a target.
+
+### Detection Event Fields
+
+Each detection row includes additional telemetry:
+- `drone_lat`, `drone_lon`, `drone_alt` – position of the detecting drone
+- `distance_m` – range to the target in meters
+- `bearing_deg` – relative bearing from the drone to the enemy
+- `enemy_velocity_mps` – estimated enemy speed in meters per second
 
 ## Configuration Options
 
@@ -62,6 +70,12 @@ no effect.
   "lat": 48.201,
   "lon": 16.403,
   "alt": 0,
+  "drone_lat": 48.199,
+  "drone_lon": 16.398,
+  "drone_alt": 100,
+  "distance_m": 150.5,
+  "bearing_deg": 85.2,
+  "enemy_velocity_mps": 12.3,
   "confidence": 87.5,
   "ts": "2024-06-24T12:00:00Z"
 }

@@ -25,16 +25,6 @@ type TelemetryWriter interface {
 	Write(telemetry.TelemetryRow) error
 }
 
-// DetectionWriter handles enemy detection events.
-type DetectionWriter interface {
-	WriteDetection(enemy.DetectionRow) error
-}
-
-// Optional: Detection writers may support batch mode
-type batchDetectionWriter interface {
-	WriteDetections([]enemy.DetectionRow) error
-}
-
 // Optional: Writers can also support batch mode
 type batchWriter interface {
 	WriteBatch([]telemetry.TelemetryRow) error
@@ -406,4 +396,18 @@ func distanceMeters(lat1, lon1, lat2, lon2 float64) float64 {
 	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*math.Sin(dLon/2)*math.Sin(dLon/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 	return earthRadius * c
+}
+
+// bearingDegrees calculates the initial bearing from point A to B.
+func bearingDegrees(lat1, lon1, lat2, lon2 float64) float64 {
+	lat1Rad := lat1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	dLon := (lon2 - lon1) * math.Pi / 180
+	y := math.Sin(dLon) * math.Cos(lat2Rad)
+	x := math.Cos(lat1Rad)*math.Sin(lat2Rad) - math.Sin(lat1Rad)*math.Cos(lat2Rad)*math.Cos(dLon)
+	brng := math.Atan2(y, x) * 180 / math.Pi
+	if brng < 0 {
+		brng += 360
+	}
+	return brng
 }
