@@ -112,20 +112,19 @@ Example drone telemetry line:
 {"cluster_id":"mission-01","drone_id":"recon-swarm-204951-A","mission_id":"","lat":48.19985399217792,"lon":16.399831683018377,"alt":99.89517965510856,"battery":99.5,"status":"ok","synced_from":"","synced_id":"","synced_at":"0001-01-01T00:00:00Z","ts":"2025-07-29T20:49:52.332081195Z"}
 ```
 
-## Data Flow
+## Architecture
 
+The simulator orchestrates scenario-driven missions, enemy behaviour, and telemetry output using a tick-based loop.
 
 ```mermaid
 flowchart TD
-    Start["Start"] -->|"main.go"| A["Parse flags & env"]
-    A -->|"config.go"| B["Load config"]
-    B -->|"schemas/simulation.cue"| C["Validate with CUE"]
-    C -->|"simulator.go"| D["Create simulator"]
-    D -->|"Simulator.Run loop"| E["Create drones for fleets"]
-    E -->|"generator.go"| F["Generate telemetry"]
-    F -->|"types.go"| G["Build TelemetryRow"]
-    G -->|"stdout_writer.go"| K["Stdout output"]
-    G -->|"greptime_writer.go"| L["GreptimeDB output"]
+    Scenario["Scenario & Storylines"] --> Sim["Simulator"]
+    Sim --> Tick(("Tick Loop"))
+    Tick --> Enemy["Enemy Engine"]
+    Tick --> Telemetry["Telemetry Generator"]
+    Enemy -->|"positions & detections"| Sim
+    Telemetry --> Writers["Telemetry Writers\n(GreptimeDB, Stdout, File)"]
+    Telemetry --> Detection["Detection Writer"]
 ```
 
 ## Grafana Dashboard (Recommended)
