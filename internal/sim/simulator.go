@@ -13,8 +13,6 @@ import (
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -397,9 +395,7 @@ func (s *Simulator) MapSnapshot() MapData {
 }
 
 func generateDroneID(fleetName string, index int) string {
-	// Include the drone's index along with a UUID to guarantee uniqueness
-	id := uuid.New().String()
-	return fmt.Sprintf("%s-%d-%s", fleetName, index, id)
+	return fmt.Sprintf("%s-%d", fleetName, index)
 }
 
 // distanceMeters calculates the haversine distance between two lat/lon points.
