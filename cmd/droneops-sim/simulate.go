@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 
 	"droneops-sim/internal/admin"
 	"droneops-sim/internal/config"
+	"droneops-sim/internal/logging"
 	"droneops-sim/internal/sim"
 )
 
@@ -55,15 +55,19 @@ var simulateCmd = &cobra.Command{
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
+		log := logging.New()
+		ctx = logging.NewContext(ctx, log)
 		defer cancel()
 
 		simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval, nil, nil)
 
 		srv := admin.NewServer(simulator)
 		go func() {
-			log.Println("[Main] Admin UI listening on :8080")
+			log := logging.FromContext(ctx)
+			log.Info("Admin UI listening", "addr", ":8080")
 			if err := srv.Start(ctx, ":8080"); err != nil && err != http.ErrServerClosed {
-				log.Fatalf("Admin server failed: %v", err)
+				log.Error("Admin server failed", "err", err)
+				os.Exit(1)
 			}
 		}()
 
@@ -74,7 +78,7 @@ var simulateCmd = &cobra.Command{
 		<-sigs
 
 		cancel()
-		log.Println("[Main] Drone simulation stopped.")
+		log.Info("Drone simulation stopped")
 		return nil
 	},
 }

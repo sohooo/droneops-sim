@@ -2,7 +2,7 @@ package sim
 
 import (
 	"context"
-	"log"
+	log "log/slog"
 
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
@@ -97,11 +97,11 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 
 	_, err = w.client.Write(ctx, tbl)
 	if err != nil {
-		log.Printf("[GreptimeDBWriter] Write failed: %v", err)
+		log.Error("GreptimeDBWriter write failed", "err", err)
 		return err
 	}
 
-	log.Printf("[GreptimeDBWriter] wrote %d rows", len(rows))
+	log.Info("GreptimeDBWriter wrote rows", "count", len(rows))
 	return nil
 }
 
@@ -151,10 +151,10 @@ func (w *GreptimeDBWriter) WriteDetections(rows []enemy.DetectionRow) error {
 
 	_, err = w.client.Write(ctx, tbl)
 	if err != nil {
-		log.Printf("[GreptimeDBWriter] Detection write failed: %v", err)
+		log.Error("GreptimeDBWriter detection write failed", "err", err)
 		return err
 	}
 
-	log.Printf("[GreptimeDBWriter] wrote %d enemy detections", len(rows))
+	log.Info("GreptimeDBWriter wrote enemy detections", "count", len(rows))
 	return nil
 }

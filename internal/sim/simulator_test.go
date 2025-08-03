@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"context"
 	"math"
 	"math/rand"
 	"testing"
@@ -43,7 +44,7 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	// Run one tick manually
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(writer.Rows) != 3 {
 		t.Errorf("Expected telemetry for 3 drones, got %d", len(writer.Rows))
@@ -67,7 +68,7 @@ func TestSimulator_SensorErrorRate(t *testing.T) {
 	writer := &MockWriter{}
 	sim := NewSimulator("cluster", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(writer.Rows) != 1 {
 		t.Fatalf("expected 1 telemetry row, got %d", len(writer.Rows))
@@ -94,7 +95,7 @@ func TestSimulator_BatteryAnomalyRate(t *testing.T) {
 
 	drone := sim.fleets[0].Drones[0]
 	start := drone.Battery
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(writer.Rows) != 1 {
 		t.Fatalf("expected 1 telemetry row, got %d", len(writer.Rows))
@@ -120,7 +121,7 @@ func TestSimulator_DropoutRate(t *testing.T) {
 	writer := &MockWriter{}
 	sim := NewSimulator("cluster", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(writer.Rows) != 0 {
 		t.Fatalf("expected no telemetry due to dropout, got %d rows", len(writer.Rows))
@@ -203,7 +204,7 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
 	}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected enemy detection event")
@@ -234,7 +235,7 @@ func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 		{ID: "enemy-far", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.02, Lon: drone.Position.Lon + 0.02, Alt: 0}},
 	}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) != 0 {
 		t.Fatalf("expected no detections, got %d", len(dWriter.Detections))
@@ -263,7 +264,7 @@ func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 		}
 	}()
 
-	sim.tick()
+	sim.tick(context.Background())
 }
 
 func TestSimulator_EnemyCountConfig(t *testing.T) {
@@ -293,7 +294,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.002, Lon: drone.Position.Lon, Alt: 0}}}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected detection within custom radius, got %d", len(dWriter.Detections))
@@ -315,7 +316,7 @@ func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.006, Lon: drone.Position.Lon, Alt: 0}}}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) != 0 {
 		t.Fatalf("expected no detections outside custom radius, got %d", len(dWriter.Detections))
@@ -341,7 +342,7 @@ func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
 	}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected enemy detection event")
@@ -378,7 +379,7 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat + 0.007, Lon: drone.Position.Lon, Alt: 0}},
 	}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected enemy detection event")
@@ -413,7 +414,7 @@ func TestSimulator_DetectionFactorsReduceConfidence(t *testing.T) {
 		{ID: "enemy-1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon, Alt: 0}},
 	}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if len(dWriter.Detections) == 0 {
 		t.Fatalf("expected enemy detection event")
@@ -447,7 +448,7 @@ func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	sim.fleets[0].Drones[1].Position.Lat += 0.05
 	sim.enemyEng.Enemies = []*enemy.Enemy{{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: drone.Position.Lat + 0.001, Lon: drone.Position.Lon}}}
 
-	sim.tick()
+	sim.tick(context.Background())
 
 	if drone.FollowTarget == nil {
 		t.Fatalf("detecting drone should follow target")
