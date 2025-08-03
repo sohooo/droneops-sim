@@ -47,13 +47,7 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	}
 
 	// Status
-	if drone.Battery <= 5 {
-		drone.Status = StatusFailure
-	} else if drone.Battery <= 20 {
-		drone.Status = StatusLowBattery
-	} else {
-		drone.Status = StatusOK
-	}
+	drone.Status = batteryStatus(drone.Battery)
 
 	return TelemetryRow{
 		ClusterID:  g.ClusterID,
@@ -179,6 +173,18 @@ func (f FollowMovement) Move(drone *Drone, region Region, waypoints []Position) 
 		Lat: drone.Position.Lat + deltaLat,
 		Lon: drone.Position.Lon + deltaLon,
 		Alt: drone.Position.Alt,
+	}
+}
+
+// batteryStatus determines the drone status based on remaining battery level.
+func batteryStatus(level float64) string {
+	switch {
+	case level <= BatteryFailureThreshold:
+		return StatusFailure
+	case level <= BatteryLowThreshold:
+		return StatusLowBattery
+	default:
+		return StatusOK
 	}
 }
 

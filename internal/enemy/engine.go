@@ -10,6 +10,8 @@ import (
 	"droneops-sim/internal/telemetry"
 )
 
+const nearDroneDistThreshold = 0.005 // degrees, ~500m
+
 // Engine maintains and updates simulated enemy entities.
 type Engine struct {
 	regions   []telemetry.Region
@@ -125,7 +127,7 @@ func nearestEnemy(cur *Enemy, enemies []*Enemy) (*Enemy, float64) {
 
 func (e *Engine) respondToNearbyDrone(en *Enemy, drones []*telemetry.Drone) bool {
 	nearest, dist := nearestDrone(en.Position, drones)
-	if nearest != nil && dist < 0.005 { // ~500m
+	if nearest != nil && dist < nearDroneDistThreshold {
 		en.Position = moveAway(en.Position, nearest.Position)
 		if e.randFloat() < 0.3 {
 			e.spawnDecoy(en)

@@ -17,6 +17,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	sensorErrorMaxOffset   = 0.005 // degrees (~500m)
+	interceptLateralMeters = 50.0  // lateral spacing between intercept points
+)
+
 // TelemetryWriter is an interface to support different output writers.
 type TelemetryWriter interface {
 	Write(telemetry.TelemetryRow) error
@@ -323,8 +328,8 @@ func (s *Simulator) updateDrone(drone *telemetry.Drone) (telemetry.TelemetryRow,
 	}
 	row := s.teleGen.GenerateTelemetry(drone)
 	if rand.Float64() < drone.SensorErrorRate {
-		row.Lat += rand.Float64()*0.01 - 0.005
-		row.Lon += rand.Float64()*0.01 - 0.005
+		row.Lat += rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
+		row.Lon += rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
 	}
 	if rand.Float64() < drone.BatteryAnomalyRate {
 		drop := rand.Float64()*20 + 10
@@ -620,7 +625,7 @@ func (s *Simulator) interceptPoints(en *enemy.Enemy, n int) []telemetry.Position
 		perpLat = -velLon / norm
 		perpLon = velLat / norm
 	}
-	lateral := 50.0
+	lateral := interceptLateralMeters
 	latStep := lateral / 111000
 	lonStep := lateral / (111000 * math.Cos(predicted.Lat*math.Pi/180))
 	for i := 0; i < n; i++ {

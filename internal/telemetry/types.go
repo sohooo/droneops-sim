@@ -83,3 +83,9 @@ const (
 	StatusLowBattery = "low_battery"
 	StatusFailure    = "failed"
 )
+
+// Battery status thresholds in percentage.
+const (
+	BatteryFailureThreshold = 5.0  // Battery at or below this is a failure
+	BatteryLowThreshold     = 20.0 // Battery at or below this is low
+)
