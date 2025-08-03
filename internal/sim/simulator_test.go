@@ -36,7 +36,7 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 		Zones:    []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
 		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "test", Region: config.Region{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}}},
 		Fleets: []config.Fleet{
-			{Name: "fleet-1", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "region-1"},
+			{Name: "fleet-1", Model: "small-fpv", Count: 3, MovementPattern: "patrol", HomeRegion: "region-1", MissionID: "m1"},
 		},
 	}
 	writer := &MockWriter{}
@@ -52,6 +52,9 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	for _, row := range writer.Rows {
 		if row.DroneID == "" || row.ClusterID == "" {
 			t.Errorf("Telemetry row has missing IDs: %+v", row)
+		}
+		if row.MissionID != "m1" {
+			t.Errorf("expected mission ID m1, got %s", row.MissionID)
 		}
 	}
 }

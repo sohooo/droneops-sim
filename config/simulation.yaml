@@ -36,6 +36,7 @@ fleets:
     count: 20
     movement_pattern: patrol
     home_region: central-europe
+    mission_id: recon
     behavior:
       battery_drain_rate: 0.5
       failure_rate: 0.02
@@ -49,6 +50,7 @@ fleets:
     count: 5
     movement_pattern: point-to-point
     home_region: central-europe
+    mission_id: firewall
     behavior:
       battery_drain_rate: 0.3
       failure_rate: 0.01
@@ -62,6 +64,7 @@ fleets:
     count: 2
     movement_pattern: loiter
     home_region: central-europe
+    mission_id: firewall
     behavior:
       battery_drain_rate: 0.2
       failure_rate: 0.005
