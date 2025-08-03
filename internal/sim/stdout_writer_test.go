@@ -10,9 +10,9 @@ import (
 	"droneops-sim/internal/telemetry"
 )
 
-func TestStdoutWriterJSONFallback(t *testing.T) {
+func TestJSONStdoutWriter(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := &StdoutWriter{out: buf, colorize: false, missionColors: make(map[string]string)}
+	w := &JSONStdoutWriter{out: buf}
 	row := telemetry.TelemetryRow{ClusterID: "c1", DroneID: "d1", Timestamp: time.Unix(0, 0)}
 	if err := w.Write(row); err != nil {
 		t.Fatalf("write failed: %v", err)
@@ -22,10 +22,10 @@ func TestStdoutWriterJSONFallback(t *testing.T) {
 	}
 }
 
-func TestStdoutWriterColorized(t *testing.T) {
+func TestColorStdoutWriter(t *testing.T) {
 	cfg := &config.SimulationConfig{FollowConfidence: 50, MissionCriticality: "medium", DetectionRadiusM: 100, Missions: []config.Mission{{ID: "m1", Name: "Alpha", Objective: "test"}}}
 	buf := &bytes.Buffer{}
-	w := &StdoutWriter{cfg: cfg, colorize: true, out: buf, missionColors: make(map[string]string)}
+	w := &ColorStdoutWriter{cfg: cfg, out: buf, missionColors: make(map[string]string)}
 	row := telemetry.TelemetryRow{ClusterID: "c1", DroneID: "d1", MissionID: "m1", Lat: 1, Lon: 2, Alt: 3, Battery: 4, Status: telemetry.StatusOK, Timestamp: time.Unix(0, 0)}
 	if err := w.Write(row); err != nil {
 		t.Fatalf("write failed: %v", err)

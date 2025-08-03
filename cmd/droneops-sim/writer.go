@@ -32,8 +32,8 @@ func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string) (s
 // baseWriters chooses the underlying writers based on printOnly flag and env vars.
 func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, error) {
 	if printOnly || os.Getenv("GREPTIMEDB_ENDPOINT") == "" {
-		sw := sim.NewStdoutWriter(cfg)
-		return sw, sw, nil
+		tw, dw := sim.NewStdoutWriters(cfg)
+		return tw, dw, nil
 	}
 
 	endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
