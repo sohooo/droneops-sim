@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"html/template"
@@ -43,9 +44,14 @@ func (s *Server) routes() {
 	http.HandleFunc("/observer/command", s.handleObserverCommand)
 }
 
-func (s *Server) Start(addr string) error {
+func (s *Server) Start(ctx context.Context, addr string) error {
 	s.routes()
-	return http.ListenAndServe(addr, nil)
+	srv := &http.Server{Addr: addr}
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(context.Background())
+	}()
+	return srv.ListenAndServe()
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

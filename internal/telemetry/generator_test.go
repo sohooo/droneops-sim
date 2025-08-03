@@ -2,12 +2,14 @@ package telemetry
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 	"time"
 )
 
 func TestGenerateTelemetry(t *testing.T) {
-	gen := NewGenerator("cluster-1")
+	fixed := time.Unix(0, 0).UTC()
+	gen := NewGenerator("cluster-1", rand.New(rand.NewSource(1)), func() time.Time { return fixed })
 	drone := &Drone{
 		ID:       "drone-001",
 		Model:    "small-fpv",
@@ -27,8 +29,8 @@ func TestGenerateTelemetry(t *testing.T) {
 	if row.SyncedFrom != "" || row.SyncedID != "" || !row.SyncedAt.IsZero() {
 		t.Errorf("expected unsynced defaults, got %+v", row)
 	}
-	if time.Since(row.Timestamp) > 1*time.Second {
-		t.Errorf("timestamp too old: %v", row.Timestamp)
+	if !row.Timestamp.Equal(fixed) {
+		t.Errorf("unexpected timestamp: %v", row.Timestamp)
 	}
 	// Check that position changed (movement simulated)
 	if row.Lat == 48.2082 && row.Lon == 16.3738 {
@@ -52,7 +54,7 @@ func TestPatrolMovement(t *testing.T) {
 		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
 	}
 	strategy := PatrolMovement{}
-	newPos := strategy.Move(drone, region, nil)
+	newPos := strategy.Move(drone, region, nil, rand.New(rand.NewSource(1)))
 	distance := calculateDistance(region.CenterLat, region.CenterLon, newPos.Lat, newPos.Lon)
 	if distance > region.RadiusKM*1000 {
 		t.Errorf("Patrol movement exceeded region radius: got %f, expected <= %f", distance, region.RadiusKM*1000)
@@ -68,7 +70,7 @@ func TestPointToPointMovement(t *testing.T) {
 		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
 	}
 	strategy := PointToPointMovement{}
-	newPos := strategy.Move(drone, Region{}, waypoints)
+	newPos := strategy.Move(drone, Region{}, waypoints, rand.New(rand.NewSource(1)))
 
 	closestWaypoint := findClosestWaypoint(newPos, waypoints)
 	distanceToWaypoint := calculateDistance(newPos.Lat, newPos.Lon, closestWaypoint.Lat, closestWaypoint.Lon)
@@ -88,7 +90,7 @@ func TestLoiterMovement(t *testing.T) {
 		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
 	}
 	strategy := LoiterMovement{}
-	newPos := strategy.Move(drone, region, nil)
+	newPos := strategy.Move(drone, region, nil, rand.New(rand.NewSource(1)))
 	distance := calculateDistance(region.CenterLat, region.CenterLon, newPos.Lat, newPos.Lon)
 	if distance > 10 {
 		t.Errorf("Loiter movement exceeded allowed range: got %f, expected <= 10", distance)
@@ -101,7 +103,7 @@ func TestRandomWalkMovement(t *testing.T) {
 		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 10},
 	}
 	strategy := RandomWalkMovement{}
-	newPos := strategy.Move(drone, Region{}, nil)
+	newPos := strategy.Move(drone, Region{}, nil, rand.New(rand.NewSource(1)))
 	if newPos.Alt < 0 {
 		t.Errorf("altitude should not be negative: %f", newPos.Alt)
 	}

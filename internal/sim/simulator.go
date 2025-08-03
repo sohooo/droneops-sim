@@ -2,6 +2,7 @@
 package sim
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -118,6 +119,8 @@ type Simulator struct {
 	observerIdx          int
 	observerPerspective  string
 	mu                   sync.Mutex
+	rand                 *rand.Rand
+	now                  func() time.Time
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -128,7 +131,13 @@ type DroneFleet struct {
 }
 
 // NewSimulator initializes drones from fleet config.
-func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, dWriter DetectionWriter, tickInterval time.Duration) *Simulator {
+func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer TelemetryWriter, dWriter DetectionWriter, tickInterval time.Duration, r *rand.Rand, now func() time.Time) *Simulator {
+	if r == nil {
+		r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+	if now == nil {
+		now = time.Now
+	}
 	radius := cfg.DetectionRadiusM
 	if radius <= 0 {
 		radius = 1000
@@ -158,7 +167,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 	}
 	sim := &Simulator{
 		clusterID:            clusterID,
-		teleGen:              telemetry.NewGenerator(clusterID),
+		teleGen:              telemetry.NewGenerator(clusterID, r, now),
 		writer:               writer,
 		detectionWriter:      dWriter,
 		tickInterval:         tickInterval,
@@ -179,6 +188,8 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		enemyObjects:         make(map[string]*enemy.Enemy),
 		droneIndex:           make(map[string]*telemetry.Drone),
 		droneFleet:           make(map[string]*DroneFleet),
+		rand:                 r,
+		now:                  now,
 	}
 
 	// Check if zones are defined
@@ -234,13 +245,13 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 			RadiusKM:  z.RadiusKM,
 		}
 	}
-	sim.enemyEng = enemy.NewEngine(count, regions)
+	sim.enemyEng = enemy.NewEngine(count, regions, r)
 
 	return sim
 }
 
-// Run starts the simulation loop (blocking until stop signal)
-func (s *Simulator) Run(stop <-chan struct{}) {
+// Run starts the simulation loop and stops when the context is done.
+func (s *Simulator) Run(ctx context.Context) {
 	log.Printf("[Simulator] starting with tick interval %s", s.tickInterval)
 	ticker := time.NewTicker(s.tickInterval)
 	defer ticker.Stop()
@@ -249,7 +260,7 @@ func (s *Simulator) Run(stop <-chan struct{}) {
 		select {
 		case <-ticker.C:
 			s.tick()
-		case <-stop:
+		case <-ctx.Done():
 			log.Println("[Simulator] stopping...")
 			return
 		}
@@ -323,34 +334,34 @@ func (s *Simulator) tick() {
 }
 
 func (s *Simulator) updateDrone(drone *telemetry.Drone) (telemetry.TelemetryRow, bool) {
-	if drone.FollowTarget != nil && (rand.Float64() < s.commLoss || drone.Status == telemetry.StatusFailure) {
+	if drone.FollowTarget != nil && (s.rand.Float64() < s.commLoss || drone.Status == telemetry.StatusFailure) {
 		s.removeAssignment(drone)
 	}
 	row := s.teleGen.GenerateTelemetry(drone)
-	if rand.Float64() < drone.SensorErrorRate {
-		row.Lat += rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
-		row.Lon += rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
+	if s.rand.Float64() < drone.SensorErrorRate {
+		row.Lat += s.rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
+		row.Lon += s.rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
 	}
-	if rand.Float64() < drone.BatteryAnomalyRate {
-		drop := rand.Float64()*20 + 10
+	if s.rand.Float64() < drone.BatteryAnomalyRate {
+		drop := s.rand.Float64()*20 + 10
 		drone.Battery -= drop
 		if drone.Battery < 0 {
 			drone.Battery = 0
 		}
 		row.Battery = drone.Battery
 	}
-	if rand.Float64() < drone.DropoutRate {
+	if s.rand.Float64() < drone.DropoutRate {
 		return telemetry.TelemetryRow{}, false
 	}
 	return row, true
 }
 
 func (s *Simulator) injectChaos(drone *telemetry.Drone, row *telemetry.TelemetryRow) {
-	if rand.Float64() < 0.1 {
+	if s.rand.Float64() < 0.1 {
 		row.Status = telemetry.StatusFailure
 		drone.Status = telemetry.StatusFailure
 	}
-	extra := rand.Float64() * 5
+	extra := s.rand.Float64() * 5
 	drone.Battery -= extra
 	if drone.Battery < 0 {
 		drone.Battery = 0
@@ -372,7 +383,7 @@ func (s *Simulator) processDetections(fleet *DroneFleet, drone *telemetry.Drone)
 		conf *= 1 - s.terrainOcclusion
 		conf *= 1 - s.weatherImpact
 		if s.sensorNoise > 0 {
-			conf += rand.NormFloat64() * s.sensorNoise * conf
+			conf += s.rand.NormFloat64() * s.sensorNoise * conf
 		}
 		if conf < 0 {
 			conf = 0
@@ -388,7 +399,7 @@ func (s *Simulator) processDetections(fleet *DroneFleet, drone *telemetry.Drone)
 			Lon:        en.Position.Lon,
 			Alt:        en.Position.Alt,
 			Confidence: conf,
-			Timestamp:  time.Now().UTC(),
+			Timestamp:  s.now().UTC(),
 		}
 		detections = append(detections, d)
 		if conf >= s.followConfidence {
@@ -403,7 +414,7 @@ func (s *Simulator) sendCommand() bool {
 		return false
 	}
 	s.messagesSent++
-	if rand.Float64() < s.commLoss {
+	if s.rand.Float64() < s.commLoss {
 		return false
 	}
 	return true
@@ -749,7 +760,7 @@ func (s *Simulator) TelemetrySnapshot() []telemetry.TelemetryRow {
 				Battery:   drone.Battery,
 				Status:    drone.Status,
 				Follow:    drone.FollowTarget != nil,
-				Timestamp: time.Now().UTC(),
+				Timestamp: s.now().UTC(),
 			})
 		}
 	}
@@ -848,7 +859,7 @@ func (s *Simulator) ObserverInjectCommand(cmd string) {
 }
 
 func (s *Simulator) logObserverEvent(t, details string) {
-	s.observerEvents = append(s.observerEvents, ObserverEvent{Timestamp: time.Now().UTC(), Type: t, Details: details})
+	s.observerEvents = append(s.observerEvents, ObserverEvent{Timestamp: s.now().UTC(), Type: t, Details: details})
 }
 
 func generateDroneID(fleetName string, index int) string {

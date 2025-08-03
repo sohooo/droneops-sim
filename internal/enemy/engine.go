@@ -16,21 +16,24 @@ const nearDroneDistThreshold = 0.005 // degrees, ~500m
 type Engine struct {
 	regions   []telemetry.Region
 	Enemies   []*Enemy
+	rand      *rand.Rand
 	randFloat func() float64
 }
 
 // NewEngine creates an engine with a given number of enemies per region.
-func NewEngine(count int, regions []telemetry.Region) *Engine {
-	e := &Engine{regions: regions, randFloat: rand.Float64}
-	rand.Seed(time.Now().UnixNano())
-	for _, r := range regions {
+func NewEngine(count int, regions []telemetry.Region, r *rand.Rand) *Engine {
+	if r == nil {
+		r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+	e := &Engine{regions: regions, rand: r, randFloat: r.Float64}
+	for _, reg := range regions {
 		for i := 0; i < count; i++ {
 			en := &Enemy{
 				ID:         uuid.New().String(),
-				Type:       randomType(),
-				Position:   randomPosition(r),
+				Type:       randomType(r),
+				Position:   randomPosition(r, reg),
 				Confidence: 100,
-				Region:     r,
+				Region:     reg,
 			}
 			e.Enemies = append(e.Enemies, en)
 		}
@@ -38,22 +41,22 @@ func NewEngine(count int, regions []telemetry.Region) *Engine {
 	return e
 }
 
-func randomType() EnemyType {
+func randomType(r *rand.Rand) EnemyType {
 	types := []EnemyType{EnemyVehicle, EnemyPerson, EnemyDrone}
-	return types[rand.Intn(len(types))]
+	return types[r.Intn(len(types))]
 }
 
-func randomPosition(region telemetry.Region) telemetry.Position {
-	angle := rand.Float64() * 2 * math.Pi
-	r := rand.Float64() * region.RadiusKM * 1000
-	dLat := (r * math.Cos(angle)) / 111000
-	dLon := (r * math.Sin(angle)) / (111000 * math.Cos(region.CenterLat*math.Pi/180))
+func randomPosition(r *rand.Rand, region telemetry.Region) telemetry.Position {
+	angle := r.Float64() * 2 * math.Pi
+	dist := r.Float64() * region.RadiusKM * 1000
+	dLat := (dist * math.Cos(angle)) / 111000
+	dLon := (dist * math.Sin(angle)) / (111000 * math.Cos(region.CenterLat*math.Pi/180))
 	return telemetry.Position{Lat: region.CenterLat + dLat, Lon: region.CenterLon + dLon, Alt: 0}
 }
 
-func randomStep(pos telemetry.Position) telemetry.Position {
-	dLat := rand.Float64()*0.001 - 0.0005
-	dLon := rand.Float64()*0.001 - 0.0005
+func randomStep(r *rand.Rand, pos telemetry.Position) telemetry.Position {
+	dLat := r.Float64()*0.001 - 0.0005
+	dLon := r.Float64()*0.001 - 0.0005
 	return telemetry.Position{Lat: pos.Lat + dLat, Lon: pos.Lon + dLon, Alt: pos.Alt}
 }
 
@@ -63,12 +66,12 @@ func distance(a, b telemetry.Position) float64 {
 	return math.Sqrt(dLat*dLat + dLon*dLon)
 }
 
-func moveAway(pos, threat telemetry.Position) telemetry.Position {
+func moveAway(r *rand.Rand, pos, threat telemetry.Position) telemetry.Position {
 	vecLat := pos.Lat - threat.Lat
 	vecLon := pos.Lon - threat.Lon
 	norm := math.Sqrt(vecLat*vecLat + vecLon*vecLon)
 	if norm == 0 {
-		return randomStep(pos)
+		return randomStep(r, pos)
 	}
 	factor := 0.001 / norm
 	return telemetry.Position{Lat: pos.Lat + vecLat*factor, Lon: pos.Lon + vecLon*factor, Alt: pos.Alt}
@@ -89,7 +92,7 @@ func (e *Engine) spawnDecoy(parent *Enemy) {
 	decoy := &Enemy{
 		ID:         uuid.New().String(),
 		Type:       EnemyDecoy,
-		Position:   randomStep(parent.Position),
+		Position:   randomStep(e.rand, parent.Position),
 		Confidence: parent.Confidence * 0.5,
 		Region:     parent.Region,
 	}
@@ -128,7 +131,7 @@ func nearestEnemy(cur *Enemy, enemies []*Enemy) (*Enemy, float64) {
 func (e *Engine) respondToNearbyDrone(en *Enemy, drones []*telemetry.Drone) bool {
 	nearest, dist := nearestDrone(en.Position, drones)
 	if nearest != nil && dist < nearDroneDistThreshold {
-		en.Position = moveAway(en.Position, nearest.Position)
+		en.Position = moveAway(e.rand, en.Position, nearest.Position)
 		if e.randFloat() < 0.3 {
 			e.spawnDecoy(en)
 		}
@@ -152,7 +155,7 @@ func (e *Engine) handleRegionBounds(en *Enemy) {
 	if en.Region.RadiusKM > 0 {
 		center := telemetry.Position{Lat: en.Region.CenterLat, Lon: en.Region.CenterLon}
 		if distance(en.Position, center) > en.Region.RadiusKM/111 {
-			en.Position = randomPosition(en.Region)
+			en.Position = randomPosition(e.rand, en.Region)
 		}
 	}
 }
@@ -160,7 +163,7 @@ func (e *Engine) handleRegionBounds(en *Enemy) {
 // Step updates enemies based on drone positions and tactics.
 func (e *Engine) Step(drones []*telemetry.Drone) {
 	if e.randFloat == nil {
-		e.randFloat = rand.Float64
+		e.randFloat = e.rand.Float64
 	}
 	for _, en := range e.Enemies {
 		handled := e.respondToNearbyDrone(en, drones)
@@ -168,7 +171,7 @@ func (e *Engine) Step(drones []*telemetry.Drone) {
 			handled = e.pursueAnotherEnemy(en)
 		}
 		if !handled {
-			en.Position = randomStep(en.Position)
+			en.Position = randomStep(e.rand, en.Position)
 		}
 		e.handleRegionBounds(en)
 	}
