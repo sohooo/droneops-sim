@@ -127,6 +127,64 @@ func TestSimulator_DropoutRate(t *testing.T) {
 	}
 }
 
+func TestUpdateDroneDropout(t *testing.T) {
+	rand.Seed(1)
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Fleets: []config.Fleet{
+			{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	drone := sim.fleets[0].Drones[0]
+	drone.DropoutRate = 1
+	if _, ok := sim.updateDrone(drone); ok {
+		t.Fatalf("expected updateDrone to indicate dropout")
+	}
+}
+
+func TestInjectChaosAltersBattery(t *testing.T) {
+	rand.Seed(1)
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Fleets: []config.Fleet{
+			{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	drone := sim.fleets[0].Drones[0]
+	row := sim.teleGen.GenerateTelemetry(drone)
+	before := drone.Battery
+	sim.injectChaos(drone, &row)
+	if drone.Battery >= before {
+		t.Fatalf("expected battery to decrease")
+	}
+	if row.Battery != drone.Battery {
+		t.Fatalf("telemetry row battery mismatch")
+	}
+}
+
+func TestProcessDetectionsReturnsDetection(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Fleets: []config.Fleet{
+			{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"},
+		},
+		FollowConfidence: 50,
+	}
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second)
+	drone := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e1", Type: enemy.EnemyDrone, Position: drone.Position}
+	sim.enemyEng = &enemy.Engine{Enemies: []*enemy.Enemy{en}}
+	dets := sim.processDetections(&sim.fleets[0], drone)
+	if len(dets) != 1 {
+		t.Fatalf("expected one detection, got %d", len(dets))
+	}
+	if sim.droneAssignments[drone.ID] != en.ID {
+		t.Fatalf("expected drone assigned to enemy")
+	}
+}
+
 func TestSimulator_DetectsEnemy(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "zone", CenterLat: 48.0, CenterLon: 16.0, RadiusKM: 0.1}},
