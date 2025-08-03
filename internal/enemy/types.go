@@ -34,6 +34,12 @@ type DetectionRow struct {
 	Lat        float64   `json:"lat"`
 	Lon        float64   `json:"lon"`
 	Alt        float64   `json:"alt"`
+	DroneLat   float64   `json:"drone_lat"`
+	DroneLon   float64   `json:"drone_lon"`
+	DroneAlt   float64   `json:"drone_alt"`
+	DistanceM  float64   `json:"distance_m"`
+	BearingDeg float64   `json:"bearing_deg"`
+	EnemyVelMS float64   `json:"enemy_velocity_mps"`
 	Confidence float64   `json:"confidence"`
 	Timestamp  time.Time `json:"ts"`
 }

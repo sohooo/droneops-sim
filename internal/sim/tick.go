@@ -151,6 +151,11 @@ func (s *Simulator) processDetections(fleet *DroneFleet, drone *telemetry.Drone)
 		} else if conf > 100 {
 			conf = 100
 		}
+		var vel float64
+		if prev, ok := s.enemyPrevPositions[en.ID]; ok && s.tickInterval > 0 {
+			vel = distanceMeters(prev.Lat, prev.Lon, en.Position.Lat, en.Position.Lon) / s.tickInterval.Seconds()
+		}
+		bearing := bearingDegrees(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
 		d := enemy.DetectionRow{
 			ClusterID:  s.clusterID,
 			DroneID:    drone.ID,
@@ -159,6 +164,12 @@ func (s *Simulator) processDetections(fleet *DroneFleet, drone *telemetry.Drone)
 			Lat:        en.Position.Lat,
 			Lon:        en.Position.Lon,
 			Alt:        en.Position.Alt,
+			DroneLat:   drone.Position.Lat,
+			DroneLon:   drone.Position.Lon,
+			DroneAlt:   drone.Position.Alt,
+			DistanceM:  dist,
+			BearingDeg: bearing,
+			EnemyVelMS: vel,
 			Confidence: conf,
 			Timestamp:  s.now().UTC(),
 		}

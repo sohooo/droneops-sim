@@ -837,3 +837,34 @@ func TestAssignFollowerDeterministic(t *testing.T) {
 		t.Fatalf("expected identical follow targets")
 	}
 }
+func TestProcessDetectionsPopulatesFields(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "z"}},
+	}
+	sim := NewSimulator("c", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	drone := sim.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: drone.Position.Lat, Lon: drone.Position.Lon + 0.001}}
+	sim.enemyEng = &enemy.Engine{Enemies: []*enemy.Enemy{en}}
+	sim.enemyPrevPositions = map[string]telemetry.Position{"e": {Lat: drone.Position.Lat, Lon: drone.Position.Lon}}
+	dets := sim.processDetections(&sim.fleets[0], drone)
+	if len(dets) != 1 {
+		t.Fatalf("expected detection")
+	}
+	det := dets[0]
+	if det.DroneLat != drone.Position.Lat || det.DroneLon != drone.Position.Lon {
+		t.Fatalf("missing drone coords: %+v", det)
+	}
+	expDist := distanceMeters(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
+	if math.Abs(det.DistanceM-expDist) > 0.1 {
+		t.Fatalf("distance mismatch: got %f want %f", det.DistanceM, expDist)
+	}
+	expBearing := bearingDegrees(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon)
+	if math.Abs(det.BearingDeg-expBearing) > 0.1 {
+		t.Fatalf("bearing mismatch: got %f want %f", det.BearingDeg, expBearing)
+	}
+	expVel := distanceMeters(drone.Position.Lat, drone.Position.Lon, en.Position.Lat, en.Position.Lon) / sim.tickInterval.Seconds()
+	if math.Abs(det.EnemyVelMS-expVel) > 0.1 {
+		t.Fatalf("velocity mismatch: got %f want %f", det.EnemyVelMS, expVel)
+	}
+}

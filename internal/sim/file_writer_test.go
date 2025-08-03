@@ -25,7 +25,23 @@ func TestFileWriter(t *testing.T) {
 	if err := fw.Write(tRow); err != nil {
 		t.Fatalf("Write telemetry: %v", err)
 	}
-	dRow := enemy.DetectionRow{ClusterID: "c1", DroneID: "d1", EnemyID: "e1", EnemyType: enemy.EnemyVehicle, Timestamp: time.Unix(0, 0)}
+	dRow := enemy.DetectionRow{
+		ClusterID:  "c1",
+		DroneID:    "d1",
+		EnemyID:    "e1",
+		EnemyType:  enemy.EnemyVehicle,
+		Lat:        1,
+		Lon:        2,
+		Alt:        3,
+		DroneLat:   4,
+		DroneLon:   5,
+		DroneAlt:   6,
+		DistanceM:  7,
+		BearingDeg: 8,
+		EnemyVelMS: 9,
+		Confidence: 50,
+		Timestamp:  time.Unix(0, 0),
+	}
 	if err := fw.WriteDetection(dRow); err != nil {
 		t.Fatalf("Write detection: %v", err)
 	}
@@ -53,7 +69,7 @@ func TestFileWriter(t *testing.T) {
 	if err := json.Unmarshal(dData, &gotD); err != nil {
 		t.Fatalf("decode det: %v", err)
 	}
-	if gotD.EnemyID != dRow.EnemyID {
+	if gotD.EnemyID != dRow.EnemyID || gotD.DistanceM != dRow.DistanceM {
 		t.Fatalf("unexpected detection row: %+v", gotD)
 	}
 }

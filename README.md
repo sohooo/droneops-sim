@@ -250,4 +250,6 @@ The simulator includes an enemy detection subsystem used to test how drones reac
 - Every drone checks for enemies within a configurable detection radius (default: 1&nbsp;km) each tick. Confidence is influenced by distance as well as sensor noise, terrain occlusion and weather conditions.
 - Detection events are written to the table specified by `ENEMY_DETECTION_TABLE` when writing to GreptimeDB, or printed to STDOUT in print-only mode.
 
+Each detection record captures the detecting drone's coordinates, the enemy's location, range and bearing from the drone, and an estimated enemy velocity.
+
 See [docs/enemy-detection.md](docs/enemy-detection.md) for more details on the available settings and event format.

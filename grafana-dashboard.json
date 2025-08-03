@@ -332,6 +332,22 @@
           }
         ]
       }
+    },
+    {
+      "id": 16,
+      "type": "histogram",
+      "title": "Detection Distance",
+      "description": "Distribution of enemy distance from drones.",
+      "gridPos": { "x": 0, "y": 88, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "Q",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT distance_m FROM enemy_detection WHERE $__timeFilter(ts)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {

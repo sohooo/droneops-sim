@@ -129,6 +129,12 @@ func (w *GreptimeDBWriter) WriteDetections(rows []enemy.DetectionRow) error {
 	tbl.AddFieldColumn("lat", types.FLOAT64)
 	tbl.AddFieldColumn("lon", types.FLOAT64)
 	tbl.AddFieldColumn("alt", types.FLOAT64)
+	tbl.AddFieldColumn("drone_lat", types.FLOAT64)
+	tbl.AddFieldColumn("drone_lon", types.FLOAT64)
+	tbl.AddFieldColumn("drone_alt", types.FLOAT64)
+	tbl.AddFieldColumn("distance_m", types.FLOAT64)
+	tbl.AddFieldColumn("bearing_deg", types.FLOAT64)
+	tbl.AddFieldColumn("enemy_velocity_mps", types.FLOAT64)
 	tbl.AddFieldColumn("confidence", types.FLOAT64)
 	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 
@@ -141,6 +147,12 @@ func (w *GreptimeDBWriter) WriteDetections(rows []enemy.DetectionRow) error {
 			r.Lat,
 			r.Lon,
 			r.Alt,
+			r.DroneLat,
+			r.DroneLon,
+			r.DroneAlt,
+			r.DistanceM,
+			r.BearingDeg,
+			r.EnemyVelMS,
 			r.Confidence,
 			r.Timestamp,
 		)
