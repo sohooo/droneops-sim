@@ -696,6 +696,69 @@ func TestSimulator_FollowerFailover(t *testing.T) {
 	}
 }
 
+func TestCleanupFollowers_RemovesInvalid(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "z"}},
+	}
+	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	d := sim.fleets[0].Drones[0]
+	pos := telemetry.Position{Lat: 0, Lon: 0}
+	d.FollowTarget = &pos
+	sim.droneAssignments[d.ID] = "e"
+	sim.enemyFollowers["e"] = []string{d.ID}
+	d.Status = telemetry.StatusFailure
+	active := sim.cleanupFollowers("e", sim.enemyFollowers["e"])
+	if len(active) != 0 {
+		t.Fatalf("expected no active followers, got %d", len(active))
+	}
+	if d.FollowTarget != nil {
+		t.Fatalf("expected FollowTarget cleared")
+	}
+	if _, ok := sim.droneAssignments[d.ID]; ok {
+		t.Fatalf("expected assignment removed")
+	}
+}
+
+func TestApplyAssignments_SetsTargets(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "z"}},
+	}
+	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	d1 := sim.fleets[0].Drones[0]
+	d2 := sim.fleets[0].Drones[1]
+	en := &enemy.Enemy{ID: "e", Position: telemetry.Position{Lat: 1, Lon: 1}}
+	cands := []*telemetry.Drone{d1, d2}
+	sim.applyAssignments("e", en, cands)
+	if d1.FollowTarget == nil || d2.FollowTarget == nil {
+		t.Fatalf("expected targets assigned")
+	}
+	if sim.droneAssignments[d1.ID] != "e" || sim.droneAssignments[d2.ID] != "e" {
+		t.Fatalf("expected assignments recorded")
+	}
+	if len(sim.enemyFollowers["e"]) != 2 {
+		t.Fatalf("expected follower records")
+	}
+}
+
+func TestSelectCandidates_ReservesAssignments(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:             []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:            []config.Fleet{{Name: "f", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "z"}},
+		CommunicationLoss: 0,
+		BandwidthLimit:    10,
+	}
+	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	cands := sim.selectCandidates(1)
+	if len(cands) != 1 {
+		t.Fatalf("expected 1 candidate, got %d", len(cands))
+	}
+	if _, ok := sim.droneAssignments[cands[0].ID]; !ok {
+		t.Fatalf("expected assignment reserved")
+	}
+}
+
 func TestObserverTools(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
