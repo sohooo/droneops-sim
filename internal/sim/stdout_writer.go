@@ -1,23 +1,130 @@
-// Writer implementation printing telemetry to STDOUT
+// Writer implementation printing telemetry to STDOUT with optional colorized output.
 package sim
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"sync"
+	"text/tabwriter"
+	"time"
 
+	"golang.org/x/term"
+
+	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
 )
 
+const (
+	colorReset   = "\x1b[0m"
+	colorRed     = "\x1b[31m"
+	colorGreen   = "\x1b[32m"
+	colorYellow  = "\x1b[33m"
+	colorBlue    = "\x1b[34m"
+	colorMagenta = "\x1b[35m"
+	colorCyan    = "\x1b[36m"
+	colorGray    = "\x1b[90m"
+)
+
 // StdoutWriter prints telemetry rows to STDOUT.
-type StdoutWriter struct{}
+type StdoutWriter struct {
+	cfg           *config.SimulationConfig
+	colorize      bool
+	out           io.Writer
+	once          sync.Once
+	missionColors map[string]string
+	colorIdx      int
+}
+
+var missionPalette = []string{colorRed, colorGreen, colorYellow, colorBlue, colorMagenta, colorCyan}
+
+// NewStdoutWriter creates a StdoutWriter.
+func NewStdoutWriter(cfg *config.SimulationConfig) *StdoutWriter {
+	colorize := term.IsTerminal(int(os.Stdout.Fd()))
+	return &StdoutWriter{
+		cfg:           cfg,
+		colorize:      colorize,
+		out:           os.Stdout,
+		missionColors: make(map[string]string),
+	}
+}
+
+func (w *StdoutWriter) getMissionColor(id string) string {
+	if c, ok := w.missionColors[id]; ok {
+		return c
+	}
+	c := missionPalette[w.colorIdx%len(missionPalette)]
+	w.missionColors[id] = c
+	w.colorIdx++
+	return c
+}
+
+func (w *StdoutWriter) printOverview() {
+	if w.cfg == nil {
+		return
+	}
+
+	fmt.Fprintln(w.out, "Simulation Configuration:")
+	tw := tabwriter.NewWriter(w.out, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "Follow Confidence:\t%.0f\n", w.cfg.FollowConfidence)
+	fmt.Fprintf(tw, "Mission Criticality:\t%s\n", w.cfg.MissionCriticality)
+	fmt.Fprintf(tw, "Detection Radius (m):\t%.0f\n", w.cfg.DetectionRadiusM)
+	fmt.Fprintf(tw, "Sensor Noise:\t%.2f\n", w.cfg.SensorNoise)
+	fmt.Fprintf(tw, "Terrain Occlusion:\t%.2f\n", w.cfg.TerrainOcclusion)
+	fmt.Fprintf(tw, "Weather Impact:\t%.2f\n", w.cfg.WeatherImpact)
+	fmt.Fprintf(tw, "Communication Loss:\t%.2f\n", w.cfg.CommunicationLoss)
+	fmt.Fprintf(tw, "Bandwidth Limit:\t%d\n", w.cfg.BandwidthLimit)
+	tw.Flush()
+
+	fmt.Fprintln(w.out, "\nMissions:")
+	tw = tabwriter.NewWriter(w.out, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "ID\tName\tObjective\n")
+	for _, m := range w.cfg.Missions {
+		col := w.getMissionColor(m.ID)
+		fmt.Fprintf(tw, "%s%s%s\t%s\t%s\n", col, m.ID, colorReset, m.Name, m.Objective)
+	}
+	tw.Flush()
+	fmt.Fprintln(w.out)
+}
 
 // Write outputs a single telemetry row.
 func (w *StdoutWriter) Write(row telemetry.TelemetryRow) error {
-	data, _ := json.Marshal(row)
-	fmt.Println(string(data))
+	if !w.colorize {
+		data, _ := json.Marshal(row)
+		fmt.Fprintln(w.out, string(data))
+		return nil
+	}
+
+	w.once.Do(w.printOverview)
+
+	mColor := w.getMissionColor(row.MissionID)
+	statusColor := colorGreen
+	switch row.Status {
+	case telemetry.StatusFailure:
+		statusColor = colorRed
+	case telemetry.StatusLowBattery:
+		statusColor = colorYellow
+	}
+
+	fmt.Fprintf(w.out, "%s[%s]%s ", colorGray, row.Timestamp.Format(time.RFC3339), colorReset)
+	fmt.Fprintf(w.out, "%scluster=%s%s ", colorBlue, row.ClusterID, colorReset)
+	fmt.Fprintf(w.out, "%smission=%s%s ", mColor, row.MissionID, colorReset)
+	fmt.Fprintf(w.out, "%sdrone=%s%s ", colorWhite(), row.DroneID, colorReset)
+	fmt.Fprintf(w.out, "%slat=%.5f%s ", colorGreen, row.Lat, colorReset)
+	fmt.Fprintf(w.out, "%slon=%.5f%s ", colorYellow, row.Lon, colorReset)
+	fmt.Fprintf(w.out, "%salt=%.1f%s ", colorMagenta, row.Alt, colorReset)
+	fmt.Fprintf(w.out, "%sbatt=%.1f%s ", colorCyan, row.Battery, colorReset)
+	fmt.Fprintf(w.out, "%sstatus=%s%s", statusColor, row.Status, colorReset)
+	if row.Follow {
+		fmt.Fprintf(w.out, " %sfollow%s", colorMagenta, colorReset)
+	}
+	fmt.Fprintln(w.out)
 	return nil
 }
+
+func colorWhite() string { return "\x1b[37m" }
 
 // WriteBatch outputs multiple telemetry rows.
 func (w *StdoutWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
@@ -29,8 +136,16 @@ func (w *StdoutWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 
 // WriteDetection prints an enemy detection event to STDOUT.
 func (w *StdoutWriter) WriteDetection(d enemy.DetectionRow) error {
-	data, _ := json.Marshal(d)
-	fmt.Println(string(data))
+	if !w.colorize {
+		data, _ := json.Marshal(d)
+		fmt.Fprintln(w.out, string(data))
+		return nil
+	}
+	w.once.Do(w.printOverview)
+	fmt.Fprintf(w.out, "%s[%s]%s %sDETECTION%s drone=%s enemy=%s type=%s lat=%.5f lon=%.5f alt=%.1f conf=%.2f\n",
+		colorGray, d.Timestamp.Format(time.RFC3339), colorReset,
+		colorRed, colorReset, d.DroneID, d.EnemyID, d.EnemyType,
+		d.Lat, d.Lon, d.Alt, d.Confidence)
 	return nil
 }
 
