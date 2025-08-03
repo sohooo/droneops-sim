@@ -161,7 +161,7 @@ For Helm deployment instructions, see [docs/helm-deployment.md](docs/helm-deploy
 
 ### Mission Objectives
 
-The `droneops-sim` project supports mission-based drone operations. Missions are defined in the `config/missions.yaml` file and include:
+The `droneops-sim` project supports mission-based drone operations. Missions are defined in the `missions` section of `config/simulation.yaml` and include:
 
 - **ID**: Unique identifier for the mission.
 - **Name**: Catchy name matching the mission objective (e.g., "Operation: Firewall").
@@ -184,9 +184,21 @@ missions:
       radius_km: 300
 ```
 
+Example fleet referencing a mission:
+
+```yaml
+fleets:
+  - name: recon-swarm
+    model: small-fpv
+    mission_id: recon
+    # ... other fleet settings ...
+```
+
+The `mission_id` field links each fleet to a mission. Once code support is in place, the simulator will use this relationship to spawn fleets for specific missions and tag all emitted telemetry accordingly.
+
 ### Integration with Telemetry
 
-Each drone is associated with a mission via a `mission_id` field in its telemetry. This allows:
+Each drone is associated with a mission via the `mission_id` field, enabling:
 
 - **Mission Visualization**: Display mission objectives and regions in Grafana.
 - **Drone Association**: Group and filter drones by mission.
@@ -203,9 +215,9 @@ The Grafana dashboard integrates mission data to provide:
 
 On startup, the program:
 
-1. Loads mission data from `config/missions.yaml`.
+1. Loads mission and fleet data from `config/simulation.yaml`.
 2. Inserts mission telemetry into stdout or GreptimeDB.
-3. Associates drones with missions using the `mission_id` field.
+3. Associates fleets and their drones with missions using the `mission_id` field.
 
 ## Admin WebUI
 
