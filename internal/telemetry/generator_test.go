@@ -11,11 +11,12 @@ func TestGenerateTelemetry(t *testing.T) {
 	fixed := time.Unix(0, 0).UTC()
 	gen := NewGenerator("cluster-1", rand.New(rand.NewSource(1)), func() time.Time { return fixed })
 	drone := &Drone{
-		ID:       "drone-001",
-		Model:    "small-fpv",
-		Position: Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
-		Battery:  50,
-		Status:   StatusOK,
+		ID:        "drone-001",
+		Model:     "small-fpv",
+		MissionID: "m1",
+		Position:  Position{Lat: 48.2082, Lon: 16.3738, Alt: 100},
+		Battery:   50,
+		Status:    StatusOK,
 	}
 
 	row := gen.GenerateTelemetry(drone)
@@ -25,6 +26,9 @@ func TestGenerateTelemetry(t *testing.T) {
 	}
 	if row.DroneID != "drone-001" {
 		t.Errorf("expected drone-001, got %s", row.DroneID)
+	}
+	if row.MissionID != "m1" {
+		t.Errorf("expected mission ID m1, got %s", row.MissionID)
 	}
 	if row.SyncedFrom != "" || row.SyncedID != "" || !row.SyncedAt.IsZero() {
 		t.Errorf("expected unsynced defaults, got %+v", row)

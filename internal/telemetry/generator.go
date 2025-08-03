@@ -60,6 +60,7 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	return TelemetryRow{
 		ClusterID:  g.ClusterID,
 		DroneID:    drone.ID,
+		MissionID:  drone.MissionID,
 		Lat:        drone.Position.Lat,
 		Lon:        drone.Position.Lon,
 		Alt:        drone.Position.Alt,

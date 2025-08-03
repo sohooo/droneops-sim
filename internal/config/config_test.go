@@ -30,6 +30,7 @@ fleets:
     count: 2
     movement_pattern: patrol
     home_region: region-x
+    mission_id: test
 `
 	if err := os.WriteFile(tmpFile, []byte(yaml), 0644); err != nil {
 		t.Fatalf("failed to write temp file: %v", err)
@@ -41,6 +42,9 @@ fleets:
 	}
 	if len(cfg.Fleets) != 1 || cfg.Fleets[0].Name != "fleet-x" {
 		t.Errorf("Unexpected fleet data: %+v", cfg.Fleets)
+	}
+	if cfg.Fleets[0].MissionID != "test" {
+		t.Errorf("expected mission_id 'test', got %s", cfg.Fleets[0].MissionID)
 	}
 	if len(cfg.Missions) != 1 || cfg.Missions[0].ID != "test" {
 		t.Errorf("Unexpected mission data: %+v", cfg.Missions)

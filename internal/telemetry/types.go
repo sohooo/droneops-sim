@@ -50,6 +50,7 @@ func (TelemetryRow) TableName() string {
 type Drone struct {
 	ID                 string     // Drone ID
 	Model              string     // Drone model
+	MissionID          string     // Associated mission ID
 	Position           Position   // Current position
 	Battery            float64    // Battery level
 	Status             string     // Current status

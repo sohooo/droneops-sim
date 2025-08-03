@@ -38,6 +38,7 @@ type Fleet struct {
 	Count           int      `yaml:"count"`
 	MovementPattern string   `yaml:"movement_pattern"`
 	HomeRegion      string   `yaml:"home_region"`
+	MissionID       string   `yaml:"mission_id"`
 	Behavior        Behavior `yaml:"behavior"`
 }
 

@@ -204,6 +204,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 			drone := &telemetry.Drone{
 				ID:              generateDroneID(fleet.Name, i),
 				Model:           fleet.Model,
+				MissionID:       fleet.MissionID,
 				Position:        telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
 				Battery:         100,
 				Status:          telemetry.StatusOK,
@@ -332,6 +333,7 @@ func (s *Simulator) TelemetrySnapshot() []telemetry.TelemetryRow {
 			rows = append(rows, telemetry.TelemetryRow{
 				ClusterID: s.clusterID,
 				DroneID:   drone.ID,
+				MissionID: drone.MissionID,
 				Lat:       drone.Position.Lat,
 				Lon:       drone.Position.Lon,
 				Alt:       drone.Position.Alt,
