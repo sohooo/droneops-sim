@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewWritersPrintOnly(t *testing.T) {
-	tw, dw, cleanup, err := newWriters(true, "")
+	tw, dw, cleanup, err := newWriters(nil, true, "")
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestNewWritersPrintOnly(t *testing.T) {
 
 func TestNewWritersGreptimeFallback(t *testing.T) {
 	t.Setenv("GREPTIMEDB_ENDPOINT", "")
-	tw, dw, cleanup, err := newWriters(false, "")
+	tw, dw, cleanup, err := newWriters(nil, false, "")
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestNewWritersGreptimeFallback(t *testing.T) {
 func TestNewWritersLogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "telemetry.log")
-	tw, _, cleanup, err := newWriters(true, path)
+	tw, _, cleanup, err := newWriters(nil, true, path)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}

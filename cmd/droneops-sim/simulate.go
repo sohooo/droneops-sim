@@ -34,7 +34,7 @@ var simulateCmd = &cobra.Command{
 			return err
 		}
 
-		writer, detectWriter, cleanup, err := newWriters(simPrintOnly, simLogFile)
+		writer, detectWriter, cleanup, err := newWriters(cfg, simPrintOnly, simLogFile)
 		if err != nil {
 			return err
 		}

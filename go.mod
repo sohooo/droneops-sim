@@ -7,6 +7,7 @@ require (
 	github.com/GreptimeTeam/greptimedb-ingester-go v0.6.2
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/term v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

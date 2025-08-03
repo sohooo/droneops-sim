@@ -22,7 +22,7 @@ var replayCmd = &cobra.Command{
 		if replayInput == "" {
 			return fmt.Errorf("input file required")
 		}
-		writer, err := newTelemetryWriter(replayPrintOnly)
+		writer, err := newTelemetryWriter(nil, replayPrintOnly)
 		if err != nil {
 			return err
 		}

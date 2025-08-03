@@ -3,15 +3,16 @@ package main
 import (
 	"os"
 
+	"droneops-sim/internal/config"
 	"droneops-sim/internal/sim"
 )
 
 // newWriters sets up telemetry and detection writers based on flags and env vars.
 // It returns the writers and a cleanup function to close any resources.
-func newWriters(printOnly bool, logFile string) (sim.TelemetryWriter, sim.DetectionWriter, func(), error) {
+func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string) (sim.TelemetryWriter, sim.DetectionWriter, func(), error) {
 	cleanup := func() {}
 
-	writer, detectWriter, err := baseWriters(printOnly)
+	writer, detectWriter, err := baseWriters(cfg, printOnly)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -29,9 +30,9 @@ func newWriters(printOnly bool, logFile string) (sim.TelemetryWriter, sim.Detect
 }
 
 // baseWriters chooses the underlying writers based on printOnly flag and env vars.
-func baseWriters(printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, error) {
+func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, error) {
 	if printOnly || os.Getenv("GREPTIMEDB_ENDPOINT") == "" {
-		sw := &sim.StdoutWriter{}
+		sw := sim.NewStdoutWriter(cfg)
 		return sw, sw, nil
 	}
 
@@ -46,7 +47,7 @@ func baseWriters(printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, erro
 }
 
 // newTelemetryWriter creates a telemetry writer without detection handling.
-func newTelemetryWriter(printOnly bool) (sim.TelemetryWriter, error) {
-	w, _, _, err := newWriters(printOnly, "")
+func newTelemetryWriter(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, error) {
+	w, _, _, err := newWriters(cfg, printOnly, "")
 	return w, err
 }
