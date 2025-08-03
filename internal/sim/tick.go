@@ -2,32 +2,34 @@ package sim
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"droneops-sim/internal/enemy"
+	"droneops-sim/internal/logging"
 	"droneops-sim/internal/telemetry"
 )
 
 // Run starts the simulation loop and stops when the context is done.
 func (s *Simulator) Run(ctx context.Context) {
-	log.Printf("[Simulator] starting with tick interval %s", s.tickInterval)
+	log := logging.FromContext(ctx)
+	log.Info("starting simulator", "tick_interval", s.tickInterval)
 	ticker := time.NewTicker(s.tickInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			s.tick()
+			s.tick(ctx)
 		case <-ctx.Done():
-			log.Println("[Simulator] stopping...")
+			log.Info("stopping simulator")
 			return
 		}
 	}
 }
 
 // tick generates telemetry and writes it.
-func (s *Simulator) tick() {
+func (s *Simulator) tick(ctx context.Context) {
+	log := logging.FromContext(ctx)
 	var batch []telemetry.TelemetryRow
 	var detections []enemy.DetectionRow
 
@@ -66,12 +68,12 @@ func (s *Simulator) tick() {
 	// Batch support if writer implements WriteBatch
 	if bw, ok := s.writer.(batchWriter); ok {
 		if err := bw.WriteBatch(batch); err != nil {
-			log.Printf("[Simulator] batch write failed: %v", err)
+			log.Error("batch write failed", "err", err)
 		}
 	} else {
 		for _, row := range batch {
 			if err := s.writer.Write(row); err != nil {
-				log.Printf("[Simulator] write failed for drone %s: %v", row.DroneID, err)
+				log.Error("write failed", "drone_id", row.DroneID, "err", err)
 			}
 		}
 	}
@@ -80,12 +82,12 @@ func (s *Simulator) tick() {
 	if len(detections) > 0 && s.detectionWriter != nil {
 		if bw, ok := s.detectionWriter.(batchDetectionWriter); ok {
 			if err := bw.WriteDetections(detections); err != nil {
-				log.Printf("[Simulator] detection batch write failed: %v", err)
+				log.Error("detection batch write failed", "err", err)
 			}
 		} else {
 			for _, d := range detections {
 				if err := s.detectionWriter.WriteDetection(d); err != nil {
-					log.Printf("[Simulator] detection write failed: %v", err)
+					log.Error("detection write failed", "err", err)
 				}
 			}
 		}

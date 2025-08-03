@@ -3,7 +3,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	log "log/slog"
 	"os"
 
 	"cuelang.org/go/cue"
@@ -83,7 +83,7 @@ func Load(configPath, cueSchemaPath string) (*SimulationConfig, error) {
 		return nil, err
 	}
 
-	log.Printf("Loaded configuration: %+v", cfg)
+	log.Info("Loaded configuration", "config", cfg)
 
 	return &cfg, nil
 }

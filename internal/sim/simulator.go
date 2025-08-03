@@ -3,7 +3,7 @@ package sim
 
 import (
 	"fmt"
-	"log"
+	log "log/slog"
 	"math"
 	"math/rand"
 	"strings"
@@ -193,7 +193,8 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 
 	// Check if zones are defined
 	if len(cfg.Zones) == 0 {
-		log.Panic("No zones defined in the configuration")
+		log.Error("No zones defined in the configuration")
+		panic("No zones defined in the configuration")
 	}
 
 	// Initialize fleets
