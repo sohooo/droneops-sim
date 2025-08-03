@@ -11,6 +11,7 @@ func TestEngine_EvasiveManeuver(t *testing.T) {
 	eng := &Engine{
 		regions:   []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
+		rand:      rand.New(rand.NewSource(1)),
 		randFloat: func() float64 { return 0.9 },
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
@@ -22,7 +23,7 @@ func TestEngine_EvasiveManeuver(t *testing.T) {
 
 func TestEngine_SpawnMultipleRegions(t *testing.T) {
 	regions := []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}, {CenterLat: 1, CenterLon: 1, RadiusKM: 1}}
-	eng := NewEngine(1, regions)
+	eng := NewEngine(1, regions, rand.New(rand.NewSource(1)))
 	if len(eng.Enemies) != 2 {
 		t.Fatalf("expected 2 enemies, got %d", len(eng.Enemies))
 	}
@@ -44,6 +45,7 @@ func TestEngine_SpawnDecoy(t *testing.T) {
 	eng := &Engine{
 		regions:   []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
+		rand:      rand.New(rand.NewSource(1)),
 		randFloat: func() float64 { return 0.1 },
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
@@ -61,7 +63,7 @@ func TestEngine_PursueEnemy(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
 	e1 := &Enemy{ID: "e1", Type: EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region}
 	e2 := &Enemy{ID: "e2", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0.001, Lon: 0}, Region: region}
-	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{e1, e2}, randFloat: func() float64 { return 0 }}
+	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{e1, e2}, rand: rand.New(rand.NewSource(1)), randFloat: func() float64 { return 0 }}
 	before := distance(e1.Position, e2.Position)
 	eng.Step(nil)
 	after := distance(e1.Position, e2.Position)
@@ -73,10 +75,25 @@ func TestEngine_PursueEnemy(t *testing.T) {
 func TestEngine_HandleRegionBounds(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
 	en := &Enemy{ID: "e", Type: EnemyPerson, Position: telemetry.Position{Lat: 0.02, Lon: 0.02}, Region: region}
-	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{en}, randFloat: rand.Float64}
+	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{en}, rand: rand.New(rand.NewSource(1)), randFloat: rand.Float64}
 	eng.Step(nil)
 	center := telemetry.Position{Lat: region.CenterLat, Lon: region.CenterLon}
 	if distance(en.Position, center) > region.RadiusKM/111 {
 		t.Fatalf("expected enemy to be within region bounds")
+	}
+}
+
+func TestEngine_DeterministicStep(t *testing.T) {
+	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
+	r1 := rand.New(rand.NewSource(1))
+	r2 := rand.New(rand.NewSource(1))
+	eng1 := NewEngine(1, []telemetry.Region{region}, r1)
+	eng2 := NewEngine(1, []telemetry.Region{region}, r2)
+	eng1.Step(nil)
+	eng2.Step(nil)
+	p1 := eng1.Enemies[0].Position
+	p2 := eng2.Enemies[0].Position
+	if p1.Lat != p2.Lat || p1.Lon != p2.Lon || p1.Alt != p2.Alt {
+		t.Fatalf("expected deterministic positions, got %#v and %#v", p1, p2)
 	}
 }

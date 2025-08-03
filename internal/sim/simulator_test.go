@@ -40,7 +40,7 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	// Run one tick manually
 	sim.tick()
@@ -65,7 +65,7 @@ func TestSimulator_SensorErrorRate(t *testing.T) {
 		},
 	}
 	writer := &MockWriter{}
-	sim := NewSimulator("cluster", cfg, writer, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	sim.tick()
 
@@ -90,7 +90,7 @@ func TestSimulator_BatteryAnomalyRate(t *testing.T) {
 		},
 	}
 	writer := &MockWriter{}
-	sim := NewSimulator("cluster", cfg, writer, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	start := drone.Battery
@@ -118,7 +118,7 @@ func TestSimulator_DropoutRate(t *testing.T) {
 		},
 	}
 	writer := &MockWriter{}
-	sim := NewSimulator("cluster", cfg, writer, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	sim.tick()
 
@@ -135,7 +135,7 @@ func TestUpdateDroneDropout(t *testing.T) {
 			{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	drone := sim.fleets[0].Drones[0]
 	drone.DropoutRate = 1
 	if _, ok := sim.updateDrone(drone); ok {
@@ -151,7 +151,7 @@ func TestInjectChaosAltersBattery(t *testing.T) {
 			{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	drone := sim.fleets[0].Drones[0]
 	row := sim.teleGen.GenerateTelemetry(drone)
 	before := drone.Battery
@@ -172,7 +172,7 @@ func TestProcessDetectionsReturnsDetection(t *testing.T) {
 		},
 		FollowConfidence: 50,
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	drone := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e1", Type: enemy.EnemyDrone, Position: drone.Position}
 	sim.enemyEng = &enemy.Engine{Enemies: []*enemy.Enemy{en}}
@@ -196,7 +196,7 @@ func TestSimulator_DetectsEnemy(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -227,7 +227,7 @@ func TestSimulator_NoDetectionOutsideRange(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster-test", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -250,7 +250,7 @@ func TestSimulator_NoPanicWithNilDetectionWriter(t *testing.T) {
 		},
 	}
 	writer := &MockWriter{}
-	sim := NewSimulator("cluster-test", cfg, writer, nil, 1*time.Second)
+	sim := NewSimulator("cluster-test", cfg, writer, nil, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -272,7 +272,7 @@ func TestSimulator_EnemyCountConfig(t *testing.T) {
 		Fleets:     []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "zone"}},
 		EnemyCount: 5,
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	if len(sim.enemyEng.Enemies) != 5 {
 		t.Fatalf("expected 5 enemies, got %d", len(sim.enemyEng.Enemies))
 	}
@@ -287,7 +287,7 @@ func TestSimulator_CustomDetectionRadius(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	rand.Seed(1)
 
 	drone := sim.fleets[0].Drones[0]
@@ -309,7 +309,7 @@ func TestSimulator_NoDetectionOutsideCustomRadius(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	rand.Seed(1)
 
 	drone := sim.fleets[0].Drones[0]
@@ -334,7 +334,7 @@ func TestSimulator_SwarmFollowHighConfidence(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -371,7 +371,7 @@ func TestSimulator_SwarmNoFollowBelowConfidence(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -406,7 +406,7 @@ func TestSimulator_DetectionFactorsReduceConfidence(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, 1*time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.enemyEng.Enemies = []*enemy.Enemy{
@@ -441,7 +441,7 @@ func TestSimulator_PointToPointDetectorFollows(t *testing.T) {
 	}
 	writer := &MockWriter{}
 	dWriter := &MockDetectionWriter{}
-	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second)
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	drone := sim.fleets[0].Drones[0]
 	sim.fleets[0].Drones[1].Position.Lat += 0.05
@@ -470,7 +470,7 @@ func TestSimulator_PredictiveInterception(t *testing.T) {
 		FollowConfidence: 50,
 		SwarmResponses:   map[string]int{"patrol": 2},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, &MockDetectionWriter{}, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	fleet := &sim.fleets[0]
 	detecting := fleet.Drones[0]
 	prev := telemetry.Position{Lat: 0, Lon: 0}
@@ -515,7 +515,7 @@ func TestSimulator_PatrolResponseCount(t *testing.T) {
 		},
 		SwarmResponses: map[string]int{"patrol": 1},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	detecting := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
@@ -545,7 +545,7 @@ func TestSimulator_LoiterResponseCount(t *testing.T) {
 		},
 		SwarmResponses: map[string]int{"loiter": 2},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	detecting := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
@@ -576,7 +576,7 @@ func TestSimulator_ThreatAdaptiveFollowers(t *testing.T) {
 		SwarmResponses:     map[string]int{"patrol": 1},
 		MissionCriticality: "high",
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	detecting := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyDrone, Position: telemetry.Position{Lat: 0, Lon: 0}}
@@ -601,7 +601,7 @@ func TestSimulator_RebalanceFormation(t *testing.T) {
 			{Name: "fleet", Model: "small-fpv", Count: 4, MovementPattern: "patrol", HomeRegion: "zone"},
 		},
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 
 	// First drone breaks formation to follow an enemy
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0.001, Lon: 0}}
@@ -646,7 +646,7 @@ func TestSimulator_CommunicationLossPreventsAssignment(t *testing.T) {
 		CommunicationLoss: 1.0,
 		BandwidthLimit:    10,
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	detecting := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
 	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
@@ -667,7 +667,7 @@ func TestSimulator_FollowerFailover(t *testing.T) {
 		CommunicationLoss: 0,
 		BandwidthLimit:    10,
 	}
-	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second)
+	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	detecting := sim.fleets[0].Drones[0]
 	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
 	sim.assignFollower(&sim.fleets[0], detecting, en, 80)
@@ -701,7 +701,7 @@ func TestCleanupFollowers_RemovesInvalid(t *testing.T) {
 		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "z"}},
 	}
-	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	sim := NewSimulator("c", cfg, nil, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	d := sim.fleets[0].Drones[0]
 	pos := telemetry.Position{Lat: 0, Lon: 0}
 	d.FollowTarget = &pos
@@ -725,7 +725,7 @@ func TestApplyAssignments_SetsTargets(t *testing.T) {
 		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "z"}},
 	}
-	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	sim := NewSimulator("c", cfg, nil, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	d1 := sim.fleets[0].Drones[0]
 	d2 := sim.fleets[0].Drones[1]
 	en := &enemy.Enemy{ID: "e", Position: telemetry.Position{Lat: 1, Lon: 1}}
@@ -749,7 +749,7 @@ func TestSelectCandidates_ReservesAssignments(t *testing.T) {
 		CommunicationLoss: 0,
 		BandwidthLimit:    10,
 	}
-	sim := NewSimulator("c", cfg, nil, nil, time.Second)
+	sim := NewSimulator("c", cfg, nil, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	cands := sim.selectCandidates(1)
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 candidate, got %d", len(cands))
@@ -764,7 +764,7 @@ func TestObserverTools(t *testing.T) {
 		Zones:  []config.Region{{Name: "r1", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
 		Fleets: []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1}},
 	}
-	sim := NewSimulator("cluster", cfg, nil, nil, 1)
+	sim := NewSimulator("cluster", cfg, nil, nil, 1, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	sim.ObserverInjectCommand("test")
 	events := sim.ObserverEvents()
 	if len(events) != 1 {
@@ -778,5 +778,58 @@ func TestObserverTools(t *testing.T) {
 	sim.ObserverSetPerspective(droneID)
 	if sim.ObserverPerspective() != droneID {
 		t.Fatalf("expected perspective %s, got %s", droneID, sim.ObserverPerspective())
+	}
+}
+
+func TestSimulator_ToggleChaos(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "z", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1}},
+	}
+	sim := NewSimulator("c", cfg, nil, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	if sim.Chaos() {
+		t.Fatalf("expected chaos disabled")
+	}
+	if !sim.ToggleChaos() || !sim.Chaos() {
+		t.Fatalf("chaos should be enabled after toggle")
+	}
+	if sim.ToggleChaos() || sim.Chaos() {
+		t.Fatalf("chaos should be disabled after second toggle")
+	}
+}
+
+func TestAssignFollowerDeterministic(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:          []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
+		Fleets:         []config.Fleet{{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone"}},
+		SwarmResponses: map[string]int{"patrol": 1},
+	}
+	r1 := rand.New(rand.NewSource(1))
+	r2 := rand.New(rand.NewSource(1))
+	sim1 := NewSimulator("c1", cfg, &MockWriter{}, nil, time.Second, r1, func() time.Time { return time.Unix(0, 0).UTC() })
+	sim2 := NewSimulator("c2", cfg, &MockWriter{}, nil, time.Second, r2, func() time.Time { return time.Unix(0, 0).UTC() })
+	detecting1 := sim1.fleets[0].Drones[0]
+	detecting2 := sim2.fleets[0].Drones[0]
+	en := &enemy.Enemy{ID: "e", Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}}
+	sim1.assignFollower(&sim1.fleets[0], detecting1, en, 80)
+	sim2.assignFollower(&sim2.fleets[0], detecting2, en, 80)
+	var f1Idx, f2Idx int = -1, -1
+	for i, d := range sim1.fleets[0].Drones {
+		if d != detecting1 && d.FollowTarget != nil {
+			f1Idx = i
+		}
+	}
+	for i, d := range sim2.fleets[0].Drones {
+		if d != detecting2 && d.FollowTarget != nil {
+			f2Idx = i
+		}
+	}
+	if f1Idx != f2Idx || f1Idx == -1 {
+		t.Fatalf("expected same follower index, got %d and %d", f1Idx, f2Idx)
+	}
+	t1 := sim1.fleets[0].Drones[f1Idx].FollowTarget
+	t2 := sim2.fleets[0].Drones[f2Idx].FollowTarget
+	if t1 == nil || t2 == nil || t1.Lat != t2.Lat || t1.Lon != t2.Lon || t1.Alt != t2.Alt {
+		t.Fatalf("expected identical follow targets")
 	}
 }

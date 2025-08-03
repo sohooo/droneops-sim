@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -52,24 +54,26 @@ var simulateCmd = &cobra.Command{
 			tickInterval = d
 		}
 
-		simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
+		simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval, nil, nil)
+
+		srv := admin.NewServer(simulator)
 		go func() {
-			srv := admin.NewServer(simulator)
 			log.Println("[Main] Admin UI listening on :8080")
-			if err := srv.Start(":8080"); err != nil {
+			if err := srv.Start(ctx, ":8080"); err != nil && err != http.ErrServerClosed {
 				log.Fatalf("Admin server failed: %v", err)
 			}
 		}()
 
-		stop := make(chan struct{})
-		go simulator.Run(stop)
+		go simulator.Run(ctx)
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
 
-		close(stop)
+		cancel()
 		log.Println("[Main] Drone simulation stopped.")
 		return nil
 	},
