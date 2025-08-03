@@ -10,14 +10,16 @@ import (
 
 // FileWriter writes telemetry and detection data to JSONL files.
 type FileWriter struct {
-	teleFile *os.File
-	detFile  *os.File
-	teleEnc  *json.Encoder
-	detEnc   *json.Encoder
+	teleFile  *os.File
+	detFile   *os.File
+	swarmFile *os.File
+	teleEnc   *json.Encoder
+	detEnc    *json.Encoder
+	swarmEnc  *json.Encoder
 }
 
-// NewFileWriter creates a FileWriter. detectionPath may be empty to skip detection logs.
-func NewFileWriter(telemetryPath, detectionPath string) (*FileWriter, error) {
+// NewFileWriter creates a FileWriter. detectionPath or swarmPath may be empty to skip those logs.
+func NewFileWriter(telemetryPath, detectionPath, swarmPath string) (*FileWriter, error) {
 	tf, err := os.Create(telemetryPath)
 	if err != nil {
 		return nil, err
@@ -31,6 +33,18 @@ func NewFileWriter(telemetryPath, detectionPath string) (*FileWriter, error) {
 		}
 		fw.detFile = df
 		fw.detEnc = json.NewEncoder(df)
+	}
+	if swarmPath != "" {
+		sf, err := os.Create(swarmPath)
+		if err != nil {
+			if fw.detFile != nil {
+				fw.detFile.Close()
+			}
+			tf.Close()
+			return nil, err
+		}
+		fw.swarmFile = sf
+		fw.swarmEnc = json.NewEncoder(sf)
 	}
 	return fw, nil
 }
@@ -68,6 +82,24 @@ func (f *FileWriter) WriteDetections(rows []enemy.DetectionRow) error {
 	return nil
 }
 
+// WriteSwarmEvent logs a single swarm event row, if enabled.
+func (f *FileWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	if f.swarmEnc == nil {
+		return nil
+	}
+	return f.swarmEnc.Encode(e)
+}
+
+// WriteSwarmEvents logs multiple swarm events.
+func (f *FileWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
+	for _, r := range rows {
+		if err := f.WriteSwarmEvent(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Close closes any underlying files.
 func (f *FileWriter) Close() error {
 	var err error
@@ -78,6 +110,11 @@ func (f *FileWriter) Close() error {
 	}
 	if f.detFile != nil {
 		if e := f.detFile.Close(); e != nil && err == nil {
+			err = e
+		}
+	}
+	if f.swarmFile != nil {
+		if e := f.swarmFile.Close(); e != nil && err == nil {
 			err = e
 		}
 	}

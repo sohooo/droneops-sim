@@ -139,3 +139,24 @@ func (w *ColorStdoutWriter) WriteDetections(rows []enemy.DetectionRow) error {
 	}
 	return nil
 }
+
+// WriteSwarmEvent prints a swarm coordination event to STDOUT.
+func (w *ColorStdoutWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	w.once.Do(w.printOverview)
+	fmt.Fprintf(w.out, "%s[%s]%s %sSWARM%s type=%s drones=%v",
+		colorGray, e.Timestamp.Format(time.RFC3339), colorReset,
+		colorCyan, colorReset, e.EventType, e.DroneIDs)
+	if e.EnemyID != "" {
+		fmt.Fprintf(w.out, " enemy=%s", e.EnemyID)
+	}
+	fmt.Fprintln(w.out)
+	return nil
+}
+
+// WriteSwarmEvents prints multiple swarm events.
+func (w *ColorStdoutWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
+	for _, e := range rows {
+		_ = w.WriteSwarmEvent(e)
+	}
+	return nil
+}

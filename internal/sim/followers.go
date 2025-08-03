@@ -7,6 +7,32 @@ import (
 	"droneops-sim/internal/telemetry"
 )
 
+func (s *Simulator) logSwarmEvent(eventType string, drones []string, enemyID string) {
+	if len(drones) == 0 {
+		return
+	}
+	w, ok := s.writer.(SwarmEventWriter)
+	if !ok {
+		return
+	}
+	row := telemetry.SwarmEventRow{
+		ClusterID: s.clusterID,
+		EventType: eventType,
+		DroneIDs:  drones,
+		EnemyID:   enemyID,
+		Timestamp: s.now(),
+	}
+	_ = w.WriteSwarmEvent(row)
+}
+
+func droneIDSlice(ds []*telemetry.Drone) []string {
+	ids := make([]string, len(ds))
+	for i, d := range ds {
+		ids[i] = d.ID
+	}
+	return ids
+}
+
 func (s *Simulator) sendCommand() bool {
 	if s.bandwidthLimit > 0 && s.messagesSent >= s.bandwidthLimit {
 		return false
@@ -118,6 +144,22 @@ func (s *Simulator) applyAssignments(enemyID string, en *enemy.Enemy, cands []*t
 func (s *Simulator) reassignFollowers() {
 	for enemyID, followers := range s.enemyFollowers {
 		active := s.cleanupFollowers(enemyID, followers)
+		if len(active) < len(followers) {
+			removed := make([]string, 0, len(followers)-len(active))
+			for _, id := range followers {
+				found := false
+				for _, a := range active {
+					if a == id {
+						found = true
+						break
+					}
+				}
+				if !found {
+					removed = append(removed, id)
+				}
+			}
+			s.logSwarmEvent(telemetry.SwarmEventUnassignment, removed, enemyID)
+		}
 		desired := s.enemyFollowerTargets[enemyID]
 		missing := desired - len(active)
 		if missing <= 0 {
@@ -133,6 +175,9 @@ func (s *Simulator) reassignFollowers() {
 		en := s.enemyObjects[enemyID]
 		cands := s.selectCandidates(missing)
 		s.applyAssignments(enemyID, en, cands)
+		if len(cands) > 0 {
+			s.logSwarmEvent(telemetry.SwarmEventAssignment, droneIDSlice(cands), enemyID)
+		}
 		if len(s.enemyFollowers[enemyID]) == 0 {
 			delete(s.enemyFollowers, enemyID)
 			delete(s.enemyFollowerTargets, enemyID)
@@ -164,6 +209,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		cands := s.filterSendable([]*telemetry.Drone{detecting})
 		s.applyAssignments(en.ID, en, cands)
 		if len(cands) > 0 {
+			s.logSwarmEvent(telemetry.SwarmEventAssignment, droneIDSlice(cands), en.ID)
 			s.rebalanceFormation(fleet)
 		}
 		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
@@ -179,6 +225,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		selected := s.filterSendable(unassigned)
 		s.applyAssignments(en.ID, en, selected)
 		if len(selected) > 0 {
+			s.logSwarmEvent(telemetry.SwarmEventAssignment, droneIDSlice(selected), en.ID)
 			s.rebalanceFormation(fleet)
 		}
 		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
@@ -200,6 +247,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		cands := s.filterSendable([]*telemetry.Drone{detecting})
 		s.applyAssignments(en.ID, en, cands)
 		if len(cands) > 0 {
+			s.logSwarmEvent(telemetry.SwarmEventAssignment, droneIDSlice(cands), en.ID)
 			s.rebalanceFormation(fleet)
 		}
 		s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
@@ -208,6 +256,7 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 	selected := s.filterSendable(followers)
 	s.applyAssignments(en.ID, en, selected)
 	if len(selected) > 0 {
+		s.logSwarmEvent(telemetry.SwarmEventAssignment, droneIDSlice(selected), en.ID)
 		s.rebalanceFormation(fleet)
 	}
 	s.enemyFollowerTargets[en.ID] = len(s.enemyFollowers[en.ID])
@@ -268,4 +317,5 @@ func (s *Simulator) rebalanceFormation(fleet *DroneFleet) {
 		d.HomeRegion.CenterLat = region.CenterLat + deltaLat
 		d.HomeRegion.CenterLon = region.CenterLon + deltaLon
 	}
+	s.logSwarmEvent(telemetry.SwarmEventFormationChange, droneIDSlice(remaining), "")
 }

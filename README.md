@@ -15,6 +15,7 @@ It supports:
 - **Output to GreptimeDB** using its gRPC ORM interface **or** to STDOUT for quick demos
 - **Mission scenarios** scripted with a lightweight DSL for phases and enemy objectives
 - **Observer dashboard** for stepping through mission events, switching perspectives, and injecting commands
+- **Swarm-event logs** for follower assignments, reassignments, and formation changes
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
@@ -76,6 +77,7 @@ The simulator can be configured through the following environment variables:
 | `GREPTIMEDB_ENDPOINT` | _none_ | Yes (for GreptimeDB) | GreptimeDB gRPC endpoint. If unset, telemetry is printed to STDOUT. |
 | `GREPTIMEDB_TABLE` | `drone_telemetry` | No | Table for drone telemetry records. |
 | `ENEMY_DETECTION_TABLE` | `enemy_detection` | No | Table storing enemy detection events. |
+| `SWARM_EVENT_TABLE` | `swarm_events` | No | Table storing swarm coordination events. |
 | `MISSION_METADATA_TABLE` | `mission_metadata` | No | Table storing mission metadata. |
 | `CLUSTER_ID` | `mission-01` | No | Cluster identity tag added to each telemetry line. |
 | `TICK_INTERVAL` | `1s` | No | Telemetry tick interval (Go duration). Overrides the `--tick` flag. |
@@ -87,6 +89,7 @@ See [docs/quickstart.md](docs/quickstart.md) for step-by-step instructions.
 ## Log Export & Playback
 
 - Use `--log-file` to export telemetry and enemy detection events as JSONL files.
+  Swarm coordination events are written to a `.swarm` companion file.
 - Replay a recorded mission:
 
 ```bash
