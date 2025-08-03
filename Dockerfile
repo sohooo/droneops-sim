@@ -20,3 +20,4 @@ WORKDIR /
 COPY --from=builder /droneops-sim /droneops-sim
 
 ENTRYPOINT ["/droneops-sim"]
+CMD ["simulate"]

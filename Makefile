@@ -11,7 +11,7 @@ build:
 
 run:
 	$(MAKE) build
-	$(BIN) --config config/simulation.yaml --schema schemas/simulation.cue --print-only
+	$(BIN) simulate --config config/simulation.yaml --schema schemas/simulation.cue --print-only
 
 docker:
 	docker build -t $(APP_NAME):latest .

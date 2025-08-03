@@ -42,7 +42,7 @@ To write to GreptimeDB instead, set the endpoint and table variables:
 export GREPTIMEDB_ENDPOINT=127.0.0.1:4001
 export GREPTIMEDB_TABLE=drone_telemetry
 export ENEMY_DETECTION_TABLE=enemy_detection
-./build/droneops-sim
+./build/droneops-sim simulate
 ```
 
 The admin web UI will be available on `http://localhost:8080`.
@@ -69,7 +69,7 @@ Build and run the simulator in a container:
 make docker
 # or manually
 # docker build -t droneops-sim:latest .
-# docker run --rm -p 8080:8080 droneops-sim:latest
+# docker run --rm -p 8080:8080 droneops-sim:latest simulate
 ```
 
 ## Kubernetes
