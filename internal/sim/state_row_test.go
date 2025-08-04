@@ -1,13 +1,18 @@
 package sim
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
+	"droneops-sim/internal/logging"
 	"droneops-sim/internal/telemetry"
 )
 
@@ -63,5 +68,62 @@ func TestSimulationStateEmission(t *testing.T) {
 	r2 := writer.Rows[0]
 	if r2.ChaosMode {
 		t.Fatalf("unexpected second state row: %+v", r2)
+	}
+}
+
+type errStateWriter struct{}
+
+func (w *errStateWriter) Write(telemetry.TelemetryRow) error { return nil }
+func (w *errStateWriter) WriteState(telemetry.SimulationStateRow) error {
+	return errors.New("write failure")
+}
+
+type errBatchStateWriter struct{}
+
+func (w *errBatchStateWriter) Write(telemetry.TelemetryRow) error            { return nil }
+func (w *errBatchStateWriter) WriteState(telemetry.SimulationStateRow) error { return nil }
+func (w *errBatchStateWriter) WriteStates([]telemetry.SimulationStateRow) error {
+	return errors.New("batch failure")
+}
+
+func TestSimulationStateWriteErrorsLogged(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "r1", CenterLat: 1, CenterLon: 2, RadiusKM: 1}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "r1", CenterLat: 1, CenterLon: 2, RadiusKM: 1}}},
+		Fleets:   []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "r1", MissionID: "m1"}},
+	}
+	buf := &bytes.Buffer{}
+	logger := slog.New(slog.NewTextHandler(buf, nil))
+	ctx := logging.NewContext(context.Background(), logger)
+
+	writer := &errStateWriter{}
+	sim := NewSimulator("c1", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	sim.enableMovement = false
+
+	sim.tick(ctx)
+
+	if !strings.Contains(buf.String(), "state write failed") {
+		t.Fatalf("expected state write failure log, got %s", buf.String())
+	}
+}
+
+func TestSimulationStateBatchWriteErrorsLogged(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:    []config.Region{{Name: "r1", CenterLat: 1, CenterLon: 2, RadiusKM: 1}},
+		Missions: []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "r1", CenterLat: 1, CenterLon: 2, RadiusKM: 1}}},
+		Fleets:   []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "r1", MissionID: "m1"}},
+	}
+	buf := &bytes.Buffer{}
+	logger := slog.New(slog.NewTextHandler(buf, nil))
+	ctx := logging.NewContext(context.Background(), logger)
+
+	writer := &errBatchStateWriter{}
+	sim := NewSimulator("c1", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	sim.enableMovement = false
+
+	sim.tick(ctx)
+
+	if !strings.Contains(buf.String(), "state batch write failed") {
+		t.Fatalf("expected state batch write failure log, got %s", buf.String())
 	}
 }
