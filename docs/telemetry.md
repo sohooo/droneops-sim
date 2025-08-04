@@ -1,6 +1,6 @@
 # Telemetry
 
-Drone telemetry rows include movement metadata to aid analysis and visualization.
+Drone telemetry rows include mission tags and movement metadata to aid analysis and visualization.
 
 ## Movement Fields
 
@@ -9,13 +9,14 @@ Drone telemetry rows include movement metadata to aid analysis and visualization
 - `heading_deg` – bearing from the previous to the current position in degrees.
 - `previous_position` – last reported position `{lat, lon, alt}` used for delta calculations.
 
-These fields are emitted alongside existing telemetry attributes and are available in
-STDOUT, file logs and GreptimeDB outputs.
+These fields are emitted alongside existing telemetry attributes such as the `mission_id`
+tag and `follow` state and are available in STDOUT, file logs and GreptimeDB outputs.
 
 ```json
-{
+{ 
   "cluster_id": "mission-01",
   "drone_id": "alpha-1",
+  "mission_id": "m1",
   "movement_pattern": "patrol",
   "speed_mps": 14.2,
   "heading_deg": 180.0,
@@ -25,6 +26,7 @@ STDOUT, file logs and GreptimeDB outputs.
   "alt": 100,
   "battery": 99.5,
   "status": "ok",
+  "follow": false,
   "ts": "2025-07-29T20:49:52Z"
 }
 ```

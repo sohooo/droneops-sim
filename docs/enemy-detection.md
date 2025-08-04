@@ -23,7 +23,7 @@ grouping, and decoy tactics. A detection event is emitted whenever a drone is wi
 The event structure is defined in `internal/enemy/types.go` and now also includes the detecting drone's
 coordinates, distance to the target, relative bearing, and estimated enemy velocity in meters per second.
 
-Drone telemetry rows now include a `follow` field indicating whether the drone is actively tracking a target.
+Drone telemetry rows now include a `mission_id` tag and a `follow` field indicating whether the drone is actively tracking a target.
 
 ### Detection Event Fields
 
