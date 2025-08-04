@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -36,19 +37,30 @@ type TUIWriter struct {
 	program       teaProgram
 	missionColors map[string]string
 	colorIdx      int
+	done          chan struct{}
+	sendSignal    atomic.Bool
 }
 
 // NewTUIWriter starts a bubbletea program and returns a TUIWriter.
 func NewTUIWriter(cfg *config.SimulationConfig) *TUIWriter {
 	mc := make(map[string]string)
-	w := &TUIWriter{missionColors: mc}
+	w := &TUIWriter{missionColors: mc, done: make(chan struct{})}
+	w.sendSignal.Store(true)
 	m := newTUIModel(cfg, mc)
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	w.program = p
 	for _, ms := range cfg.Missions {
 		w.getMissionColor(ms.ID)
 	}
-	go func() { _ = p.Start() }()
+	go func() {
+		_ = p.Start()
+		close(w.done)
+		if w.sendSignal.Load() {
+			if proc, err := os.FindProcess(os.Getpid()); err == nil {
+				_ = proc.Signal(os.Interrupt)
+			}
+		}
+	}()
 	return w
 }
 
@@ -160,6 +172,18 @@ func (w *TUIWriter) SetAdminStatus(active bool) {
 	w.program.Send(adminMsg{active: active})
 }
 
+// Close shuts down the TUI program and waits for cleanup.
+func (w *TUIWriter) Close() error {
+	w.sendSignal.Store(false)
+	if w.program != nil {
+		w.program.Send(tea.Quit())
+	}
+	if w.done != nil {
+		<-w.done
+	}
+	return nil
+}
+
 type tuiModel struct {
 	cfg           *config.SimulationConfig
 	table         table.Model
@@ -209,9 +233,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			if proc, err := os.FindProcess(os.Getpid()); err == nil {
-				_ = proc.Signal(os.Interrupt)
-			}
 			return m, tea.Quit
 		case "w":
 			m.wrap = !m.wrap

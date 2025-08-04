@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,6 +71,9 @@ var simulateCmd = &cobra.Command{
 			return err
 		}
 		defer cleanup()
+		if c, ok := writer.(io.Closer); ok {
+			defer c.Close()
+		}
 
 		clusterID := os.Getenv("CLUSTER_ID")
 		if clusterID == "" {

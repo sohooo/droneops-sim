@@ -141,3 +141,13 @@ func (mw *MultiWriter) SetAdminStatus(active bool) {
 		}
 	}
 }
+
+// Close closes underlying writers that support it.
+func (mw *MultiWriter) Close() error {
+	for _, w := range mw.telewriters {
+		if c, ok := w.(interface{ Close() error }); ok {
+			_ = c.Close()
+		}
+	}
+	return nil
+}
