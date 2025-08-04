@@ -4,19 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	log "log/slog"
-	"strings"
 
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
 
+	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 // GreptimeDBWriter writes telemetry to GreptimeDB via the ingester client
+type greptimeClient interface {
+	Write(ctx context.Context, tables ...*table.Table) (*gpb.GreptimeResponse, error)
+}
+
+// GreptimeDBWriter writes telemetry to GreptimeDB via the ingester client
 type GreptimeDBWriter struct {
-	client         *greptime.Client
+	client         greptimeClient
 	db             string
 	table          string
 	detectionTable string
@@ -215,7 +220,7 @@ func (w *GreptimeDBWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) erro
 	}
 	tbl.AddTagColumn("cluster_id", types.STRING)
 	tbl.AddTagColumn("event_type", types.STRING)
-	tbl.AddFieldColumn("drone_ids", types.STRING)
+	tbl.AddFieldColumn("drone_ids", types.JSON)
 	tbl.AddTagColumn("enemy_id", types.STRING)
 	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 
@@ -223,7 +228,7 @@ func (w *GreptimeDBWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) erro
 		err := tbl.AddRow(
 			r.ClusterID,
 			r.EventType,
-			strings.Join(r.DroneIDs, ","),
+			r.DroneIDs,
 			r.EnemyID,
 			r.Timestamp,
 		)
