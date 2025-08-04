@@ -31,6 +31,28 @@ func (w *MockDetectionWriter) WriteDetection(d enemy.DetectionRow) error {
 	return nil
 }
 
+// mockAllWriter captures all telemetry streams.
+type mockAllWriter struct {
+	rows   []telemetry.TelemetryRow
+	swarm  []telemetry.SwarmEventRow
+	states []telemetry.SimulationStateRow
+}
+
+func (m *mockAllWriter) Write(r telemetry.TelemetryRow) error {
+	m.rows = append(m.rows, r)
+	return nil
+}
+
+func (m *mockAllWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	m.swarm = append(m.swarm, e)
+	return nil
+}
+
+func (m *mockAllWriter) WriteState(s telemetry.SimulationStateRow) error {
+	m.states = append(m.states, s)
+	return nil
+}
+
 func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Zones:    []config.Region{{Name: "region-1", CenterLat: 48.2, CenterLon: 16.4, RadiusKM: 50}},
@@ -109,6 +131,41 @@ func TestSimulator_BatteryAnomalyRate(t *testing.T) {
 	}
 	if writer.Rows[0].Battery != drone.Battery {
 		t.Errorf("row battery should match drone battery")
+	}
+}
+
+func TestSimulator_EmitsTelemetryStreams(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:            []config.Region{{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Missions:         []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "zone", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
+		Fleets:           []config.Fleet{{Name: "f1", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "zone", MissionID: "m1"}},
+		DetectionRadiusM: 1000000,
+		FollowConfidence: 50,
+	}
+	writer := &mockAllWriter{}
+	dWriter := &MockDetectionWriter{}
+	sim := NewSimulator("cluster", cfg, writer, dWriter, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	eng := enemy.NewEngine(0, nil, rand.New(rand.NewSource(1)))
+	eng.Enemies = []*enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}}}
+	sim.enemyEng = eng
+
+	sim.tick(context.Background())
+
+	if len(writer.rows) == 0 {
+		t.Fatalf("expected telemetry output")
+	}
+	row := writer.rows[0]
+	if row.SpeedMPS <= 0 {
+		t.Errorf("speed not set: %#v", row)
+	}
+	if len(dWriter.Detections) == 0 {
+		t.Fatalf("expected detection output")
+	}
+	if len(writer.swarm) == 0 {
+		t.Fatalf("expected swarm event output")
+	}
+	if len(writer.states) == 0 {
+		t.Fatalf("expected simulation state output")
 	}
 }
 
