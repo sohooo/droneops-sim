@@ -92,6 +92,24 @@ func (s *Simulator) tick(ctx context.Context) {
 			}
 		}
 	}
+
+	// Emit simulation state metrics
+	if sw, ok := s.writer.(StateWriter); ok {
+		state := telemetry.SimulationStateRow{
+			ClusterID:         s.clusterID,
+			CommunicationLoss: s.commLoss,
+			MessagesSent:      s.messagesSent,
+			SensorNoise:       s.sensorNoise,
+			WeatherImpact:     s.weatherImpact,
+			ChaosMode:         s.chaosMode,
+			Timestamp:         s.now().UTC(),
+		}
+		if bw, ok := s.writer.(batchStateWriter); ok {
+			_ = bw.WriteStates([]telemetry.SimulationStateRow{state})
+		} else {
+			_ = sw.WriteState(state)
+		}
+	}
 }
 
 func (s *Simulator) updateDrone(drone *telemetry.Drone) (telemetry.TelemetryRow, bool) {

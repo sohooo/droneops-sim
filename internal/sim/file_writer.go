@@ -13,13 +13,15 @@ type FileWriter struct {
 	teleFile  *os.File
 	detFile   *os.File
 	swarmFile *os.File
+	stateFile *os.File
 	teleEnc   *json.Encoder
 	detEnc    *json.Encoder
 	swarmEnc  *json.Encoder
+	stateEnc  *json.Encoder
 }
 
-// NewFileWriter creates a FileWriter. detectionPath or swarmPath may be empty to skip those logs.
-func NewFileWriter(telemetryPath, detectionPath, swarmPath string) (*FileWriter, error) {
+// NewFileWriter creates a FileWriter. detectionPath, swarmPath, or statePath may be empty to skip those logs.
+func NewFileWriter(telemetryPath, detectionPath, swarmPath, statePath string) (*FileWriter, error) {
 	tf, err := os.Create(telemetryPath)
 	if err != nil {
 		return nil, err
@@ -45,6 +47,21 @@ func NewFileWriter(telemetryPath, detectionPath, swarmPath string) (*FileWriter,
 		}
 		fw.swarmFile = sf
 		fw.swarmEnc = json.NewEncoder(sf)
+	}
+	if statePath != "" {
+		sf, err := os.Create(statePath)
+		if err != nil {
+			if fw.detFile != nil {
+				fw.detFile.Close()
+			}
+			if fw.swarmFile != nil {
+				fw.swarmFile.Close()
+			}
+			tf.Close()
+			return nil, err
+		}
+		fw.stateFile = sf
+		fw.stateEnc = json.NewEncoder(sf)
 	}
 	return fw, nil
 }
@@ -100,6 +117,24 @@ func (f *FileWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
 	return nil
 }
 
+// WriteState logs a simulation state row, if enabled.
+func (f *FileWriter) WriteState(row telemetry.SimulationStateRow) error {
+	if f.stateEnc == nil {
+		return nil
+	}
+	return f.stateEnc.Encode(row)
+}
+
+// WriteStates logs multiple simulation state rows.
+func (f *FileWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
+	for _, r := range rows {
+		if err := f.WriteState(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Close closes any underlying files.
 func (f *FileWriter) Close() error {
 	var err error
@@ -115,6 +150,11 @@ func (f *FileWriter) Close() error {
 	}
 	if f.swarmFile != nil {
 		if e := f.swarmFile.Close(); e != nil && err == nil {
+			err = e
+		}
+	}
+	if f.stateFile != nil {
+		if e := f.stateFile.Close(); e != nil && err == nil {
 			err = e
 		}
 	}

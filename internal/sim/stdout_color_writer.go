@@ -164,3 +164,21 @@ func (w *ColorStdoutWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) err
 	}
 	return nil
 }
+
+// WriteState prints simulation state metrics to STDOUT.
+func (w *ColorStdoutWriter) WriteState(row telemetry.SimulationStateRow) error {
+	w.once.Do(w.printOverview)
+	fmt.Fprintf(w.out, "%s[%s]%s %sSTATE%s comm_loss=%.2f msgs=%d sensor_noise=%.2f weather=%.2f chaos=%t\n",
+		colorGray, row.Timestamp.Format(time.RFC3339), colorReset,
+		colorBlue, colorReset, row.CommunicationLoss, row.MessagesSent,
+		row.SensorNoise, row.WeatherImpact, row.ChaosMode)
+	return nil
+}
+
+// WriteStates prints multiple simulation state rows.
+func (w *ColorStdoutWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
+	for _, r := range rows {
+		_ = w.WriteState(r)
+	}
+	return nil
+}

@@ -100,3 +100,35 @@ func (mw *MultiWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) error {
 	}
 	return nil
 }
+
+// WriteState sends a simulation state row to all telemetry writers that support it.
+func (mw *MultiWriter) WriteState(row telemetry.SimulationStateRow) error {
+	for _, w := range mw.telewriters {
+		if sw, ok := w.(StateWriter); ok {
+			if err := sw.WriteState(row); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// WriteStates sends multiple simulation state rows using batch mode if supported.
+func (mw *MultiWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
+	for _, w := range mw.telewriters {
+		if bw, ok := w.(batchStateWriter); ok {
+			if err := bw.WriteStates(rows); err != nil {
+				return err
+			}
+			continue
+		}
+		if sw, ok := w.(StateWriter); ok {
+			for _, r := range rows {
+				if err := sw.WriteState(r); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}

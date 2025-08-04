@@ -54,11 +54,26 @@ func TestNewWritersLogFile(t *testing.T) {
 	if err := tw.Write(row); err != nil {
 		t.Fatalf("write failed: %v", err)
 	}
+	sw, ok := tw.(sim.StateWriter)
+	if !ok {
+		t.Fatalf("telemetry writer does not implement StateWriter")
+	}
+	st := telemetry.SimulationStateRow{ClusterID: "c1", CommunicationLoss: 0.1, MessagesSent: 1, SensorNoise: 0.2, WeatherImpact: 0.3, ChaosMode: true, Timestamp: time.Now()}
+	if err := sw.WriteState(st); err != nil {
+		t.Fatalf("write state failed: %v", err)
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("stat failed: %v", err)
 	}
 	if info.Size() == 0 {
 		t.Fatalf("expected log file to be non-empty")
+	}
+	stateInfo, err := os.Stat(path + ".state")
+	if err != nil {
+		t.Fatalf("stat state failed: %v", err)
+	}
+	if stateInfo.Size() == 0 {
+		t.Fatalf("expected state file to be non-empty")
 	}
 }

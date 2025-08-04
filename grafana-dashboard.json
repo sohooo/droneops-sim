@@ -441,6 +441,50 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Communication Reliability",
+      "gridPos": { "x": 0, "y": 128, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "X",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__time(ts) AS time, 1 - communication_loss AS reliability FROM simulation_state WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Sensor Noise",
+      "gridPos": { "x": 12, "y": 128, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "Y",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__time(ts) AS time, sensor_noise FROM simulation_state WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "Chaos Mode",
+      "gridPos": { "x": 0, "y": 136, "w": 12, "h": 4 },
+      "targets": [
+        {
+          "refId": "Z",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT chaos_mode FROM simulation_state WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) ORDER BY ts DESC LIMIT 1",
+          "format": "table"
+        }
+      ]
     }
   ],
   "templating": {

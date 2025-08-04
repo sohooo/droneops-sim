@@ -64,3 +64,18 @@ func (w *JSONStdoutWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) erro
 	}
 	return nil
 }
+
+// WriteState outputs a simulation state row in JSON format.
+func (w *JSONStdoutWriter) WriteState(row telemetry.SimulationStateRow) error {
+	data, _ := json.Marshal(row)
+	fmt.Fprintln(w.out, string(data))
+	return nil
+}
+
+// WriteStates outputs multiple simulation state rows in JSON format.
+func (w *JSONStdoutWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
+	for _, r := range rows {
+		_ = w.WriteState(r)
+	}
+	return nil
+}
