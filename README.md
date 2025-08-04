@@ -40,6 +40,40 @@ Scenarios can be authored using the [Scenario DSL](docs/scenario.md) to drive mi
 Common narrative patterns such as escort and search-and-rescue are available as built-in [story arcs](docs/story-arcs.md).
 For tips on shaping these scenarios into compelling presentations, see [docs/demo-best-practices.md](docs/demo-best-practices.md).
 
+## Telemetry Types
+
+The simulator emits several telemetry streams:
+
+- **Drone Telemetry** – core position and battery data with movement metrics.
+- **Enemy Detection** – reports when drones spot hostile objects.
+- **Swarm Events** – follower assignments, releases, and formation changes.
+- **Simulation State** – per-tick metrics such as communication reliability and sensor noise.
+- **Mission Metadata** – details about active missions and objectives.
+
+### Sample Swarm Event
+
+```json
+{
+  "cluster_id": "mission-01",
+  "drone_id": "alpha-1",
+  "enemy_id": "enemy-42",
+  "event": "follow_assigned",
+  "ts": "2024-06-24T12:00:00Z"
+}
+```
+
+### Sample Simulation State
+
+```json
+{
+  "cluster_id": "mission-01",
+  "communication_reliability": 0.97,
+  "sensor_noise": 0.02,
+  "weather_impact": 0.10,
+  "ts": "2024-06-24T12:00:00Z"
+}
+```
+
 ## Schema Validation (schemas/simulation.cue)
 
 Configuration is validated at runtime using CUE:

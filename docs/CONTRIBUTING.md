@@ -89,4 +89,13 @@ Edit `values.yaml` to customise simulation parameters or resource limits.
 2. Ensure `go test ./...` passes.
 3. Open a pull request describing the change.
 
+### Telemetry Changes
+
+When modifying any telemetry stream or schema:
+
+1. Add or update tests that cover the new fields or behavior.
+2. Update documentation including `README.md`, `docs/telemetry.md`, and any feature-specific guides.
+3. Regenerate dashboard examples or JSON snippets if necessary.
+4. Run `make test` to verify all tests pass before submitting.
+
 We appreciate all improvements, whether in code, tests or documentation!

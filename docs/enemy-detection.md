@@ -47,6 +47,16 @@ The following fields in `config/simulation.yaml` control the enemy detection beh
 | `terrain_occlusion` | Terrain occlusion factor (0-1)                   | `0`     |
 | `weather_impact`    | Weather impact factor (0-1)                      | `0`     |
 
+### Example Configuration
+
+```yaml
+enemy_detection:
+  enemy_count: 5
+  detection_radius_m: 1200
+  follow_confidence: 75
+  sensor_noise: 0.05
+```
+
 ### GreptimeDB Output
 
 The enemy detection subsystem has a single configuration value when writing to GreptimeDB:
@@ -82,3 +92,5 @@ no effect.
 ```
 
 Use these events to trigger alerts or visualise hostile activity in your dashboards.
+
+![Enemy Detection Dashboard](images/enemy-detection-dashboard.png)

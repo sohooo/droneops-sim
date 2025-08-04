@@ -2,6 +2,15 @@
 
 Refer to the [Environment Variables](../README.md#environment-variables) table for more configuration options.
 
+### Example Configuration
+
+```yaml
+fleets:
+  - name: demo
+    model: small-fpv
+    movement_pattern: patrol
+```
+
 ### Local Demo (Print Only)
 
 ```bash
@@ -42,4 +51,6 @@ docker run --rm \
 ```
 
 To disable specific streams, pass flags such as `--detections=false` or `--simulation-state=false` to the `simulate` command.
+
+![Quickstart Dashboard](images/quickstart-dashboard.png)
 

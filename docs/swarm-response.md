@@ -16,6 +16,16 @@ The simulator adjusts the follower count when:
 
 Configure the base mapping under `swarm_responses` and the mission importance with `mission_criticality` in `config/simulation.yaml`.
 
+### Example Configuration
+
+```yaml
+swarm_responses:
+  patrol: 1
+  point-to-point: 0
+  loiter: 2
+mission_criticality: high
+```
+
 ## Predictive Interception
 
 When several drones pursue a moving enemy, they no longer trail the target. Instead, the simulator predicts the enemy's path and assigns intercept and flanking points so the swarm can cut off escape routes cooperatively.
@@ -31,4 +41,6 @@ Follower assignments, releases, and formation adjustments generate `swarm_event`
 ## Communication Constraints and Failover
 
 Swarms operate over lossy channels. The simulator can drop follow commands or telemetry updates based on a `communication_loss` probability and limits the number of commands per tick with `bandwidth_limit`. When a follower drops out or fails, the remaining drones reach consensus by selecting the highest-battery idle unit to take over tracking so priorities remain aligned despite signal issues.
+
+![Swarm Response Dashboard](images/swarm-response-dashboard.png)
 
