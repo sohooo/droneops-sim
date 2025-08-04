@@ -112,3 +112,20 @@ Enemy detection events are stored in GreptimeDB when the `GREPTIMEDB_ENDPOINT` v
 Use `ENEMY_DETECTION_TABLE` to control the table name (default: `enemy_detection`).
 See [enemy-detection.md](enemy-detection.md) for more details.
 
+### Telemetry
+
+Control which telemetry streams the simulator emits:
+
+```yaml
+telemetry:
+  detections: true
+  swarm_events: true
+  movement_metrics: true
+  simulation_state: false
+```
+
+- `detections` – output enemy detection events.
+- `swarm_events` – log swarm assignment and coordination events.
+- `movement_metrics` – include derived speed and heading data.
+- `simulation_state` – emit periodic summaries of simulator state.
+
