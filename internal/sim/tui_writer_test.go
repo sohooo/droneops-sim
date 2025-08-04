@@ -47,9 +47,11 @@ func TestTUIWriterMessages(t *testing.T) {
 }
 
 func TestWrapToggle(t *testing.T) {
-	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
-	mi, _ := m.Update(tea.WindowSizeMsg{Width: 10, Height: 20})
+	cfg := &config.SimulationConfig{
+		Missions: []config.Mission{{ID: "m1", Name: "M1", Description: "alpha beta gamma delta epsilon zeta"}},
+	}
+	m := newTUIModel(cfg, map[string]string{"m1": colorBlue})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 20})
 	m = mi.(tuiModel)
 	long := "one two three four five six"
 	mi, _ = m.Update(logMsg{line: long})
@@ -58,6 +60,7 @@ func TestWrapToggle(t *testing.T) {
 	if len(lines) < 2 || strings.TrimSpace(lines[1]) != "" {
 		t.Fatalf("expected single line before wrap")
 	}
+	before := m.header
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
 	m = mi.(tuiModel)
 	if !m.wrap {
@@ -66,5 +69,8 @@ func TestWrapToggle(t *testing.T) {
 	lines = strings.Split(m.vp.View(), "\n")
 	if strings.TrimSpace(lines[1]) == "" {
 		t.Fatalf("expected wrapped content on second line")
+	}
+	if strings.Count(m.header, "\n") <= strings.Count(before, "\n") {
+		t.Fatalf("expected mission description to wrap")
 	}
 }
