@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Simulator) logSwarmEvent(eventType string, drones []string, enemyID string) {
-	if len(drones) == 0 {
+	if len(drones) == 0 || !s.enableSwarmEvents {
 		return
 	}
 	w, ok := s.writer.(SwarmEventWriter)

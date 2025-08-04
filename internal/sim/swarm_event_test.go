@@ -50,3 +50,23 @@ func TestSimulator_AssignFollowerEmitsEvents(t *testing.T) {
 		t.Fatalf("expected assignment and formation events, got %#v", writer.events)
 	}
 }
+
+func TestSimulator_SwarmEventsDisabled(t *testing.T) {
+	boolPtr := func(b bool) *bool { return &b }
+	cfg := &config.SimulationConfig{
+		Zones:     []config.Region{{Name: "region-1", CenterLat: 0, CenterLon: 0, RadiusKM: 10}},
+		Missions:  []config.Mission{{ID: "m1", Name: "m1", Objective: "", Description: "", Region: config.Region{Name: "region-1", CenterLat: 0, CenterLon: 0, RadiusKM: 10}}},
+		Fleets:    []config.Fleet{{Name: "fleet", Model: "small-fpv", Count: 2, MovementPattern: "patrol", HomeRegion: "region-1", MissionID: "m1"}},
+		Telemetry: config.TelemetryToggles{SwarmEvents: boolPtr(false)},
+	}
+	writer := &mockSwarmWriter{}
+	sim := NewSimulator("c1", cfg, writer, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	fleet := &sim.fleets[0]
+	en := &enemy.Enemy{ID: "e1", Position: telemetry.Position{}}
+
+	sim.assignFollower(fleet, fleet.Drones[0], en, 95)
+
+	if len(writer.events) != 0 {
+		t.Fatalf("expected no swarm events when disabled, got %d", len(writer.events))
+	}
+}

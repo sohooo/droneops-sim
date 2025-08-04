@@ -16,6 +16,12 @@ spec:
             env:
             - name: MISSION_CLUSTER_ID
               value: "mission-01"
+            - name: ENEMY_DETECTION_TABLE
+              value: "enemy_detection"
+            - name: SWARM_EVENT_TABLE
+              value: "swarm_events"
+            - name: SIMULATION_STATE_TABLE
+              value: "simulation_state"
             - name: SYNC_JOB_ID
               valueFrom:
                 fieldRef:
@@ -41,9 +47,9 @@ data:
       table: drone_telemetry
       incremental_column: ts
 
-    target:
-      type: postgres
-      connection: "postgres://user:pass@command-db:5432/dbname"
+      target:
+        type: postgres
+        connection: "postgres://user:pass@command-db:5432/dbname"
       table: drone_telemetry
 
     transforms:
@@ -56,6 +62,51 @@ data:
       - add_column:
           name: synced_id
           value: "{{ env.SYNC_JOB_ID }}"
+
+    options:
+      on_conflict: skip
+
+  enemy-detection-sling.yaml: |
+    source:
+      type: postgres
+      connection: "postgres://user:pass@mission-db:5432/dbname"
+      table: enemy_detection
+      incremental_column: ts
+
+    target:
+      type: postgres
+      connection: "postgres://user:pass@command-db:5432/dbname"
+      table: enemy_detection
+
+    options:
+      on_conflict: skip
+
+  swarm-events-sling.yaml: |
+    source:
+      type: postgres
+      connection: "postgres://user:pass@mission-db:5432/dbname"
+      table: swarm_events
+      incremental_column: ts
+
+    target:
+      type: postgres
+      connection: "postgres://user:pass@command-db:5432/dbname"
+      table: swarm_events
+
+    options:
+      on_conflict: skip
+
+  simulation-state-sling.yaml: |
+    source:
+      type: postgres
+      connection: "postgres://user:pass@mission-db:5432/dbname"
+      table: simulation_state
+      incremental_column: ts
+
+    target:
+      type: postgres
+      connection: "postgres://user:pass@command-db:5432/dbname"
+      table: simulation_state
 
     options:
       on_conflict: skip

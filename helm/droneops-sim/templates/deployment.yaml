@@ -31,6 +31,18 @@ spec:
           value: "drone_telemetry"
         - name: ENEMY_DETECTION_TABLE
           value: "enemy_detection"
+        - name: SWARM_EVENT_TABLE
+          value: "swarm_events"
+        - name: SIMULATION_STATE_TABLE
+          value: "simulation_state"
+        - name: ENABLE_DETECTIONS
+          value: "true"
+        - name: ENABLE_SWARM_EVENTS
+          value: "true"
+        - name: ENABLE_MOVEMENT_METRICS
+          value: "true"
+        - name: ENABLE_SIMULATION_STATE
+          value: "true"
         - name: CLUSTER_ID
           value: "mission-01"
         volumeMounts:

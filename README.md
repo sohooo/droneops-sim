@@ -83,6 +83,10 @@ The simulator can be configured through the following environment variables:
 | `MISSION_METADATA_TABLE` | `mission_metadata` | No | Table storing mission metadata. |
 | `CLUSTER_ID` | `mission-01` | No | Cluster identity tag added to each telemetry line. |
 | `TICK_INTERVAL` | `1s` | No | Telemetry tick interval (Go duration). Overrides the `--tick` flag. |
+| `ENABLE_DETECTIONS` | `true` | No | Toggle emission of enemy detection stream. |
+| `ENABLE_SWARM_EVENTS` | `true` | No | Toggle emission of swarm event stream. |
+| `ENABLE_MOVEMENT_METRICS` | `true` | No | Toggle emission of movement telemetry. |
+| `ENABLE_SIMULATION_STATE` | `true` | No | Toggle emission of simulation state stream. |
 
 ## Quickstart
 

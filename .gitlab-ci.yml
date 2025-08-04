@@ -12,6 +12,7 @@ variables:
 test:
   stage: test
   script:
+    - cue vet config/simulation.yaml schemas/simulation.cue
     - go test ./...
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

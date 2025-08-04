@@ -58,28 +58,34 @@ func (s *Simulator) tick(ctx context.Context) {
 			if s.chaosMode {
 				s.injectChaos(drone, &row)
 			}
-			batch = append(batch, row)
-			detections = append(detections, s.processDetections(&fleet, drone)...)
+			if s.enableMovement {
+				batch = append(batch, row)
+			}
+			if s.enableDetections {
+				detections = append(detections, s.processDetections(&fleet, drone)...)
+			}
 		}
 	}
 
 	s.reassignFollowers()
 
 	// Batch support if writer implements WriteBatch
-	if bw, ok := s.writer.(batchWriter); ok {
-		if err := bw.WriteBatch(batch); err != nil {
-			log.Error("batch write failed", "err", err)
-		}
-	} else {
-		for _, row := range batch {
-			if err := s.writer.Write(row); err != nil {
-				log.Error("write failed", "drone_id", row.DroneID, "err", err)
+	if s.enableMovement {
+		if bw, ok := s.writer.(batchWriter); ok {
+			if err := bw.WriteBatch(batch); err != nil {
+				log.Error("batch write failed", "err", err)
+			}
+		} else {
+			for _, row := range batch {
+				if err := s.writer.Write(row); err != nil {
+					log.Error("write failed", "drone_id", row.DroneID, "err", err)
+				}
 			}
 		}
 	}
 
 	// Write enemy detections if any
-	if len(detections) > 0 && s.detectionWriter != nil {
+	if s.enableDetections && len(detections) > 0 && s.detectionWriter != nil {
 		if bw, ok := s.detectionWriter.(batchDetectionWriter); ok {
 			if err := bw.WriteDetections(detections); err != nil {
 				log.Error("detection batch write failed", "err", err)
@@ -94,20 +100,22 @@ func (s *Simulator) tick(ctx context.Context) {
 	}
 
 	// Emit simulation state metrics
-	if sw, ok := s.writer.(StateWriter); ok {
-		state := telemetry.SimulationStateRow{
-			ClusterID:         s.clusterID,
-			CommunicationLoss: s.commLoss,
-			MessagesSent:      s.messagesSent,
-			SensorNoise:       s.sensorNoise,
-			WeatherImpact:     s.weatherImpact,
-			ChaosMode:         s.chaosMode,
-			Timestamp:         s.now().UTC(),
-		}
-		if bw, ok := s.writer.(batchStateWriter); ok {
-			_ = bw.WriteStates([]telemetry.SimulationStateRow{state})
-		} else {
-			_ = sw.WriteState(state)
+	if s.enableSimulationState {
+		if sw, ok := s.writer.(StateWriter); ok {
+			state := telemetry.SimulationStateRow{
+				ClusterID:         s.clusterID,
+				CommunicationLoss: s.commLoss,
+				MessagesSent:      s.messagesSent,
+				SensorNoise:       s.sensorNoise,
+				WeatherImpact:     s.weatherImpact,
+				ChaosMode:         s.chaosMode,
+				Timestamp:         s.now().UTC(),
+			}
+			if bw, ok := s.writer.(batchStateWriter); ok {
+				_ = bw.WriteStates([]telemetry.SimulationStateRow{state})
+			} else {
+				_ = sw.WriteState(state)
+			}
 		}
 	}
 }
