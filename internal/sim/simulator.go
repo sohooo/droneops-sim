@@ -93,6 +93,7 @@ type Simulator struct {
 	swarmResponses       map[string]int
 	missionCriticality   int
 	enemyPrevPositions   map[string]telemetry.Position
+	dronePrevPositions   map[string]telemetry.Position
 	commLoss             float64
 	bandwidthLimit       int
 	messagesSent         int
@@ -167,6 +168,7 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 		swarmResponses:       cfg.SwarmResponses,
 		missionCriticality:   crit,
 		enemyPrevPositions:   make(map[string]telemetry.Position),
+		dronePrevPositions:   make(map[string]telemetry.Position),
 		commLoss:             cfg.CommunicationLoss,
 		bandwidthLimit:       cfg.BandwidthLimit,
 		enemyFollowers:       make(map[string][]string),

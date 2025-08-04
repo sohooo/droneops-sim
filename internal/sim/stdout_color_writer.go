@@ -104,6 +104,10 @@ func (w *ColorStdoutWriter) Write(row telemetry.TelemetryRow) error {
 	fmt.Fprintf(w.out, "%slon=%.5f%s ", colorYellow, row.Lon, colorReset)
 	fmt.Fprintf(w.out, "%salt=%.1f%s ", colorMagenta, row.Alt, colorReset)
 	fmt.Fprintf(w.out, "%sbatt=%.1f%s ", colorCyan, row.Battery, colorReset)
+	fmt.Fprintf(w.out, "%spattern=%s%s ", colorBlue, row.MovementPattern, colorReset)
+	fmt.Fprintf(w.out, "%sspd=%.1f%s ", colorYellow, row.SpeedMPS, colorReset)
+	fmt.Fprintf(w.out, "%shdg=%.1f%s ", colorCyan, row.HeadingDeg, colorReset)
+	fmt.Fprintf(w.out, "%sprev=(%.5f,%.5f,%.1f)%s ", colorGray, row.PreviousPosition.Lat, row.PreviousPosition.Lon, row.PreviousPosition.Alt, colorReset)
 	fmt.Fprintf(w.out, "%sstatus=%s%s", statusColor, row.Status, colorReset)
 	if row.Follow {
 		fmt.Fprintf(w.out, " %sfollow%s", colorMagenta, colorReset)

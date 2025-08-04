@@ -112,7 +112,7 @@ telemetry lines. Example mission record:
 Example drone telemetry line:
 
 ```json
-{"cluster_id":"mission-01","drone_id":"recon-swarm-204951-A","mission_id":"","lat":48.19985399217792,"lon":16.399831683018377,"alt":99.89517965510856,"battery":99.5,"status":"ok","synced_from":"","synced_id":"","synced_at":"0001-01-01T00:00:00Z","ts":"2025-07-29T20:49:52.332081195Z"}
+{"cluster_id":"mission-01","drone_id":"recon-swarm-204951-A","mission_id":"","lat":48.19985,"lon":16.39983,"alt":99.9,"battery":99.5,"status":"ok","movement_pattern":"patrol","speed_mps":12.3,"heading_deg":180,"previous_position":{"lat":48.19980,"lon":16.39980,"alt":100},"synced_from":"","synced_id":"","synced_at":"0001-01-01T00:00:00Z","ts":"2025-07-29T20:49:52.332081195Z"}
 ```
 
 ## Architecture
