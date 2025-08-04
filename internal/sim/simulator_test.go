@@ -81,6 +81,36 @@ func TestSimulator_TickGeneratesTelemetry(t *testing.T) {
 	}
 }
 
+func TestSimulator_UsesFleetHomeRegion(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones: []config.Region{
+			{Name: "z1", CenterLat: 1, CenterLon: 2, RadiusKM: 1},
+			{Name: "z2", CenterLat: 10, CenterLon: 20, RadiusKM: 2},
+		},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "z2"}},
+	}
+	sim := NewSimulator("c", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	d := sim.fleets[0].Drones[0]
+	if d.HomeRegion.Name != "z2" {
+		t.Fatalf("expected home region z2, got %s", d.HomeRegion.Name)
+	}
+	if d.Position.Lat != 10 || d.Position.Lon != 20 {
+		t.Fatalf("expected drone positioned at zone z2 center")
+	}
+}
+
+func TestSimulator_DefaultsToFirstZone(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Zones:  []config.Region{{Name: "z1", CenterLat: 1, CenterLon: 2, RadiusKM: 1}, {Name: "z2", CenterLat: 3, CenterLon: 4, RadiusKM: 1}},
+		Fleets: []config.Fleet{{Name: "f", Model: "small-fpv", Count: 1, MovementPattern: "patrol", HomeRegion: "missing"}},
+	}
+	sim := NewSimulator("c", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	d := sim.fleets[0].Drones[0]
+	if d.HomeRegion.Name != "z1" {
+		t.Fatalf("expected default home region z1, got %s", d.HomeRegion.Name)
+	}
+}
+
 func TestSimulator_SensorErrorRate(t *testing.T) {
 	rand.Seed(1)
 	cfg := &config.SimulationConfig{
