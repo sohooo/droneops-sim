@@ -1,6 +1,7 @@
 package sim
 
 import (
+	log "log/slog"
 	"math"
 
 	"droneops-sim/internal/enemy"
@@ -22,7 +23,9 @@ func (s *Simulator) logSwarmEvent(eventType string, drones []string, enemyID str
 		EnemyID:   enemyID,
 		Timestamp: s.now(),
 	}
-	_ = w.WriteSwarmEvent(row)
+	if err := w.WriteSwarmEvent(row); err != nil {
+		log.Error("swarm event write failed", "err", err)
+	}
 }
 
 func droneIDSlice(ds []*telemetry.Drone) []string {
