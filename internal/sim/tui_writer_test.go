@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"droneops-sim/internal/config"
@@ -116,5 +117,23 @@ func TestScrollToggle(t *testing.T) {
 	expected = len(m.logs) - m.vp.Height
 	if m.vp.YOffset != expected {
 		t.Fatalf("expected YOffset %d after new log, got %d", expected, m.vp.YOffset)
+	}
+}
+
+func TestEnemySpawn(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	m.spawn = func(enemy.Enemy) {}
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = mi.(tuiModel)
+	if !m.enemyDialog {
+		t.Fatalf("expected enemy dialog to open")
+	}
+	m.enemyInput = textinput.New()
+	m.enemyInput.SetValue("person,1,2,3")
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = mi.(tuiModel)
+	if len(m.enemies) != 1 {
+		t.Fatalf("expected enemy added")
 	}
 }

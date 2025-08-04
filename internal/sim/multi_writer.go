@@ -142,6 +142,15 @@ func (mw *MultiWriter) SetAdminStatus(active bool) {
 	}
 }
 
+// SetSpawner forwards enemy spawn callbacks to writers that support it.
+func (mw *MultiWriter) SetSpawner(fn func(enemy.Enemy)) {
+	for _, w := range mw.telewriters {
+		if sp, ok := w.(EnemySpawner); ok {
+			sp.SetSpawner(fn)
+		}
+	}
+}
+
 // Close closes underlying writers that support it.
 func (mw *MultiWriter) Close() error {
 	for _, w := range mw.telewriters {
