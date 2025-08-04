@@ -78,11 +78,13 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 	}
 	tbl.AddTagColumn("cluster_id", types.STRING)
 	tbl.AddTagColumn("drone_id", types.STRING)
+	tbl.AddTagColumn("mission_id", types.STRING)
 	tbl.AddFieldColumn("lat", types.FLOAT64)
 	tbl.AddFieldColumn("lon", types.FLOAT64)
 	tbl.AddFieldColumn("alt", types.FLOAT64)
 	tbl.AddFieldColumn("battery", types.FLOAT64)
 	tbl.AddFieldColumn("status", types.STRING)
+	tbl.AddFieldColumn("follow", types.BOOLEAN)
 	tbl.AddFieldColumn("movement_pattern", types.STRING)
 	tbl.AddFieldColumn("speed_mps", types.FLOAT64)
 	tbl.AddFieldColumn("heading_deg", types.FLOAT64)
@@ -97,11 +99,13 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 		err := tbl.AddRow(
 			r.ClusterID,
 			r.DroneID,
+			r.MissionID,
 			r.Lat,
 			r.Lon,
 			r.Alt,
 			r.Battery,
 			r.Status,
+			r.Follow,
 			r.MovementPattern,
 			r.SpeedMPS,
 			r.HeadingDeg,
