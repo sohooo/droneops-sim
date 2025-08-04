@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
@@ -165,28 +166,26 @@ type tuiModel struct {
 	logs          []string
 	state         telemetry.SimulationStateRow
 	admin         bool
+	wrap          bool
 	header        string
 	headerHeight  int
 	missionColors map[string]string
-	width         int
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
 	cols := []table.Column{
 		{Title: "Config", Width: 20},
-		{Title: "Value", Width: 20},
+		{Title: "Value", Width: 10},
+		{Title: "Config", Width: 20},
+		{Title: "Value", Width: 10},
 	}
 	rows := []table.Row{
-		{"Follow Confidence", fmt.Sprintf("%.0f", cfg.FollowConfidence)},
-		{"Mission Criticality", cfg.MissionCriticality},
-		{"Detection Radius (m)", fmt.Sprintf("%.0f", cfg.DetectionRadiusM)},
-		{"Sensor Noise", fmt.Sprintf("%.2f", cfg.SensorNoise)},
-		{"Terrain Occlusion", fmt.Sprintf("%.2f", cfg.TerrainOcclusion)},
-		{"Weather Impact", fmt.Sprintf("%.2f", cfg.WeatherImpact)},
-		{"Communication Loss", fmt.Sprintf("%.2f", cfg.CommunicationLoss)},
-		{"Bandwidth Limit", fmt.Sprintf("%d", cfg.BandwidthLimit)},
+		{"Follow Confidence", fmt.Sprintf("%.0f", cfg.FollowConfidence), "Mission Criticality", cfg.MissionCriticality},
+		{"Detection Radius (m)", fmt.Sprintf("%.0f", cfg.DetectionRadiusM), "Sensor Noise", fmt.Sprintf("%.2f", cfg.SensorNoise)},
+		{"Terrain Occlusion", fmt.Sprintf("%.2f", cfg.TerrainOcclusion), "Weather Impact", fmt.Sprintf("%.2f", cfg.WeatherImpact)},
+		{"Communication Loss", fmt.Sprintf("%.2f", cfg.CommunicationLoss), "Bandwidth Limit", fmt.Sprintf("%d", cfg.BandwidthLimit)},
 	}
-	t := table.New(table.WithColumns(cols), table.WithRows(rows))
+	t := table.New(table.WithColumns(cols), table.WithRows(rows), table.WithHeight(len(rows)+1))
 	vp := viewport.New(0, 0)
 	m := tuiModel{cfg: cfg, table: t, vp: vp, missionColors: missionColors}
 	return m
@@ -197,16 +196,20 @@ func (m tuiModel) Init() tea.Cmd { return nil }
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
 		m.table.SetWidth(msg.Width / 2)
 		m.vp.Width = msg.Width
 		m.header = m.renderHeader()
 		m.headerHeight = lipgloss.Height(m.header)
 		bottomHeight := lipgloss.Height(m.renderBottom())
 		m.vp.Height = msg.Height - m.headerHeight - bottomHeight - 2
+		m.refreshViewport()
 	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
+		switch msg.String() {
+		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "w":
+			m.wrap = !m.wrap
+			m.refreshViewport()
 		}
 		var cmd tea.Cmd
 		m.vp, cmd = m.vp.Update(msg)
@@ -216,14 +219,26 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.logs) > 1000 {
 			m.logs = m.logs[len(m.logs)-1000:]
 		}
-		m.vp.SetContent(strings.Join(m.logs, "\n"))
-		m.vp.GotoBottom()
+		m.refreshViewport()
 	case stateMsg:
 		m.state = msg.SimulationStateRow
 	case adminMsg:
 		m.admin = msg.active
 	}
 	return m, nil
+}
+
+func (m *tuiModel) refreshViewport() {
+	var lines []string
+	for _, l := range m.logs {
+		if m.wrap {
+			lines = append(lines, wordwrap.String(l, m.vp.Width))
+		} else {
+			lines = append(lines, l)
+		}
+	}
+	m.vp.SetContent(strings.Join(lines, "\n"))
+	m.vp.GotoBottom()
 }
 
 func (m tuiModel) View() string {
@@ -254,12 +269,17 @@ func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string) s
 }
 
 func (m tuiModel) renderBottom() string {
-	color := lipgloss.Color("9")
+	adminColor := lipgloss.Color("9")
 	if m.admin {
-		color = lipgloss.Color("10")
+		adminColor = lipgloss.Color("10")
 	}
-	indicator := lipgloss.NewStyle().Foreground(color).Render("●")
+	wrapColor := lipgloss.Color("9")
+	if m.wrap {
+		wrapColor = lipgloss.Color("10")
+	}
+	adminIndicator := lipgloss.NewStyle().Foreground(adminColor).Render("●")
+	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s comm_loss=%.2f msgs=%d sensor=%.2f weather=%.2f chaos=%t",
 		colorBlue, colorReset, m.state.CommunicationLoss, m.state.MessagesSent, m.state.SensorNoise, m.state.WeatherImpact, m.state.ChaosMode)
-	return fmt.Sprintf("%s | Admin UI %s | q:quit ctrl+c:quit", state, indicator)
+	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | q:quit ctrl+c:quit w:wrap", state, adminIndicator, wrapIndicator)
 }

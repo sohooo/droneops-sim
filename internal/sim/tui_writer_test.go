@@ -1,11 +1,13 @@
 package sim
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
 )
@@ -41,5 +43,28 @@ func TestTUIWriterMessages(t *testing.T) {
 	}
 	if _, ok := p.msgs[3].(logMsg); !ok {
 		t.Fatalf("expected logMsg for detection")
+	}
+}
+
+func TestWrapToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 10, Height: 20})
+	m = mi.(tuiModel)
+	long := "one two three four five six"
+	mi, _ = m.Update(logMsg{line: long})
+	m = mi.(tuiModel)
+	lines := strings.Split(m.vp.View(), "\n")
+	if len(lines) < 2 || strings.TrimSpace(lines[1]) != "" {
+		t.Fatalf("expected single line before wrap")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	m = mi.(tuiModel)
+	if !m.wrap {
+		t.Fatalf("wrap not toggled")
+	}
+	lines = strings.Split(m.vp.View(), "\n")
+	if strings.TrimSpace(lines[1]) == "" {
+		t.Fatalf("expected wrapped content on second line")
 	}
 }
