@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/uuid v1.6.0
+	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/term v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
