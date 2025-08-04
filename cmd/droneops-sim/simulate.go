@@ -93,6 +93,9 @@ var simulateCmd = &cobra.Command{
 		simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval, nil, nil)
 
 		srv := admin.NewServer(simulator)
+		if aw, ok := writer.(sim.AdminStatusWriter); ok {
+			aw.SetAdminStatus(true)
+		}
 		go func() {
 			log := logging.FromContext(ctx)
 			log.Info("Admin UI listening", "addr", ":8080")

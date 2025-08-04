@@ -132,3 +132,12 @@ func (mw *MultiWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
 	}
 	return nil
 }
+
+// SetAdminStatus forwards admin UI status to underlying writers that support it.
+func (mw *MultiWriter) SetAdminStatus(active bool) {
+	for _, w := range mw.telewriters {
+		if aw, ok := w.(AdminStatusWriter); ok {
+			aw.SetAdminStatus(active)
+		}
+	}
+}
