@@ -14,6 +14,7 @@ Effective demos follow a clear story and highlight the simulator's strengths. Us
 ## Highlight Key Moments
 - Plan two or three inflection points such as enemy encounters, battery warnings, or mission updates.
 - Provide visual cues in Grafana or logs so each moment is easy to spot.
+- Use simulation state panels to call out communication reliability dips, rising sensor noise, or when chaos mode is enabled.
 
 ## Demonstrate Resilience
 - Include a failure or unexpected event and show how the system recovers.

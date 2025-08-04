@@ -179,6 +179,42 @@
         }
       ],
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 45 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Communication Reliability",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT $__time(ts) AS time, 1 - communication_loss AS reliability FROM simulation_state WHERE $__timeFilter(ts) ORDER BY time",
+          "refId": "E"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 53 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sensor Noise",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT $__time(ts) AS time, sensor_noise FROM simulation_state WHERE $__timeFilter(ts) ORDER BY time",
+          "refId": "F"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 53 }
+    },
+    {
+      "type": "stat",
+      "title": "Chaos Mode",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT chaos_mode FROM simulation_state WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 1",
+          "refId": "G"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 53 }
     }
   ],
   "templating": {

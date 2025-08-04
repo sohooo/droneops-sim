@@ -21,10 +21,11 @@ type GreptimeDBWriter struct {
 	table          string
 	detectionTable string
 	swarmTable     string
+	stateTable     string
 }
 
 // NewGreptimeDBWriter creates a new GreptimeDB writer.
-func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string, swarmTable string) (*GreptimeDBWriter, error) {
+func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string, swarmTable string, stateTable string) (*GreptimeDBWriter, error) {
 	cfg := greptime.NewConfig(endpoint).
 		WithPort(4001).
 		WithDatabase(database)
@@ -44,6 +45,9 @@ func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string
 	if swarmTable == "" {
 		swarmTable = "swarm_events"
 	}
+	if stateTable == "" {
+		stateTable = "simulation_state"
+	}
 
 	return &GreptimeDBWriter{
 		client:         client,
@@ -51,6 +55,7 @@ func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string
 		table:          table,
 		detectionTable: detectionTable,
 		swarmTable:     swarmTable,
+		stateTable:     stateTable,
 	}, nil
 }
 
@@ -230,5 +235,54 @@ func (w *GreptimeDBWriter) WriteSwarmEvents(rows []telemetry.SwarmEventRow) erro
 	}
 
 	log.Info("GreptimeDBWriter wrote swarm events", "count", len(rows))
+	return nil
+}
+
+// WriteState inserts a single simulation state row.
+func (w *GreptimeDBWriter) WriteState(row telemetry.SimulationStateRow) error {
+	return w.WriteStates([]telemetry.SimulationStateRow{row})
+}
+
+// WriteStates inserts multiple simulation state rows.
+func (w *GreptimeDBWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	tbl, err := table.New(w.stateTable)
+	if err != nil {
+		return err
+	}
+	tbl.AddTagColumn("cluster_id", types.STRING)
+	tbl.AddFieldColumn("communication_loss", types.FLOAT64)
+	tbl.AddFieldColumn("messages_sent", types.INT64)
+	tbl.AddFieldColumn("sensor_noise", types.FLOAT64)
+	tbl.AddFieldColumn("weather_impact", types.FLOAT64)
+	tbl.AddFieldColumn("chaos_mode", types.BOOLEAN)
+	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
+
+	for _, r := range rows {
+		err := tbl.AddRow(
+			r.ClusterID,
+			r.CommunicationLoss,
+			int64(r.MessagesSent),
+			r.SensorNoise,
+			r.WeatherImpact,
+			r.ChaosMode,
+			r.Timestamp,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = w.client.Write(ctx, tbl)
+	if err != nil {
+		log.Error("GreptimeDBWriter state write failed", "err", err)
+		return err
+	}
+	log.Info("GreptimeDBWriter wrote state rows", "count", len(rows))
 	return nil
 }

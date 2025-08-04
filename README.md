@@ -16,6 +16,7 @@ It supports:
 - **Mission scenarios** scripted with a lightweight DSL for phases and enemy objectives
 - **Observer dashboard** for stepping through mission events, switching perspectives, and injecting commands
 - **Swarm-event logs** for follower assignments, reassignments, and formation changes
+- **Per-tick simulation state metrics** including communication reliability, sensor noise, weather impact, and chaos-mode status
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
@@ -78,6 +79,7 @@ The simulator can be configured through the following environment variables:
 | `GREPTIMEDB_TABLE` | `drone_telemetry` | No | Table for drone telemetry records. |
 | `ENEMY_DETECTION_TABLE` | `enemy_detection` | No | Table storing enemy detection events. |
 | `SWARM_EVENT_TABLE` | `swarm_events` | No | Table storing swarm coordination events. |
+| `SIMULATION_STATE_TABLE` | `simulation_state` | No | Table storing per-tick simulation state metrics. |
 | `MISSION_METADATA_TABLE` | `mission_metadata` | No | Table storing mission metadata. |
 | `CLUSTER_ID` | `mission-01` | No | Cluster identity tag added to each telemetry line. |
 | `TICK_INTERVAL` | `1s` | No | Telemetry tick interval (Go duration). Overrides the `--tick` flag. |
@@ -213,6 +215,7 @@ The Grafana dashboard integrates mission data to provide:
 - **Mission Objectives**: Display the name, objective, and description.
 - **Region Visualization**: Overlay mission regions on the Geomap panel.
 - **Drone Telemetry**: Filter and group drones by mission.
+- **Simulation State Panels**: Track communication reliability, sensor noise trends, and chaos-mode indicators over time.
 
 ### Program Logic
 
