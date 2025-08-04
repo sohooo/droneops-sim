@@ -74,3 +74,47 @@ func TestWrapToggle(t *testing.T) {
 		t.Fatalf("expected mission description to wrap")
 	}
 }
+
+func TestScrollToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	m.vp.Height = 1
+	m.vp.Width = 20
+	mi, _ := m.Update(logMsg{line: "l1"})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(logMsg{line: "l2"})
+	m = mi.(tuiModel)
+	if m.vp.YOffset != 1 {
+		t.Fatalf("expected YOffset 1, got %d", m.vp.YOffset)
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = mi.(tuiModel)
+	if m.autoscroll {
+		t.Fatalf("autoscroll should be off")
+	}
+	mi, _ = m.Update(logMsg{line: "l3"})
+	m = mi.(tuiModel)
+	if m.vp.YOffset != 1 {
+		t.Fatalf("expected YOffset unchanged, got %d", m.vp.YOffset)
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = mi.(tuiModel)
+	if m.vp.YOffset != 0 {
+		t.Fatalf("expected YOffset 0 after scrolling up, got %d", m.vp.YOffset)
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = mi.(tuiModel)
+	if !m.autoscroll {
+		t.Fatalf("autoscroll should be on")
+	}
+	expected := len(m.logs) - m.vp.Height
+	if m.vp.YOffset != expected {
+		t.Fatalf("expected YOffset %d, got %d", expected, m.vp.YOffset)
+	}
+	mi, _ = m.Update(logMsg{line: "l4"})
+	m = mi.(tuiModel)
+	expected = len(m.logs) - m.vp.Height
+	if m.vp.YOffset != expected {
+		t.Fatalf("expected YOffset %d after new log, got %d", expected, m.vp.YOffset)
+	}
+}

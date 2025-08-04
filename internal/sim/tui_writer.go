@@ -192,6 +192,7 @@ type tuiModel struct {
 	state         telemetry.SimulationStateRow
 	admin         bool
 	wrap          bool
+	autoscroll    bool
 	header        string
 	headerHeight  int
 	height        int
@@ -213,7 +214,7 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 	}
 	t := table.New(table.WithColumns(cols), table.WithRows(rows), table.WithHeight(len(rows)+1))
 	vp := viewport.New(0, 0)
-	m := tuiModel{cfg: cfg, table: t, vp: vp, missionColors: missionColors}
+	m := tuiModel{cfg: cfg, table: t, vp: vp, missionColors: missionColors, autoscroll: true}
 	return m
 }
 
@@ -241,6 +242,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.headerHeight = lipgloss.Height(m.header)
 			bottomHeight := lipgloss.Height(m.renderBottom())
 			m.vp.Height = m.height - m.headerHeight - bottomHeight - 2
+		case "s":
+			m.autoscroll = !m.autoscroll
+			if m.autoscroll {
+				m.vp.GotoBottom()
+			}
 		}
 		var cmd tea.Cmd
 		m.vp, cmd = m.vp.Update(msg)
@@ -269,7 +275,9 @@ func (m *tuiModel) refreshViewport() {
 		}
 	}
 	m.vp.SetContent(strings.Join(lines, "\n"))
-	m.vp.GotoBottom()
+	if m.autoscroll {
+		m.vp.GotoBottom()
+	}
 }
 
 func (m tuiModel) View() string {
@@ -313,10 +321,15 @@ func (m tuiModel) renderBottom() string {
 	if m.wrap {
 		wrapColor = lipgloss.Color("10")
 	}
+	scrollColor := lipgloss.Color("10")
+	if !m.autoscroll {
+		scrollColor = lipgloss.Color("9")
+	}
 	adminIndicator := lipgloss.NewStyle().Foreground(adminColor).Render("●")
 	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
+	scrollIndicator := lipgloss.NewStyle().Foreground(scrollColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s comm_loss=%.2f msgs=%d sensor=%.2f weather=%.2f chaos=%t",
 		colorBlue, colorReset, m.state.CommunicationLoss, m.state.MessagesSent, m.state.SensorNoise, m.state.WeatherImpact, m.state.ChaosMode)
-	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit ctrl+c:quit w:wrap")
-	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | %s", state, adminIndicator, wrapIndicator, keys)
+	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll")
+	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, keys)
 }
