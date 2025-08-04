@@ -12,7 +12,7 @@ import (
 // It returns both telemetry and detection writers.
 func NewStdoutWriters(cfg *config.SimulationConfig) (TelemetryWriter, DetectionWriter) {
 	if term.IsTerminal(int(os.Stdout.Fd())) {
-		w := NewColorStdoutWriter(cfg)
+		w := NewTUIWriter(cfg)
 		return w, w
 	}
 	w := NewJSONStdoutWriter()
