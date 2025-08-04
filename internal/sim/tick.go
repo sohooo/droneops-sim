@@ -112,9 +112,13 @@ func (s *Simulator) tick(ctx context.Context) {
 				Timestamp:         s.now().UTC(),
 			}
 			if bw, ok := s.writer.(batchStateWriter); ok {
-				_ = bw.WriteStates([]telemetry.SimulationStateRow{state})
+				if err := bw.WriteStates([]telemetry.SimulationStateRow{state}); err != nil {
+					log.Error("state batch write failed", "err", err)
+				}
 			} else {
-				_ = sw.WriteState(state)
+				if err := sw.WriteState(state); err != nil {
+					log.Error("state write failed", "err", err)
+				}
 			}
 		}
 	}
