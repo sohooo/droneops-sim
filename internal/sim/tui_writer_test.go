@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"droneops-sim/internal/config"
@@ -129,12 +128,17 @@ func TestEnemySpawn(t *testing.T) {
 	if !m.enemyDialog {
 		t.Fatalf("expected enemy dialog to open")
 	}
-	m.enemyInput = textinput.New()
-	m.enemyInput.SetValue("person,1,2,3")
+	if m.enemyInput.Value() != defaultEnemyInput {
+		t.Fatalf("expected default input %q, got %q", defaultEnemyInput, m.enemyInput.Value())
+	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = mi.(tuiModel)
 	if len(m.enemies) != 1 {
 		t.Fatalf("expected enemy added")
+	}
+	en := m.enemies[0]
+	if en.Type != enemy.EnemyVehicle || en.Position.Lat != 0 || en.Position.Lon != 0 || en.Position.Alt != 0 {
+		t.Fatalf("unexpected enemy spawned: %+v", en)
 	}
 }
 
@@ -152,5 +156,8 @@ func TestEnemySpawnHint(t *testing.T) {
 	}
 	if !strings.Contains(hint, "Esc to cancel") {
 		t.Fatalf("expected Esc instruction, got %q", hint)
+	}
+	if !strings.Contains(hint, defaultEnemyInput) {
+		t.Fatalf("expected default value %q in hint, got %q", defaultEnemyInput, hint)
 	}
 }

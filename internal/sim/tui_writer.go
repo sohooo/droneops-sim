@@ -37,6 +37,8 @@ type adminMsg struct{ active bool }
 
 type setSpawnMsg struct{ fn func(enemy.Enemy) }
 
+const defaultEnemyInput = "vehicle,0,0,0"
+
 // TUIWriter renders telemetry using a bubbletea TUI.
 type TUIWriter struct {
 	program       teaProgram
@@ -292,6 +294,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			m.enemyInput = textinput.New()
 			m.enemyInput.Placeholder = "type,lat,lon,alt"
+			m.enemyInput.SetValue(defaultEnemyInput)
+			m.enemyInput.CursorEnd()
 			m.enemyInput.Focus()
 			m.enemyDialog = true
 			bottomHeight := lipgloss.Height(m.renderBottom())
