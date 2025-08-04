@@ -213,21 +213,30 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 
 	// Initialize fleets
 	for _, fleet := range cfg.Fleets {
+		// Resolve the home region for this fleet. Default to the first zone if not found.
+		zone := cfg.Zones[0]
+		for _, z := range cfg.Zones {
+			if z.Name == fleet.HomeRegion {
+				zone = z
+				break
+			}
+		}
+
 		f := DroneFleet{Name: fleet.Name, Model: fleet.Model}
 		for i := 0; i < fleet.Count; i++ {
 			drone := &telemetry.Drone{
 				ID:              generateDroneID(fleet.Name, i),
 				Model:           fleet.Model,
 				MissionID:       fleet.MissionID,
-				Position:        telemetry.Position{Lat: cfg.Zones[0].CenterLat, Lon: cfg.Zones[0].CenterLon, Alt: 100},
+				Position:        telemetry.Position{Lat: zone.CenterLat, Lon: zone.CenterLon, Alt: 100},
 				Battery:         100,
 				Status:          telemetry.StatusOK,
 				MovementPattern: fleet.MovementPattern,
 				HomeRegion: telemetry.Region{
-					Name:      cfg.Zones[0].Name,
-					CenterLat: cfg.Zones[0].CenterLat,
-					CenterLon: cfg.Zones[0].CenterLon,
-					RadiusKM:  cfg.Zones[0].RadiusKM,
+					Name:      zone.Name,
+					CenterLat: zone.CenterLat,
+					CenterLon: zone.CenterLon,
+					RadiusKM:  zone.RadiusKM,
 				},
 				SensorErrorRate:    fleet.Behavior.SensorErrorRate,
 				DropoutRate:        fleet.Behavior.DropoutRate,
