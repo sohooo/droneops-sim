@@ -137,3 +137,20 @@ func TestEnemySpawn(t *testing.T) {
 		t.Fatalf("expected enemy added")
 	}
 }
+
+func TestEnemySpawnHint(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = mi.(tuiModel)
+	hint := m.renderEnemies()
+	if !strings.Contains(hint, "type,lat,lon,alt") {
+		t.Fatalf("expected input format hint, got %q", hint)
+	}
+	if !strings.Contains(hint, "Enter to spawn") {
+		t.Fatalf("expected Enter instruction, got %q", hint)
+	}
+	if !strings.Contains(hint, "Esc to cancel") {
+		t.Fatalf("expected Esc instruction, got %q", hint)
+	}
+}

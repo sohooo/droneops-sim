@@ -389,7 +389,7 @@ func (m tuiModel) renderBottom() string {
 
 func (m tuiModel) renderEnemies() string {
 	if m.enemyDialog {
-		return fmt.Sprintf("Spawn Enemy: %s", m.enemyInput.View())
+		return fmt.Sprintf("Spawn Enemy (type,lat,lon,alt) - Enter to spawn, Esc to cancel: %s", m.enemyInput.View())
 	}
 	if len(m.enemies) == 0 {
 		return "Enemies: none"
