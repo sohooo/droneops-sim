@@ -53,3 +53,10 @@ terrain_occlusion?:  number & >=0 & <=1
 weather_impact?:     number & >=0 & <=1
 communication_loss?: number & >=0 & <=1
 bandwidth_limit?:    int & >=0
+
+telemetry?: {
+        detections?:      bool | *true
+        swarm_events?:    bool | *true
+        movement_metrics?: bool | *true
+        simulation_state?: bool | *true
+}

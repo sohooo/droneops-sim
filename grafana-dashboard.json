@@ -485,6 +485,66 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Detections per Minute",
+      "gridPos": { "x": 0, "y": 140, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "AA",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts,1m) AS time, COUNT(*) AS detections FROM enemy_detection WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "Swarm Assignments",
+      "gridPos": { "x": 12, "y": 140, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "AB",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts,1m) AS time, COUNT(*) AS assignments FROM swarm_events WHERE $__timeFilter(ts) AND event_type='assignment' AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Average Speed",
+      "gridPos": { "x": 0, "y": 148, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "AC",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts,1m) AS time, AVG(speed_mps) AS speed FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Messages Sent",
+      "gridPos": { "x": 12, "y": 148, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "AD",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__timeGroupAlias(ts,1m) AS time, AVG(messages_sent) AS msgs FROM simulation_state WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {

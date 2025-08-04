@@ -76,39 +76,43 @@ type ObserverEvent struct {
 
 // Simulator orchestrates fleet telemetry generation and writing.
 type Simulator struct {
-	clusterID            string
-	fleets               []DroneFleet
-	teleGen              *telemetry.Generator
-	writer               TelemetryWriter
-	detectionWriter      DetectionWriter
-	enemyEng             *enemy.Engine
-	tickInterval         time.Duration
-	chaosMode            bool
-	cfg                  *config.SimulationConfig
-	followConfidence     float64
-	detectionRadiusM     float64
-	sensorNoise          float64
-	terrainOcclusion     float64
-	weatherImpact        float64
-	swarmResponses       map[string]int
-	missionCriticality   int
-	enemyPrevPositions   map[string]telemetry.Position
-	dronePrevPositions   map[string]telemetry.Position
-	commLoss             float64
-	bandwidthLimit       int
-	messagesSent         int
-	enemyFollowers       map[string][]string
-	droneAssignments     map[string]string
-	enemyFollowerTargets map[string]int
-	enemyObjects         map[string]*enemy.Enemy
-	droneIndex           map[string]*telemetry.Drone
-	droneFleet           map[string]*DroneFleet
-	observerEvents       []ObserverEvent
-	observerIdx          int
-	observerPerspective  string
-	mu                   sync.Mutex
-	rand                 *rand.Rand
-	now                  func() time.Time
+	clusterID             string
+	fleets                []DroneFleet
+	teleGen               *telemetry.Generator
+	writer                TelemetryWriter
+	detectionWriter       DetectionWriter
+	enemyEng              *enemy.Engine
+	tickInterval          time.Duration
+	chaosMode             bool
+	cfg                   *config.SimulationConfig
+	followConfidence      float64
+	detectionRadiusM      float64
+	sensorNoise           float64
+	terrainOcclusion      float64
+	weatherImpact         float64
+	swarmResponses        map[string]int
+	missionCriticality    int
+	enemyPrevPositions    map[string]telemetry.Position
+	dronePrevPositions    map[string]telemetry.Position
+	commLoss              float64
+	bandwidthLimit        int
+	messagesSent          int
+	enableMovement        bool
+	enableDetections      bool
+	enableSwarmEvents     bool
+	enableSimulationState bool
+	enemyFollowers        map[string][]string
+	droneAssignments      map[string]string
+	enemyFollowerTargets  map[string]int
+	enemyObjects          map[string]*enemy.Enemy
+	droneIndex            map[string]*telemetry.Drone
+	droneFleet            map[string]*DroneFleet
+	observerEvents        []ObserverEvent
+	observerIdx           int
+	observerPerspective   string
+	mu                    sync.Mutex
+	rand                  *rand.Rand
+	now                   func() time.Time
 }
 
 // DroneFleet holds runtime drones for one fleet.
@@ -153,32 +157,52 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 	case "high":
 		crit = 2
 	}
+	enableMove := true
+	if cfg.Telemetry.MovementMetrics != nil {
+		enableMove = *cfg.Telemetry.MovementMetrics
+	}
+	enableDet := true
+	if cfg.Telemetry.Detections != nil {
+		enableDet = *cfg.Telemetry.Detections
+	}
+	enableSwarm := true
+	if cfg.Telemetry.SwarmEvents != nil {
+		enableSwarm = *cfg.Telemetry.SwarmEvents
+	}
+	enableState := true
+	if cfg.Telemetry.SimulationState != nil {
+		enableState = *cfg.Telemetry.SimulationState
+	}
 	sim := &Simulator{
-		clusterID:            clusterID,
-		teleGen:              telemetry.NewGenerator(clusterID, r, now),
-		writer:               writer,
-		detectionWriter:      dWriter,
-		tickInterval:         tickInterval,
-		cfg:                  cfg,
-		followConfidence:     cfg.FollowConfidence,
-		detectionRadiusM:     radius,
-		sensorNoise:          sNoise,
-		terrainOcclusion:     terrain,
-		weatherImpact:        weather,
-		swarmResponses:       cfg.SwarmResponses,
-		missionCriticality:   crit,
-		enemyPrevPositions:   make(map[string]telemetry.Position),
-		dronePrevPositions:   make(map[string]telemetry.Position),
-		commLoss:             cfg.CommunicationLoss,
-		bandwidthLimit:       cfg.BandwidthLimit,
-		enemyFollowers:       make(map[string][]string),
-		droneAssignments:     make(map[string]string),
-		enemyFollowerTargets: make(map[string]int),
-		enemyObjects:         make(map[string]*enemy.Enemy),
-		droneIndex:           make(map[string]*telemetry.Drone),
-		droneFleet:           make(map[string]*DroneFleet),
-		rand:                 r,
-		now:                  now,
+		clusterID:             clusterID,
+		teleGen:               telemetry.NewGenerator(clusterID, r, now),
+		writer:                writer,
+		detectionWriter:       dWriter,
+		tickInterval:          tickInterval,
+		cfg:                   cfg,
+		followConfidence:      cfg.FollowConfidence,
+		detectionRadiusM:      radius,
+		sensorNoise:           sNoise,
+		terrainOcclusion:      terrain,
+		weatherImpact:         weather,
+		swarmResponses:        cfg.SwarmResponses,
+		missionCriticality:    crit,
+		enemyPrevPositions:    make(map[string]telemetry.Position),
+		dronePrevPositions:    make(map[string]telemetry.Position),
+		commLoss:              cfg.CommunicationLoss,
+		bandwidthLimit:        cfg.BandwidthLimit,
+		enableMovement:        enableMove,
+		enableDetections:      enableDet,
+		enableSwarmEvents:     enableSwarm,
+		enableSimulationState: enableState,
+		enemyFollowers:        make(map[string][]string),
+		droneAssignments:      make(map[string]string),
+		enemyFollowerTargets:  make(map[string]int),
+		enemyObjects:          make(map[string]*enemy.Enemy),
+		droneIndex:            make(map[string]*telemetry.Drone),
+		droneFleet:            make(map[string]*DroneFleet),
+		rand:                  r,
+		now:                   now,
 	}
 
 	// Check if zones are defined

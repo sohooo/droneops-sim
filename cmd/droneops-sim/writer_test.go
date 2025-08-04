@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewWritersPrintOnly(t *testing.T) {
-	tw, dw, cleanup, err := newWriters(nil, true, "")
+	tw, dw, cleanup, err := newWriters(nil, true, "", true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestNewWritersPrintOnly(t *testing.T) {
 
 func TestNewWritersGreptimeFallback(t *testing.T) {
 	t.Setenv("GREPTIMEDB_ENDPOINT", "")
-	tw, dw, cleanup, err := newWriters(nil, false, "")
+	tw, dw, cleanup, err := newWriters(nil, false, "", true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestNewWritersGreptimeFallback(t *testing.T) {
 func TestNewWritersLogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "telemetry.log")
-	tw, _, cleanup, err := newWriters(nil, true, path)
+	tw, _, cleanup, err := newWriters(nil, true, path, true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -75,5 +75,19 @@ func TestNewWritersLogFile(t *testing.T) {
 	}
 	if stateInfo.Size() == 0 {
 		t.Fatalf("expected state file to be non-empty")
+	}
+}
+
+func TestNewWritersDisableDetections(t *testing.T) {
+	tw, dw, cleanup, err := newWriters(nil, true, "", false, true, true)
+	if err != nil {
+		t.Fatalf("newWriters returned error: %v", err)
+	}
+	cleanup()
+	if dw != nil {
+		t.Fatalf("expected detection writer to be nil when disabled")
+	}
+	if _, ok := tw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", tw)
 	}
 }

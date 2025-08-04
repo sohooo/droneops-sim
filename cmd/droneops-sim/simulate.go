@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -17,11 +18,15 @@ import (
 )
 
 var (
-	simPrintOnly  bool
-	simConfigPath string
-	simSchemaPath string
-	simTick       time.Duration
-	simLogFile    string
+	simPrintOnly         bool
+	simConfigPath        string
+	simSchemaPath        string
+	simTick              time.Duration
+	simLogFile           string
+	simEnableDetections  bool = true
+	simEnableSwarmEvents bool = true
+	simEnableMovement    bool = true
+	simEnableState       bool = true
 )
 
 var simulateCmd = &cobra.Command{
@@ -34,7 +39,33 @@ var simulateCmd = &cobra.Command{
 			return err
 		}
 
-		writer, detectWriter, cleanup, err := newWriters(cfg, simPrintOnly, simLogFile)
+		if v := os.Getenv("ENABLE_DETECTIONS"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				simEnableDetections = b
+			}
+		}
+		if v := os.Getenv("ENABLE_SWARM_EVENTS"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				simEnableSwarmEvents = b
+			}
+		}
+		if v := os.Getenv("ENABLE_MOVEMENT_METRICS"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				simEnableMovement = b
+			}
+		}
+		if v := os.Getenv("ENABLE_SIMULATION_STATE"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				simEnableState = b
+			}
+		}
+
+		cfg.Telemetry.Detections = &simEnableDetections
+		cfg.Telemetry.SwarmEvents = &simEnableSwarmEvents
+		cfg.Telemetry.MovementMetrics = &simEnableMovement
+		cfg.Telemetry.SimulationState = &simEnableState
+
+		writer, detectWriter, cleanup, err := newWriters(cfg, simPrintOnly, simLogFile, simEnableDetections, simEnableSwarmEvents, simEnableState)
 		if err != nil {
 			return err
 		}
@@ -89,4 +120,8 @@ func init() {
 	simulateCmd.Flags().StringVar(&simSchemaPath, "schema", "schemas/simulation.cue", "Path to CUE schema file")
 	simulateCmd.Flags().DurationVar(&simTick, "tick", time.Second, "Telemetry tick interval (e.g. 500ms, 2s)")
 	simulateCmd.Flags().StringVar(&simLogFile, "log-file", "", "Path to export telemetry/detection logs (JSONL)")
+	simulateCmd.Flags().BoolVar(&simEnableDetections, "detections", true, "Enable enemy detection stream")
+	simulateCmd.Flags().BoolVar(&simEnableSwarmEvents, "swarm-events", true, "Enable swarm event stream")
+	simulateCmd.Flags().BoolVar(&simEnableMovement, "movement-metrics", true, "Enable drone movement telemetry stream")
+	simulateCmd.Flags().BoolVar(&simEnableState, "simulation-state", true, "Enable simulation state stream")
 }

@@ -9,28 +9,57 @@ import (
 
 // newWriters sets up telemetry and detection writers based on flags and env vars.
 // It returns the writers and a cleanup function to close any resources.
-func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string) (sim.TelemetryWriter, sim.DetectionWriter, func(), error) {
+func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string, enableDetections, enableSwarm, enableState bool) (sim.TelemetryWriter, sim.DetectionWriter, func(), error) {
 	cleanup := func() {}
 
 	writer, detectWriter, err := baseWriters(cfg, printOnly)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if !enableDetections {
+		detectWriter = nil
+	}
 	if logFile == "" {
 		return writer, detectWriter, cleanup, nil
 	}
 
-	fw, err := sim.NewFileWriter(logFile, logFile+".detections", logFile+".swarm", logFile+".state")
+	detPath := ""
+	if enableDetections {
+		detPath = logFile + ".detections"
+	}
+	swarmPath := ""
+	if enableSwarm {
+		swarmPath = logFile + ".swarm"
+	}
+	statePath := ""
+	if enableState {
+		statePath = logFile + ".state"
+	}
+	fw, err := sim.NewFileWriter(logFile, detPath, swarmPath, statePath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sws := []sim.SwarmEventWriter{fw}
-	if sw, ok := writer.(sim.SwarmEventWriter); ok {
-		sws = append(sws, sw)
+	tws := []sim.TelemetryWriter{writer, fw}
+	dws := []sim.DetectionWriter{}
+	if detectWriter != nil {
+		dws = append(dws, detectWriter)
 	}
-	mw := sim.NewMultiWriter([]sim.TelemetryWriter{writer, fw}, []sim.DetectionWriter{detectWriter, fw}, sws)
+	if enableDetections {
+		dws = append(dws, fw)
+	}
+	sws := []sim.SwarmEventWriter{}
+	if enableSwarm {
+		if sw, ok := writer.(sim.SwarmEventWriter); ok {
+			sws = append(sws, sw)
+		}
+		sws = append(sws, fw)
+	}
+	mw := sim.NewMultiWriter(tws, dws, sws)
 	cleanup = func() { fw.Close() }
-	return mw, mw, cleanup, nil
+	if enableDetections {
+		return mw, mw, cleanup, nil
+	}
+	return mw, nil, cleanup, nil
 }
 
 // baseWriters chooses the underlying writers based on printOnly flag and env vars.
@@ -54,6 +83,6 @@ func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWri
 
 // newTelemetryWriter creates a telemetry writer without detection handling.
 func newTelemetryWriter(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, error) {
-	w, _, _, err := newWriters(cfg, printOnly, "")
+	w, _, _, err := newWriters(cfg, printOnly, "", true, true, true)
 	return w, err
 }
