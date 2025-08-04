@@ -16,7 +16,7 @@ func (f *fakeProgram) Send(msg tea.Msg) { f.msgs = append(f.msgs, msg) }
 
 func TestTUIWriterMessages(t *testing.T) {
 	p := &fakeProgram{}
-	w := &TUIWriter{program: p}
+	w := &TUIWriter{program: p, missionColors: map[string]string{}}
 	tRow := telemetry.TelemetryRow{ClusterID: "c", DroneID: "d", MissionID: "m", Timestamp: time.Unix(0, 0).UTC()}
 	if err := w.Write(tRow); err != nil {
 		t.Fatalf("write: %v", err)
