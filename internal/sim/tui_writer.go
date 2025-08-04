@@ -2,6 +2,7 @@ package sim
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -169,6 +170,7 @@ type tuiModel struct {
 	wrap          bool
 	header        string
 	headerHeight  int
+	height        int
 	missionColors map[string]string
 }
 
@@ -198,18 +200,26 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.table.SetWidth(msg.Width / 2)
 		m.vp.Width = msg.Width
+		m.height = msg.Height
 		m.header = m.renderHeader()
 		m.headerHeight = lipgloss.Height(m.header)
 		bottomHeight := lipgloss.Height(m.renderBottom())
-		m.vp.Height = msg.Height - m.headerHeight - bottomHeight - 2
+		m.vp.Height = m.height - m.headerHeight - bottomHeight - 2
 		m.refreshViewport()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
+			if proc, err := os.FindProcess(os.Getpid()); err == nil {
+				_ = proc.Signal(os.Interrupt)
+			}
 			return m, tea.Quit
 		case "w":
 			m.wrap = !m.wrap
 			m.refreshViewport()
+			m.header = m.renderHeader()
+			m.headerHeight = lipgloss.Height(m.header)
+			bottomHeight := lipgloss.Height(m.renderBottom())
+			m.vp.Height = m.height - m.headerHeight - bottomHeight - 2
 		}
 		var cmd tea.Cmd
 		m.vp, cmd = m.vp.Update(msg)
@@ -249,12 +259,13 @@ func (m tuiModel) View() string {
 
 func (m tuiModel) renderHeader() string {
 	tableView := m.table.View()
-	missions := renderMissionTree(m.cfg, m.missionColors)
+	missionsWidth := m.vp.Width/2 - 1
+	missions := renderMissionTree(m.cfg, m.missionColors, m.wrap, missionsWidth)
 	sep := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("│")
 	return lipgloss.JoinHorizontal(lipgloss.Top, tableView, sep, missions)
 }
 
-func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string) string {
+func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string, wrap bool, width int) string {
 	var b strings.Builder
 	b.WriteString("Missions\n")
 	for i, ms := range cfg.Missions {
@@ -263,7 +274,11 @@ func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string) s
 			prefix = "└─"
 		}
 		c := colors[ms.ID]
-		b.WriteString(fmt.Sprintf("%s %s%s%s %s - %s\n", prefix, c, ms.ID, colorReset, ms.Name, ms.Description))
+		line := fmt.Sprintf("%s %s%s%s %s - %s", prefix, c, ms.ID, colorReset, ms.Name, ms.Description)
+		if wrap && width > 0 {
+			line = wordwrap.String(line, width)
+		}
+		b.WriteString(line + "\n")
 	}
 	return strings.TrimRight(b.String(), "\n")
 }
@@ -281,5 +296,6 @@ func (m tuiModel) renderBottom() string {
 	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s comm_loss=%.2f msgs=%d sensor=%.2f weather=%.2f chaos=%t",
 		colorBlue, colorReset, m.state.CommunicationLoss, m.state.MessagesSent, m.state.SensorNoise, m.state.WeatherImpact, m.state.ChaosMode)
-	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | q:quit ctrl+c:quit w:wrap", state, adminIndicator, wrapIndicator)
+	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit ctrl+c:quit w:wrap")
+	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | %s", state, adminIndicator, wrapIndicator, keys)
 }
