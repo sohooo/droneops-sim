@@ -25,7 +25,8 @@ func NewGenerator(clusterID string, r *rand.Rand, now func() time.Time) *Generat
 }
 
 // GenerateTelemetry updates a drone's state and returns a TelemetryRow ready for DB write.
-func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
+// prev is the drone's previous position and dt is the elapsed time since the last tick.
+func (g *Generator) GenerateTelemetry(drone *Drone, prev Position, dt time.Duration) TelemetryRow {
 	var strategy MovementStrategy
 
 	// If a follow target is set, override movement pattern
@@ -57,20 +58,31 @@ func (g *Generator) GenerateTelemetry(drone *Drone) TelemetryRow {
 	// Status
 	drone.Status = batteryStatus(drone.Battery)
 
+	var speed float64
+	var heading float64
+	if dt > 0 {
+		speed = distanceMeters(prev.Lat, prev.Lon, drone.Position.Lat, drone.Position.Lon) / dt.Seconds()
+		heading = bearingDegrees(prev.Lat, prev.Lon, drone.Position.Lat, drone.Position.Lon)
+	}
+
 	return TelemetryRow{
-		ClusterID:  g.ClusterID,
-		DroneID:    drone.ID,
-		MissionID:  drone.MissionID,
-		Lat:        drone.Position.Lat,
-		Lon:        drone.Position.Lon,
-		Alt:        drone.Position.Alt,
-		Battery:    drone.Battery,
-		Status:     drone.Status,
-		Follow:     drone.FollowTarget != nil,
-		SyncedFrom: "",
-		SyncedID:   "",
-		SyncedAt:   time.Time{},
-		Timestamp:  g.now().UTC(),
+		ClusterID:        g.ClusterID,
+		DroneID:          drone.ID,
+		MissionID:        drone.MissionID,
+		Lat:              drone.Position.Lat,
+		Lon:              drone.Position.Lon,
+		Alt:              drone.Position.Alt,
+		Battery:          drone.Battery,
+		Status:           drone.Status,
+		Follow:           drone.FollowTarget != nil,
+		MovementPattern:  drone.MovementPattern,
+		SpeedMPS:         speed,
+		HeadingDeg:       heading,
+		PreviousPosition: prev,
+		SyncedFrom:       "",
+		SyncedID:         "",
+		SyncedAt:         time.Time{},
+		Timestamp:        g.now().UTC(),
 	}
 }
 
@@ -209,4 +221,28 @@ func batteryDrain(model string) float64 {
 	default:
 		return 0.4
 	}
+}
+
+// distanceMeters calculates the haversine distance between two lat/lon points.
+func distanceMeters(lat1, lon1, lat2, lon2 float64) float64 {
+	const earthRadius = 6371000.0
+	dLat := (lat2 - lat1) * math.Pi / 180
+	dLon := (lon2 - lon1) * math.Pi / 180
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*math.Sin(dLon/2)*math.Sin(dLon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return earthRadius * c
+}
+
+// bearingDegrees calculates the initial bearing from point A to B.
+func bearingDegrees(lat1, lon1, lat2, lon2 float64) float64 {
+	lat1Rad := lat1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	dLon := (lon2 - lon1) * math.Pi / 180
+	y := math.Sin(dLon) * math.Cos(lat2Rad)
+	x := math.Cos(lat1Rad)*math.Sin(lat2Rad) - math.Sin(lat1Rad)*math.Cos(lat2Rad)*math.Cos(dLon)
+	brng := math.Atan2(y, x) * 180 / math.Pi
+	if brng < 0 {
+		brng += 360
+	}
+	return brng
 }

@@ -157,7 +157,7 @@ func TestInjectChaosAltersBattery(t *testing.T) {
 	}
 	sim := NewSimulator("cluster", cfg, &MockWriter{}, nil, time.Second, rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
 	drone := sim.fleets[0].Drones[0]
-	row := sim.teleGen.GenerateTelemetry(drone)
+	row := sim.teleGen.GenerateTelemetry(drone, drone.Position, time.Second)
 	before := drone.Battery
 	sim.injectChaos(drone, &row)
 	if drone.Battery >= before {

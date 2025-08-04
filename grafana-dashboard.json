@@ -396,6 +396,51 @@
         }
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 20,
+      "type": "piechart",
+      "title": "Movement Pattern Distribution",
+      "gridPos": { "x": 0, "y": 112, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "U",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT movement_pattern, COUNT(*) as count FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY movement_pattern",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Average Speed",
+      "gridPos": { "x": 12, "y": 112, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "V",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT $__time(ts) AS time, AVG(speed_mps) AS speed FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id) GROUP BY time ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 22,
+      "type": "histogram",
+      "title": "Heading Distribution",
+      "gridPos": { "x": 0, "y": 120, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "W",
+          "datasource": { "type": "greptimedb", "uid": "YOUR_GREPTIMEDB_UID" },
+          "rawSql": "SELECT heading_deg FROM drone_telemetry WHERE $__timeFilter(ts) AND cluster_id IN ($cluster_id)",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "templating": {

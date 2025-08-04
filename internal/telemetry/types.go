@@ -17,19 +17,23 @@ type MissionRow struct {
 
 // TelemetryRow represents one telemetry record for GreptimeDB.
 type TelemetryRow struct {
-	ClusterID  string    `json:"cluster_id"`  // TAG
-	DroneID    string    `json:"drone_id"`    // TAG
-	MissionID  string    `json:"mission_id"`  // Added field for mission association
-	Lat        float64   `json:"lat"`         // FIELD
-	Lon        float64   `json:"lon"`         // FIELD
-	Alt        float64   `json:"alt"`         // FIELD
-	Battery    float64   `json:"battery"`     // FIELD
-	Status     string    `json:"status"`      // FIELD
-	Follow     bool      `json:"follow"`      // FIELD indicates active follow mode
-	SyncedFrom string    `json:"synced_from"` // Added by sync process
-	SyncedID   string    `json:"synced_id"`   // Added by sync process
-	SyncedAt   time.Time `json:"synced_at"`   // Added by sync process
-	Timestamp  time.Time `json:"ts"`          // TIME INDEX
+	ClusterID        string    `json:"cluster_id"`        // TAG
+	DroneID          string    `json:"drone_id"`          // TAG
+	MissionID        string    `json:"mission_id"`        // Added field for mission association
+	Lat              float64   `json:"lat"`               // FIELD
+	Lon              float64   `json:"lon"`               // FIELD
+	Alt              float64   `json:"alt"`               // FIELD
+	Battery          float64   `json:"battery"`           // FIELD
+	Status           string    `json:"status"`            // FIELD
+	Follow           bool      `json:"follow"`            // FIELD indicates active follow mode
+	MovementPattern  string    `json:"movement_pattern"`  // FIELD movement pattern
+	SpeedMPS         float64   `json:"speed_mps"`         // FIELD speed in meters/second
+	HeadingDeg       float64   `json:"heading_deg"`       // FIELD heading in degrees
+	PreviousPosition Position  `json:"previous_position"` // FIELD previous position
+	SyncedFrom       string    `json:"synced_from"`       // Added by sync process
+	SyncedID         string    `json:"synced_id"`         // Added by sync process
+	SyncedAt         time.Time `json:"synced_at"`         // Added by sync process
+	Timestamp        time.Time `json:"ts"`                // TIME INDEX
 }
 
 // TelemetryTableName holds the table name used when writing to GreptimeDB.

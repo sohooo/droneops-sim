@@ -2,6 +2,7 @@ package sim
 
 import (
 	"context"
+	"encoding/json"
 	log "log/slog"
 	"strings"
 
@@ -77,12 +78,17 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 	tbl.AddFieldColumn("alt", types.FLOAT64)
 	tbl.AddFieldColumn("battery", types.FLOAT64)
 	tbl.AddFieldColumn("status", types.STRING)
+	tbl.AddFieldColumn("movement_pattern", types.STRING)
+	tbl.AddFieldColumn("speed_mps", types.FLOAT64)
+	tbl.AddFieldColumn("heading_deg", types.FLOAT64)
+	tbl.AddFieldColumn("previous_position", types.STRING)
 	tbl.AddFieldColumn("synced_from", types.STRING)
 	tbl.AddFieldColumn("synced_id", types.STRING)
 	tbl.AddFieldColumn("synced_at", types.TIMESTAMP_MILLISECOND)
 	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 
 	for _, r := range rows {
+		prevJSON, _ := json.Marshal(r.PreviousPosition)
 		err := tbl.AddRow(
 			r.ClusterID,
 			r.DroneID,
@@ -91,6 +97,10 @@ func (w *GreptimeDBWriter) WriteBatch(rows []telemetry.TelemetryRow) error {
 			r.Alt,
 			r.Battery,
 			r.Status,
+			r.MovementPattern,
+			r.SpeedMPS,
+			r.HeadingDeg,
+			string(prevJSON),
 			r.SyncedFrom,
 			r.SyncedID,
 			r.SyncedAt,

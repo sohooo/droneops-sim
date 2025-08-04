@@ -19,7 +19,8 @@ func TestGenerateTelemetry(t *testing.T) {
 		Status:    StatusOK,
 	}
 
-	row := gen.GenerateTelemetry(drone)
+	prev := drone.Position
+	row := gen.GenerateTelemetry(drone, prev, time.Second)
 
 	if row.ClusterID != "cluster-1" {
 		t.Errorf("expected cluster-1, got %s", row.ClusterID)
@@ -43,6 +44,9 @@ func TestGenerateTelemetry(t *testing.T) {
 	// Battery should decrease
 	if row.Battery >= 50 {
 		t.Errorf("expected battery decrease, got %f", row.Battery)
+	}
+	if row.PreviousPosition != prev {
+		t.Errorf("expected previous position to be set")
 	}
 }
 
@@ -113,6 +117,29 @@ func TestRandomWalkMovement(t *testing.T) {
 	}
 	if newPos == drone.Position {
 		t.Errorf("expected drone position to change")
+	}
+}
+
+func TestSpeedAndHeadingPatrol(t *testing.T) { testSpeedAndHeading(t, "patrol", nil) }
+func TestSpeedAndHeadingPointToPoint(t *testing.T) {
+	wps := []Position{{Lat: 48.2083, Lon: 16.3740}}
+	testSpeedAndHeading(t, "point-to-point", wps)
+}
+func TestSpeedAndHeadingLoiter(t *testing.T) { testSpeedAndHeading(t, "loiter", nil) }
+func TestSpeedAndHeadingRandom(t *testing.T) { testSpeedAndHeading(t, "random", nil) }
+
+func testSpeedAndHeading(t *testing.T, pattern string, wps []Position) {
+	gen := NewGenerator("c1", rand.New(rand.NewSource(1)), func() time.Time { return time.Unix(0, 0).UTC() })
+	drone := &Drone{ID: "d1", Model: "small-fpv", MovementPattern: pattern, Position: Position{Lat: 48.0, Lon: 16.0, Alt: 100}, Waypoints: wps}
+	prev := drone.Position
+	row := gen.GenerateTelemetry(drone, prev, time.Second)
+	expSpeed := calculateDistance(prev.Lat, prev.Lon, row.Lat, row.Lon)
+	expHeading := bearingDegrees(prev.Lat, prev.Lon, row.Lat, row.Lon)
+	if math.Abs(row.SpeedMPS-expSpeed) > 1e-6 {
+		t.Errorf("speed mismatch: got %.6f want %.6f", row.SpeedMPS, expSpeed)
+	}
+	if math.Abs(row.HeadingDeg-expHeading) > 1e-6 {
+		t.Errorf("heading mismatch: got %.6f want %.6f", row.HeadingDeg, expHeading)
 	}
 }
 

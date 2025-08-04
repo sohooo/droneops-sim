@@ -98,7 +98,12 @@ func (s *Simulator) updateDrone(drone *telemetry.Drone) (telemetry.TelemetryRow,
 	if drone.FollowTarget != nil && (s.rand.Float64() < s.commLoss || drone.Status == telemetry.StatusFailure) {
 		s.removeAssignment(drone)
 	}
-	row := s.teleGen.GenerateTelemetry(drone)
+	prev, ok := s.dronePrevPositions[drone.ID]
+	if !ok {
+		prev = drone.Position
+	}
+	row := s.teleGen.GenerateTelemetry(drone, prev, s.tickInterval)
+	s.dronePrevPositions[drone.ID] = drone.Position
 	if s.rand.Float64() < drone.SensorErrorRate {
 		row.Lat += s.rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
 		row.Lon += s.rand.Float64()*sensorErrorMaxOffset*2 - sensorErrorMaxOffset
@@ -111,6 +116,12 @@ func (s *Simulator) updateDrone(drone *telemetry.Drone) (telemetry.TelemetryRow,
 		}
 		row.Battery = drone.Battery
 	}
+	if s.tickInterval > 0 {
+		row.SpeedMPS = distanceMeters(prev.Lat, prev.Lon, row.Lat, row.Lon) / s.tickInterval.Seconds()
+		row.HeadingDeg = bearingDegrees(prev.Lat, prev.Lon, row.Lat, row.Lon)
+	}
+	row.PreviousPosition = prev
+	row.MovementPattern = drone.MovementPattern
 	if s.rand.Float64() < drone.DropoutRate {
 		return telemetry.TelemetryRow{}, false
 	}

@@ -143,6 +143,42 @@
       "options": { "showHeader": true, "sortBy": [{ "displayName": "end_time", "desc": true }] },
       "fieldConfig": { "defaults": { "unit": "none" } },
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 35 }
+    },
+    {
+      "type": "piechart",
+      "title": "Movement Pattern Distribution",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT movement_pattern, COUNT(*) AS count FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from') GROUP BY movement_pattern",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 45 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Average Speed",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT $__time(ts) AS time, AVG(speed_mps) AS speed FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from') GROUP BY time ORDER BY time",
+          "refId": "C"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 45 }
+    },
+    {
+      "type": "histogram",
+      "title": "Heading Distribution",
+      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "targets": [
+        {
+          "rawSql": "SELECT heading_deg FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from')",
+          "refId": "D"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 45 }
     }
   ],
   "templating": {
