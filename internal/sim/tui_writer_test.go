@@ -86,6 +86,31 @@ func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	}
 }
 
+func TestTelemetrySectionsCapped(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = mi.(tuiModel)
+	for i := 0; i < 50; i++ {
+		mi, _ = m.Update(detectionMsg{line: fmt.Sprintf("det%d", i)})
+		m = mi.(tuiModel)
+	}
+	_, detLines := m.renderDetections()
+	detCount := len(strings.Split(detLines, "\n"))
+	if detCount > m.maxSectionLines() {
+		t.Fatalf("detections exceed max lines: %d > %d", detCount, m.maxSectionLines())
+	}
+	for i := 0; i < 50; i++ {
+		mi, _ = m.Update(swarmMsg{line: fmt.Sprintf("sw%d", i)})
+		m = mi.(tuiModel)
+	}
+	_, swarmLines := m.renderSwarmEvents()
+	swarmCount := len(strings.Split(swarmLines, "\n"))
+	if swarmCount > m.maxSectionLines() {
+		t.Fatalf("swarm events exceed max lines: %d > %d", swarmCount, m.maxSectionLines())
+	}
+}
+
 func TestWrapToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "M1", Description: "alpha beta gamma delta epsilon zeta"}},
