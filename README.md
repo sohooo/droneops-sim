@@ -123,6 +123,18 @@ The simulator can be configured through the following environment variables:
 | `ENABLE_MOVEMENT_METRICS` | `true` | No | Toggle emission of movement telemetry. |
 | `ENABLE_SIMULATION_STATE` | `true` | No | Toggle emission of simulation state stream. |
 
+## Grafana Dashboard
+
+Render the Grafana dashboards using environment variables and the `make dashboard` command.
+
+```bash
+export GREPTIMEDB_DATASOURCE_UID=greptime_uid
+export POSTGRES_DATASOURCE_UID=postgres_uid
+make dashboard
+```
+
+See [docs/grafana-dashboard.md](docs/grafana-dashboard.md) for details.
+
 ## Quickstart
 
 See [docs/quickstart.md](docs/quickstart.md) for step-by-step instructions.

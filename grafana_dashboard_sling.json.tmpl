@@ -14,7 +14,7 @@
       "description": "Real-time drone positions with optional filter by synced_from (command cluster).",
       "datasource": {
         "type": "postgres",
-        "uid": "YOUR_DATASOURCE_UID"
+        "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}"
       },
       "targets": [
         {
@@ -48,7 +48,7 @@
       "description": "Shows the aggregated fleet distribution per mission cluster (synced_from). Marker size and color indicate fleet size, with popups for details.",
       "datasource": {
         "type": "postgres",
-        "uid": "YOUR_DATASOURCE_UID"
+        "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}"
       },
       "targets": [
         {
@@ -86,7 +86,7 @@
       "description": "Current number of drones reporting telemetry.",
       "datasource": {
         "type": "postgres",
-        "uid": "YOUR_DATASOURCE_UID"
+        "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}"
       },
       "targets": [
         {
@@ -109,7 +109,7 @@
       "description": "Most recent synchronization time for each command cluster.",
       "datasource": {
         "type": "postgres",
-        "uid": "YOUR_DATASOURCE_UID"
+        "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}"
       },
       "targets": [
         {
@@ -132,7 +132,7 @@
       "description": "Detailed audit of synchronization jobs.",
       "datasource": {
         "type": "postgres",
-        "uid": "YOUR_DATASOURCE_UID"
+        "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}"
       },
       "targets": [
         {
@@ -147,7 +147,7 @@
     {
       "type": "piechart",
       "title": "Movement Pattern Distribution",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT movement_pattern, COUNT(*) AS count FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from') GROUP BY movement_pattern",
@@ -159,7 +159,7 @@
     {
       "type": "timeseries",
       "title": "Average Speed",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT $__time(ts) AS time, AVG(speed_mps) AS speed FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from') GROUP BY time ORDER BY time",
@@ -171,7 +171,7 @@
     {
       "type": "histogram",
       "title": "Heading Distribution",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT heading_deg FROM drone_telemetry WHERE $__timeFilter(ts) AND ('$synced_from' = '' OR synced_from = '$synced_from')",
@@ -183,7 +183,7 @@
     {
       "type": "timeseries",
       "title": "Communication Reliability",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT $__time(ts) AS time, 1 - communication_loss AS reliability FROM simulation_state WHERE $__timeFilter(ts) ORDER BY time",
@@ -195,7 +195,7 @@
     {
       "type": "timeseries",
       "title": "Sensor Noise",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT $__time(ts) AS time, sensor_noise FROM simulation_state WHERE $__timeFilter(ts) ORDER BY time",
@@ -207,7 +207,7 @@
     {
       "type": "stat",
       "title": "Chaos Mode",
-      "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+      "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
       "targets": [
         {
           "rawSql": "SELECT chaos_mode FROM simulation_state WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 1",
@@ -222,7 +222,7 @@
       {
         "type": "query",
         "name": "synced_from",
-        "datasource": { "type": "postgres", "uid": "YOUR_DATASOURCE_UID" },
+        "datasource": { "type": "postgres", "uid": "{{ env "POSTGRES_DATASOURCE_UID" }}" },
         "refresh": 1,
         "query": "SELECT DISTINCT synced_from FROM drone_telemetry ORDER BY synced_from",
         "includeAll": true,
