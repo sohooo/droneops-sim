@@ -45,8 +45,9 @@ type setSpawnMsg struct{ fn func(enemy.Enemy) }
 type telemetryMsg struct{ telemetry.TelemetryRow }
 
 const (
-	fallbackEnemyInput = "vehicle,0,0,0"
-	enemyOffset        = 0.0001
+	fallbackEnemyInput  = "vehicle,0,0,0"
+	enemyOffset         = 0.0001
+	maxSectionHeightPct = 0.2
 )
 
 // TUIWriter renders telemetry using a bubbletea TUI.
@@ -376,6 +377,14 @@ func (m *tuiModel) refreshViewport() {
 	}
 }
 
+func (m tuiModel) maxSectionLines() int {
+	h := int(float64(m.height) * maxSectionHeightPct)
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
 func (m tuiModel) View() string {
 	bottom := m.renderBottom()
 	divider := strings.Repeat("─", m.vp.Width)
@@ -453,7 +462,13 @@ func (m tuiModel) renderDetections() (string, string) {
 	if len(m.detLogs) == 0 {
 		return header, "none"
 	}
-	return header, strings.Join(m.detLogs, "\n")
+	maxLines := m.maxSectionLines()
+	start := len(m.detLogs) - maxLines
+	if start < 0 {
+		start = 0
+	}
+	lines := m.detLogs[start:]
+	return header, strings.Join(lines, "\n")
 }
 
 func (m tuiModel) renderSwarmEvents() (string, string) {
@@ -461,7 +476,13 @@ func (m tuiModel) renderSwarmEvents() (string, string) {
 	if len(m.swarmLogs) == 0 {
 		return header, "none"
 	}
-	return header, strings.Join(m.swarmLogs, "\n")
+	maxLines := m.maxSectionLines()
+	start := len(m.swarmLogs) - maxLines
+	if start < 0 {
+		start = 0
+	}
+	lines := m.swarmLogs[start:]
+	return header, strings.Join(lines, "\n")
 }
 
 func (m tuiModel) renderEnemies() string {
@@ -471,9 +492,14 @@ func (m tuiModel) renderEnemies() string {
 	if len(m.enemies) == 0 {
 		return "Enemies: none"
 	}
+	maxLines := m.maxSectionLines()
+	start := len(m.enemies) - maxLines
+	if start < 0 {
+		start = 0
+	}
 	var b strings.Builder
 	b.WriteString("Enemies:\n")
-	for _, e := range m.enemies {
+	for _, e := range m.enemies[start:] {
 		b.WriteString(fmt.Sprintf("%s %s lat=%.5f lon=%.5f alt=%.1f\n", e.ID, e.Type, e.Position.Lat, e.Position.Lon, e.Position.Alt))
 	}
 	return strings.TrimRight(b.String(), "\n")
