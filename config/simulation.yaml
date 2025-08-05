@@ -75,7 +75,7 @@ fleets:
       battery_anomaly_rate: 0.01
 
 # Minimum confidence for drones to engage follow mode
-follow_confidence: 75
+follow_confidence: 60
 
 # Overall mission criticality influencing follow aggressiveness
 mission_criticality: medium

@@ -53,7 +53,7 @@ The following fields in `config/simulation.yaml` control the enemy detection beh
 enemy_detection:
   enemy_count: 5
   detection_radius_m: 1200
-  follow_confidence: 75
+  follow_confidence: 60
   sensor_noise: 0.05
 ```
 
