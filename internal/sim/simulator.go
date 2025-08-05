@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
@@ -272,6 +274,23 @@ func NewSimulator(clusterID string, cfg *config.SimulationConfig, writer Telemet
 	sim.enemyEng = enemy.NewEngine(count, regions, r)
 
 	return sim
+}
+
+// SpawnEnemy adds a new enemy to the simulation.
+func (s *Simulator) SpawnEnemy(en enemy.Enemy) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.enemyEng == nil {
+		s.enemyEng = enemy.NewEngine(0, nil, s.rand)
+	}
+	if en.ID == "" {
+		en.ID = uuid.New().String()
+	}
+	s.enemyEng.Enemies = append(s.enemyEng.Enemies, &en)
+	if s.enemyObjects == nil {
+		s.enemyObjects = make(map[string]*enemy.Enemy)
+	}
+	s.enemyObjects[en.ID] = &en
 }
 
 // ToggleChaos flips chaos mode on or off and returns the new state.

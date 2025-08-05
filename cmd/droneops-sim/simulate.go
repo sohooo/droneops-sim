@@ -95,6 +95,9 @@ var simulateCmd = &cobra.Command{
 		defer cancel()
 
 		simulator := sim.NewSimulator(clusterID, cfg, writer, detectWriter, tickInterval, nil, nil)
+		if sp, ok := writer.(sim.EnemySpawner); ok {
+			sp.SetSpawner(simulator.SpawnEnemy)
+		}
 
 		srv := admin.NewServer(simulator)
 		if aw, ok := writer.(sim.AdminStatusWriter); ok {
