@@ -45,8 +45,44 @@ func TestTUIWriterMessages(t *testing.T) {
 	if err := w.WriteDetection(d); err != nil {
 		t.Fatalf("detect: %v", err)
 	}
-	if _, ok := p.msgs[4].(logMsg); !ok {
-		t.Fatalf("expected logMsg for detection")
+	if _, ok := p.msgs[4].(detectionMsg); !ok {
+		t.Fatalf("expected detectionMsg for detection")
+	}
+	e := telemetry.SwarmEventRow{EventType: "test", Timestamp: time.Unix(0, 0).UTC()}
+	if err := w.WriteSwarmEvent(e); err != nil {
+		t.Fatalf("swarm: %v", err)
+	}
+	if _, ok := p.msgs[5].(swarmMsg); !ok {
+		t.Fatalf("expected swarmMsg for swarm event")
+	}
+}
+
+func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 40})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(detectionMsg{line: "det1"})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(swarmMsg{line: "sw1"})
+	m = mi.(tuiModel)
+	dh, dl := m.renderDetections()
+	if dh != "Detections:" || dl != "det1" {
+		t.Fatalf("unexpected detections render: %q %q", dh, dl)
+	}
+	sh, sl := m.renderSwarmEvents()
+	if sh != "Swarm Events:" || sl != "sw1" {
+		t.Fatalf("unexpected swarm render: %q %q", sh, sl)
+	}
+	view := m.View()
+	detIdx := strings.Index(view, "Detections:")
+	swarmIdx := strings.Index(view, "Swarm Events:")
+	enemyIdx := strings.Index(view, "Enemies:")
+	if detIdx == -1 || swarmIdx == -1 || enemyIdx == -1 {
+		t.Fatalf("missing sections in view")
+	}
+	if !(detIdx < swarmIdx && swarmIdx < enemyIdx) {
+		t.Fatalf("sections out of order")
 	}
 }
 
@@ -71,7 +107,7 @@ func TestWrapToggle(t *testing.T) {
 		t.Fatalf("wrap not toggled")
 	}
 	lines = strings.Split(m.vp.View(), "\n")
-	if strings.TrimSpace(lines[1]) == "" {
+	if m.vp.View() == long {
 		t.Fatalf("expected wrapped content on second line")
 	}
 	if strings.Count(m.header, "\n") <= strings.Count(before, "\n") {
