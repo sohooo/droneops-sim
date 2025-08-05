@@ -58,3 +58,29 @@ func TestGreptimeWriterSwarmEventsJSON(t *testing.T) {
 		t.Fatalf("drone_ids = %s, want %s", got, want)
 	}
 }
+
+func TestGreptimeWriterMissions(t *testing.T) {
+	rows := []telemetry.MissionRow{{
+		ID:          "m1",
+		Name:        "Mission",
+		Objective:   "Obj",
+		Description: "Desc",
+		Region:      telemetry.Region{Name: "R", CenterLat: 1, CenterLon: 2, RadiusKM: 3},
+	}}
+
+	m := &mockGreptimeClient{}
+	w := &GreptimeDBWriter{client: m, missionTable: "missions"}
+
+	if err := w.WriteMissions(rows); err != nil {
+		t.Fatalf("WriteMissions: %v", err)
+	}
+	if m.table == nil {
+		t.Fatalf("expected table to be captured")
+	}
+	if got := m.table.GetRows().Rows[0].Values[0].GetStringValue(); got != "m1" {
+		t.Fatalf("id = %s, want m1", got)
+	}
+	if got := m.table.GetRows().Rows[0].Values[4].GetStringValue(); got != "R" {
+		t.Fatalf("region_name = %s, want R", got)
+	}
+}

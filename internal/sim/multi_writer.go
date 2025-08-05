@@ -133,6 +133,38 @@ func (mw *MultiWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
 	return nil
 }
 
+// WriteMission sends a mission row to all writers that support it.
+func (mw *MultiWriter) WriteMission(row telemetry.MissionRow) error {
+	for _, w := range mw.telewriters {
+		if mwriter, ok := w.(MissionWriter); ok {
+			if err := mwriter.WriteMission(row); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// WriteMissions sends multiple mission rows, using batch mode if supported.
+func (mw *MultiWriter) WriteMissions(rows []telemetry.MissionRow) error {
+	for _, w := range mw.telewriters {
+		if bw, ok := w.(batchMissionWriter); ok {
+			if err := bw.WriteMissions(rows); err != nil {
+				return err
+			}
+			continue
+		}
+		if mwriter, ok := w.(MissionWriter); ok {
+			for _, r := range rows {
+				if err := mwriter.WriteMission(r); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // SetAdminStatus forwards admin UI status to underlying writers that support it.
 func (mw *MultiWriter) SetAdminStatus(active bool) {
 	for _, w := range mw.telewriters {

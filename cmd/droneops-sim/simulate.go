@@ -16,6 +16,7 @@ import (
 	"droneops-sim/internal/config"
 	"droneops-sim/internal/logging"
 	"droneops-sim/internal/sim"
+	"droneops-sim/internal/telemetry"
 )
 
 var (
@@ -66,13 +67,33 @@ var simulateCmd = &cobra.Command{
 		cfg.Telemetry.MovementMetrics = &simEnableMovement
 		cfg.Telemetry.SimulationState = &simEnableState
 
-		writer, detectWriter, cleanup, err := newWriters(cfg, simPrintOnly, simLogFile, simEnableDetections, simEnableSwarmEvents, simEnableState)
+		writer, detectWriter, missionWriter, cleanup, err := newWriters(cfg, simPrintOnly, simLogFile, simEnableDetections, simEnableSwarmEvents, simEnableState)
 		if err != nil {
 			return err
 		}
 		defer cleanup()
 		if c, ok := writer.(io.Closer); ok {
 			defer c.Close()
+		}
+
+		if missionWriter != nil {
+			for _, m := range cfg.Missions {
+				row := telemetry.MissionRow{
+					ID:          m.ID,
+					Name:        m.Name,
+					Objective:   m.Objective,
+					Description: m.Description,
+					Region: telemetry.Region{
+						Name:      m.Region.Name,
+						CenterLat: m.Region.CenterLat,
+						CenterLon: m.Region.CenterLon,
+						RadiusKM:  m.Region.RadiusKM,
+					},
+				}
+				if err := missionWriter.WriteMission(row); err != nil {
+					return err
+				}
+			}
 		}
 
 		clusterID := os.Getenv("CLUSTER_ID")

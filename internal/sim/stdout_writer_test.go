@@ -30,6 +30,7 @@ func TestJSONStdoutWriter(t *testing.T) {
 	dRow := enemy.DetectionRow{ClusterID: "c1", DroneID: "d1", EnemyID: "e1", Timestamp: ts}
 	sRow := telemetry.SwarmEventRow{ClusterID: "c1", EventType: telemetry.SwarmEventAssignment, DroneIDs: []string{"d1"}, EnemyID: "e1", Timestamp: ts}
 	stRow := telemetry.SimulationStateRow{ClusterID: "c1", MessagesSent: 1, ChaosMode: true, Timestamp: ts}
+	mRow := telemetry.MissionRow{ID: "m1", Name: "Mission", Objective: "Obj", Description: "Desc", Region: telemetry.Region{Name: "R", CenterLat: 1, CenterLon: 2, RadiusKM: 3}}
 
 	cases := []struct {
 		name   string
@@ -88,6 +89,20 @@ func TestJSONStdoutWriter(t *testing.T) {
 				}
 				if got.MessagesSent != stRow.MessagesSent || got.ChaosMode != stRow.ChaosMode {
 					t.Fatalf("unexpected state row: %#v", got)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "mission",
+			write: func(w *JSONStdoutWriter) error { return w.WriteMission(mRow) },
+			decode: func(b []byte) error {
+				var got telemetry.MissionRow
+				if err := json.Unmarshal(b, &got); err != nil {
+					return err
+				}
+				if got.ID != mRow.ID || got.Region.Name != mRow.Region.Name {
+					t.Fatalf("unexpected mission row: %#v", got)
 				}
 				return nil
 			},

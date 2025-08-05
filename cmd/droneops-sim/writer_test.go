@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewWritersPrintOnly(t *testing.T) {
-	tw, dw, cleanup, err := newWriters(nil, true, "", true, true, true)
+	tw, dw, mw, cleanup, err := newWriters(nil, true, "", true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -21,12 +21,15 @@ func TestNewWritersPrintOnly(t *testing.T) {
 	}
 	if _, ok := dw.(*sim.JSONStdoutWriter); !ok {
 		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", dw)
+	}
+	if _, ok := mw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected mission writer *sim.JSONStdoutWriter, got %T", mw)
 	}
 }
 
 func TestNewWritersGreptimeFallback(t *testing.T) {
 	t.Setenv("GREPTIMEDB_ENDPOINT", "")
-	tw, dw, cleanup, err := newWriters(nil, false, "", true, true, true)
+	tw, dw, mw, cleanup, err := newWriters(nil, false, "", true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -36,19 +39,25 @@ func TestNewWritersGreptimeFallback(t *testing.T) {
 	}
 	if _, ok := dw.(*sim.JSONStdoutWriter); !ok {
 		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", dw)
+	}
+	if _, ok := mw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected mission writer *sim.JSONStdoutWriter, got %T", mw)
 	}
 }
 
 func TestNewWritersLogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "telemetry.log")
-	tw, _, cleanup, err := newWriters(nil, true, path, true, true, true)
+	tw, _, mw, cleanup, err := newWriters(nil, true, path, true, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
 	defer cleanup()
 	if _, ok := tw.(*sim.MultiWriter); !ok {
 		t.Fatalf("expected *sim.MultiWriter, got %T", tw)
+	}
+	if _, ok := mw.(*sim.MultiWriter); !ok {
+		t.Fatalf("expected mission writer *sim.MultiWriter, got %T", mw)
 	}
 	row := telemetry.TelemetryRow{ClusterID: "c1", DroneID: "d1", Timestamp: time.Now()}
 	if err := tw.Write(row); err != nil {
@@ -79,7 +88,7 @@ func TestNewWritersLogFile(t *testing.T) {
 }
 
 func TestNewWritersDisableDetections(t *testing.T) {
-	tw, dw, cleanup, err := newWriters(nil, true, "", false, true, true)
+	tw, dw, mw, cleanup, err := newWriters(nil, true, "", false, true, true)
 	if err != nil {
 		t.Fatalf("newWriters returned error: %v", err)
 	}
@@ -89,5 +98,8 @@ func TestNewWritersDisableDetections(t *testing.T) {
 	}
 	if _, ok := tw.(*sim.JSONStdoutWriter); !ok {
 		t.Fatalf("expected *sim.JSONStdoutWriter, got %T", tw)
+	}
+	if _, ok := mw.(*sim.JSONStdoutWriter); !ok {
+		t.Fatalf("expected mission writer *sim.JSONStdoutWriter, got %T", mw)
 	}
 }

@@ -135,6 +135,21 @@ func (f *FileWriter) WriteStates(rows []telemetry.SimulationStateRow) error {
 	return nil
 }
 
+// WriteMission logs a mission metadata row to the telemetry file.
+func (f *FileWriter) WriteMission(row telemetry.MissionRow) error {
+	return f.teleEnc.Encode(row)
+}
+
+// WriteMissions logs multiple mission metadata rows.
+func (f *FileWriter) WriteMissions(rows []telemetry.MissionRow) error {
+	for _, r := range rows {
+		if err := f.WriteMission(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Close closes any underlying files.
 func (f *FileWriter) Close() error {
 	var err error

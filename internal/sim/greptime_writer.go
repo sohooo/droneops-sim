@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	log "log/slog"
+	"time"
 
 	"droneops-sim/internal/enemy"
 	"droneops-sim/internal/telemetry"
@@ -27,10 +28,11 @@ type GreptimeDBWriter struct {
 	detectionTable string
 	swarmTable     string
 	stateTable     string
+	missionTable   string
 }
 
 // NewGreptimeDBWriter creates a new GreptimeDB writer.
-func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string, swarmTable string, stateTable string) (*GreptimeDBWriter, error) {
+func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string, swarmTable string, stateTable string, missionTable string) (*GreptimeDBWriter, error) {
 	cfg := greptime.NewConfig(endpoint).
 		WithPort(4001).
 		WithDatabase(database)
@@ -53,6 +55,9 @@ func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string
 	if stateTable == "" {
 		stateTable = "simulation_state"
 	}
+	if missionTable == "" {
+		missionTable = "missions"
+	}
 
 	return &GreptimeDBWriter{
 		client:         client,
@@ -61,6 +66,7 @@ func NewGreptimeDBWriter(endpoint, database, table string, detectionTable string
 		detectionTable: detectionTable,
 		swarmTable:     swarmTable,
 		stateTable:     stateTable,
+		missionTable:   missionTable,
 	}, nil
 }
 
@@ -293,5 +299,59 @@ func (w *GreptimeDBWriter) WriteStates(rows []telemetry.SimulationStateRow) erro
 		return err
 	}
 	log.Info("GreptimeDBWriter wrote state rows", "count", len(rows))
+	return nil
+}
+
+// WriteMission inserts a single mission metadata row.
+func (w *GreptimeDBWriter) WriteMission(row telemetry.MissionRow) error {
+	return w.WriteMissions([]telemetry.MissionRow{row})
+}
+
+// WriteMissions inserts multiple mission metadata rows.
+func (w *GreptimeDBWriter) WriteMissions(rows []telemetry.MissionRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	tbl, err := table.New(w.missionTable)
+	if err != nil {
+		return err
+	}
+	tbl.AddTagColumn("id", types.STRING)
+	tbl.AddFieldColumn("name", types.STRING)
+	tbl.AddFieldColumn("objective", types.STRING)
+	tbl.AddFieldColumn("description", types.STRING)
+	tbl.AddFieldColumn("region_name", types.STRING)
+	tbl.AddFieldColumn("region_center_lat", types.FLOAT64)
+	tbl.AddFieldColumn("region_center_lon", types.FLOAT64)
+	tbl.AddFieldColumn("region_radius_km", types.FLOAT64)
+	tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
+
+	now := time.Now().UTC()
+	for _, r := range rows {
+		err := tbl.AddRow(
+			r.ID,
+			r.Name,
+			r.Objective,
+			r.Description,
+			r.Region.Name,
+			r.Region.CenterLat,
+			r.Region.CenterLon,
+			r.Region.RadiusKM,
+			now,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = w.client.Write(ctx, tbl)
+	if err != nil {
+		log.Error("GreptimeDBWriter mission write failed", "err", err)
+		return err
+	}
+	log.Info("GreptimeDBWriter wrote missions", "count", len(rows))
 	return nil
 }

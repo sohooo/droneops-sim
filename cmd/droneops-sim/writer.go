@@ -7,20 +7,20 @@ import (
 	"droneops-sim/internal/sim"
 )
 
-// newWriters sets up telemetry and detection writers based on flags and env vars.
+// newWriters sets up telemetry, detection, and mission writers based on flags and env vars.
 // It returns the writers and a cleanup function to close any resources.
-func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string, enableDetections, enableSwarm, enableState bool) (sim.TelemetryWriter, sim.DetectionWriter, func(), error) {
+func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string, enableDetections, enableSwarm, enableState bool) (sim.TelemetryWriter, sim.DetectionWriter, sim.MissionWriter, func(), error) {
 	cleanup := func() {}
 
-	writer, detectWriter, err := baseWriters(cfg, printOnly)
+	writer, detectWriter, missionWriter, err := baseWriters(cfg, printOnly)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if !enableDetections {
 		detectWriter = nil
 	}
 	if logFile == "" {
-		return writer, detectWriter, cleanup, nil
+		return writer, detectWriter, missionWriter, cleanup, nil
 	}
 
 	detPath := ""
@@ -37,7 +37,7 @@ func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string, en
 	}
 	fw, err := sim.NewFileWriter(logFile, detPath, swarmPath, statePath)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	tws := []sim.TelemetryWriter{writer, fw}
 	dws := []sim.DetectionWriter{}
@@ -57,16 +57,20 @@ func newWriters(cfg *config.SimulationConfig, printOnly bool, logFile string, en
 	mw := sim.NewMultiWriter(tws, dws, sws)
 	cleanup = func() { fw.Close() }
 	if enableDetections {
-		return mw, mw, cleanup, nil
+		return mw, mw, mw, cleanup, nil
 	}
-	return mw, nil, cleanup, nil
+	return mw, nil, mw, cleanup, nil
 }
 
 // baseWriters chooses the underlying writers based on printOnly flag and env vars.
-func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, error) {
+func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, sim.DetectionWriter, sim.MissionWriter, error) {
 	if printOnly || os.Getenv("GREPTIMEDB_ENDPOINT") == "" {
 		tw, dw := sim.NewStdoutWriters(cfg)
-		return tw, dw, nil
+		var mw sim.MissionWriter
+		if mwi, ok := tw.(sim.MissionWriter); ok {
+			mw = mwi
+		}
+		return tw, dw, mw, nil
 	}
 
 	endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
@@ -74,15 +78,16 @@ func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWri
 	detTable := os.Getenv("ENEMY_DETECTION_TABLE")
 	swarmTable := os.Getenv("SWARM_EVENT_TABLE")
 	stateTable := os.Getenv("SIMULATION_STATE_TABLE")
-	w, err := sim.NewGreptimeDBWriter(endpoint, "public", table, detTable, swarmTable, stateTable)
+	missionTable := os.Getenv("MISSIONS_TABLE")
+	w, err := sim.NewGreptimeDBWriter(endpoint, "public", table, detTable, swarmTable, stateTable, missionTable)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return w, w, nil
+	return w, w, w, nil
 }
 
 // newTelemetryWriter creates a telemetry writer without detection handling.
 func newTelemetryWriter(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWriter, error) {
-	w, _, _, err := newWriters(cfg, printOnly, "", true, true, true)
+	w, _, _, _, err := newWriters(cfg, printOnly, "", true, true, true)
 	return w, err
 }
