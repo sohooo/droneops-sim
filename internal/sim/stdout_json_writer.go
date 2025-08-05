@@ -79,3 +79,18 @@ func (w *JSONStdoutWriter) WriteStates(rows []telemetry.SimulationStateRow) erro
 	}
 	return nil
 }
+
+// WriteMission outputs a mission row in JSON format.
+func (w *JSONStdoutWriter) WriteMission(row telemetry.MissionRow) error {
+	data, _ := json.Marshal(row)
+	fmt.Fprintln(w.out, string(data))
+	return nil
+}
+
+// WriteMissions outputs multiple mission rows in JSON format.
+func (w *JSONStdoutWriter) WriteMissions(rows []telemetry.MissionRow) error {
+	for _, r := range rows {
+		_ = w.WriteMission(r)
+	}
+	return nil
+}
