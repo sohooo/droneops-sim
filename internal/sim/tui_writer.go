@@ -36,8 +36,12 @@ type stateMsg struct{ telemetry.SimulationStateRow }
 type adminMsg struct{ active bool }
 
 type setSpawnMsg struct{ fn func(enemy.Enemy) }
+type telemetryMsg struct{ telemetry.TelemetryRow }
 
-const defaultEnemyInput = "vehicle,0,0,0"
+const (
+	fallbackEnemyInput = "vehicle,0,0,0"
+	enemyOffset        = 0.0001
+)
 
 // TUIWriter renders telemetry using a bubbletea TUI.
 type TUIWriter struct {
@@ -111,6 +115,7 @@ func (w *TUIWriter) Write(row telemetry.TelemetryRow) error {
 		line += fmt.Sprintf(" %sfollow%s", colorMagenta, colorReset)
 	}
 	w.program.Send(logMsg{line: line})
+	w.program.Send(telemetryMsg{row})
 	return nil
 }
 
@@ -213,6 +218,8 @@ type tuiModel struct {
 	spawn         func(enemy.Enemy)
 	enemyInput    textinput.Model
 	enemyDialog   bool
+	lastDrone     telemetry.Position
+	haveDrone     bool
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
@@ -294,7 +301,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			m.enemyInput = textinput.New()
 			m.enemyInput.Placeholder = "type,lat,lon,alt"
-			m.enemyInput.SetValue(defaultEnemyInput)
+			val := fallbackEnemyInput
+			if m.haveDrone {
+				val = fmt.Sprintf("vehicle,%.5f,%.5f,%.1f", m.lastDrone.Lat+enemyOffset, m.lastDrone.Lon+enemyOffset, m.lastDrone.Alt)
+			}
+			m.enemyInput.SetValue(val)
 			m.enemyInput.CursorEnd()
 			m.enemyInput.Focus()
 			m.enemyDialog = true
@@ -311,6 +322,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logs = m.logs[len(m.logs)-1000:]
 		}
 		m.refreshViewport()
+	case telemetryMsg:
+		m.lastDrone = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
+		m.haveDrone = true
 	case stateMsg:
 		m.state = msg.SimulationStateRow
 	case adminMsg:

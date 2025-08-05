@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -26,22 +27,25 @@ func TestTUIWriterMessages(t *testing.T) {
 	if _, ok := p.msgs[0].(logMsg); !ok {
 		t.Fatalf("expected logMsg, got %T", p.msgs[0])
 	}
+	if _, ok := p.msgs[1].(telemetryMsg); !ok {
+		t.Fatalf("expected telemetryMsg, got %T", p.msgs[1])
+	}
 	st := telemetry.SimulationStateRow{MessagesSent: 1}
 	if err := w.WriteState(st); err != nil {
 		t.Fatalf("state: %v", err)
 	}
-	if _, ok := p.msgs[1].(stateMsg); !ok {
-		t.Fatalf("expected stateMsg, got %T", p.msgs[1])
+	if _, ok := p.msgs[2].(stateMsg); !ok {
+		t.Fatalf("expected stateMsg, got %T", p.msgs[2])
 	}
 	w.SetAdminStatus(true)
-	if _, ok := p.msgs[2].(adminMsg); !ok {
-		t.Fatalf("expected adminMsg, got %T", p.msgs[2])
+	if _, ok := p.msgs[3].(adminMsg); !ok {
+		t.Fatalf("expected adminMsg, got %T", p.msgs[3])
 	}
 	d := enemy.DetectionRow{DroneID: "d", EnemyID: "e", Timestamp: time.Unix(0, 0).UTC()}
 	if err := w.WriteDetection(d); err != nil {
 		t.Fatalf("detect: %v", err)
 	}
-	if _, ok := p.msgs[3].(logMsg); !ok {
+	if _, ok := p.msgs[4].(logMsg); !ok {
 		t.Fatalf("expected logMsg for detection")
 	}
 }
@@ -123,13 +127,17 @@ func TestEnemySpawn(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, nil)
 	m.spawn = func(enemy.Enemy) {}
-	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	// provide last known drone position
+	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{Lat: 1, Lon: 2, Alt: 3}})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	m = mi.(tuiModel)
 	if !m.enemyDialog {
 		t.Fatalf("expected enemy dialog to open")
 	}
-	if m.enemyInput.Value() != defaultEnemyInput {
-		t.Fatalf("expected default input %q, got %q", defaultEnemyInput, m.enemyInput.Value())
+	expected := fmt.Sprintf("vehicle,%.5f,%.5f,%.1f", 1+enemyOffset, 2+enemyOffset, 3.0)
+	if m.enemyInput.Value() != expected {
+		t.Fatalf("expected default input %q, got %q", expected, m.enemyInput.Value())
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = mi.(tuiModel)
@@ -137,15 +145,28 @@ func TestEnemySpawn(t *testing.T) {
 		t.Fatalf("expected enemy added")
 	}
 	en := m.enemies[0]
-	if en.Type != enemy.EnemyVehicle || en.Position.Lat != 0 || en.Position.Lon != 0 || en.Position.Alt != 0 {
+	if en.Type != enemy.EnemyVehicle || en.Position.Lat != 1+enemyOffset || en.Position.Lon != 2+enemyOffset || en.Position.Alt != 3 {
 		t.Fatalf("unexpected enemy spawned: %+v", en)
+	}
+}
+
+func TestEnemySpawnFallback(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	m.spawn = func(enemy.Enemy) {}
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = mi.(tuiModel)
+	if m.enemyInput.Value() != fallbackEnemyInput {
+		t.Fatalf("expected fallback input %q, got %q", fallbackEnemyInput, m.enemyInput.Value())
 	}
 }
 
 func TestEnemySpawnHint(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, nil)
-	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{Lat: 4, Lon: 5, Alt: 6}})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	m = mi.(tuiModel)
 	hint := m.renderEnemies()
 	if !strings.Contains(hint, "type,lat,lon,alt") {
@@ -157,7 +178,8 @@ func TestEnemySpawnHint(t *testing.T) {
 	if !strings.Contains(hint, "Esc to cancel") {
 		t.Fatalf("expected Esc instruction, got %q", hint)
 	}
-	if !strings.Contains(hint, defaultEnemyInput) {
-		t.Fatalf("expected default value %q in hint, got %q", defaultEnemyInput, hint)
+	expected := fmt.Sprintf("vehicle,%.5f,%.5f,%.1f", 4+enemyOffset, 5+enemyOffset, 6.0)
+	if !strings.Contains(hint, expected) {
+		t.Fatalf("expected default value %q in hint, got %q", expected, hint)
 	}
 }
