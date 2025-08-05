@@ -955,3 +955,11 @@ func TestProcessDetectionsPopulatesFields(t *testing.T) {
 		t.Fatalf("velocity mismatch: got %f want %f", det.EnemyVelMS, expVel)
 	}
 }
+
+func TestSimulatorSpawnEnemy(t *testing.T) {
+	sim := &Simulator{rand: rand.New(rand.NewSource(1))}
+	sim.SpawnEnemy(enemy.Enemy{Type: enemy.EnemyPerson, Position: telemetry.Position{Lat: 1, Lon: 2, Alt: 3}})
+	if sim.enemyEng == nil || len(sim.enemyEng.Enemies) != 1 {
+		t.Fatalf("expected enemy to be spawned")
+	}
+}

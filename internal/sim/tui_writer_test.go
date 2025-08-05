@@ -118,3 +118,46 @@ func TestScrollToggle(t *testing.T) {
 		t.Fatalf("expected YOffset %d after new log, got %d", expected, m.vp.YOffset)
 	}
 }
+
+func TestEnemySpawn(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	m.spawn = func(enemy.Enemy) {}
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = mi.(tuiModel)
+	if !m.enemyDialog {
+		t.Fatalf("expected enemy dialog to open")
+	}
+	if m.enemyInput.Value() != defaultEnemyInput {
+		t.Fatalf("expected default input %q, got %q", defaultEnemyInput, m.enemyInput.Value())
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = mi.(tuiModel)
+	if len(m.enemies) != 1 {
+		t.Fatalf("expected enemy added")
+	}
+	en := m.enemies[0]
+	if en.Type != enemy.EnemyVehicle || en.Position.Lat != 0 || en.Position.Lon != 0 || en.Position.Alt != 0 {
+		t.Fatalf("unexpected enemy spawned: %+v", en)
+	}
+}
+
+func TestEnemySpawnHint(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = mi.(tuiModel)
+	hint := m.renderEnemies()
+	if !strings.Contains(hint, "type,lat,lon,alt") {
+		t.Fatalf("expected input format hint, got %q", hint)
+	}
+	if !strings.Contains(hint, "Enter to spawn") {
+		t.Fatalf("expected Enter instruction, got %q", hint)
+	}
+	if !strings.Contains(hint, "Esc to cancel") {
+		t.Fatalf("expected Esc instruction, got %q", hint)
+	}
+	if !strings.Contains(hint, defaultEnemyInput) {
+		t.Fatalf("expected default value %q in hint, got %q", defaultEnemyInput, hint)
+	}
+}
