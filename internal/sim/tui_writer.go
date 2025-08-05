@@ -259,13 +259,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.header = m.renderHeader()
 		m.headerHeight = lipgloss.Height(m.header)
-		bottomHeight := lipgloss.Height(m.renderBottom())
-		detHeader, detLines := m.renderDetections()
-		swarmHeader, swarmLines := m.renderSwarmEvents()
-		detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-		swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-		enemyHeight := lipgloss.Height(m.renderEnemies())
-		m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+		m.updateViewportHeight()
 		m.refreshViewport()
 	case tea.KeyMsg:
 		if m.enemyDialog {
@@ -279,22 +273,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.enemies = append(m.enemies, en)
 				}
 				m.enemyDialog = false
-				bottomHeight := lipgloss.Height(m.renderBottom())
-				detHeader, detLines := m.renderDetections()
-				swarmHeader, swarmLines := m.renderSwarmEvents()
-				detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-				swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-				enemyHeight := lipgloss.Height(m.renderEnemies())
-				m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+				m.updateViewportHeight()
 			case tea.KeyEsc:
 				m.enemyDialog = false
-				bottomHeight := lipgloss.Height(m.renderBottom())
-				detHeader, detLines := m.renderDetections()
-				swarmHeader, swarmLines := m.renderSwarmEvents()
-				detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-				swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-				enemyHeight := lipgloss.Height(m.renderEnemies())
-				m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+				m.updateViewportHeight()
 			default:
 				var cmd tea.Cmd
 				m.enemyInput, cmd = m.enemyInput.Update(msg)
@@ -310,13 +292,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.refreshViewport()
 			m.header = m.renderHeader()
 			m.headerHeight = lipgloss.Height(m.header)
-			bottomHeight := lipgloss.Height(m.renderBottom())
-			detHeader, detLines := m.renderDetections()
-			swarmHeader, swarmLines := m.renderSwarmEvents()
-			detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-			swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-			enemyHeight := lipgloss.Height(m.renderEnemies())
-			m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+			m.updateViewportHeight()
 		case "s":
 			m.autoscroll = !m.autoscroll
 			if m.autoscroll {
@@ -333,13 +309,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.enemyInput.CursorEnd()
 			m.enemyInput.Focus()
 			m.enemyDialog = true
-			bottomHeight := lipgloss.Height(m.renderBottom())
-			detHeader, detLines := m.renderDetections()
-			swarmHeader, swarmLines := m.renderSwarmEvents()
-			detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-			swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-			enemyHeight := lipgloss.Height(m.renderEnemies())
-			m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+			m.updateViewportHeight()
 		}
 		var cmd tea.Cmd
 		m.vp, cmd = m.vp.Update(msg)
@@ -355,26 +325,14 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.detLogs) > 1000 {
 			m.detLogs = m.detLogs[len(m.detLogs)-1000:]
 		}
-		bottomHeight := lipgloss.Height(m.renderBottom())
-		detHeader, detLines := m.renderDetections()
-		swarmHeader, swarmLines := m.renderSwarmEvents()
-		detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-		swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-		enemyHeight := lipgloss.Height(m.renderEnemies())
-		m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+		m.updateViewportHeight()
 		m.refreshViewport()
 	case swarmMsg:
 		m.swarmLogs = append(m.swarmLogs, msg.line)
 		if len(m.swarmLogs) > 1000 {
 			m.swarmLogs = m.swarmLogs[len(m.swarmLogs)-1000:]
 		}
-		bottomHeight := lipgloss.Height(m.renderBottom())
-		detHeader, detLines := m.renderDetections()
-		swarmHeader, swarmLines := m.renderSwarmEvents()
-		detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-		swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
-		enemyHeight := lipgloss.Height(m.renderEnemies())
-		m.vp.Height = m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+		m.updateViewportHeight()
 		m.refreshViewport()
 	case telemetryMsg:
 		m.lastDrone = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
@@ -387,6 +345,20 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spawn = msg.fn
 	}
 	return m, nil
+}
+
+func (m *tuiModel) updateViewportHeight() {
+	bottomHeight := lipgloss.Height(m.renderBottom())
+	detHeader, detLines := m.renderDetections()
+	swarmHeader, swarmLines := m.renderSwarmEvents()
+	detHeight := lipgloss.Height(detHeader + "\n" + detLines)
+	swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
+	enemyHeight := lipgloss.Height(m.renderEnemies())
+	h := m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
+	if h < 0 {
+		h = 0
+	}
+	m.vp.Height = h
 }
 
 func (m *tuiModel) refreshViewport() {

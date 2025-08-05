@@ -251,3 +251,30 @@ func TestEnemySpawnHint(t *testing.T) {
 		t.Fatalf("expected default value %q in hint, got %q", expected, hint)
 	}
 }
+
+func TestUpdateViewportHeightClampsToZero(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	m.height = 0
+	m.headerHeight = 0
+	m.updateViewportHeight()
+	if m.vp.Height < 0 {
+		t.Fatalf("viewport height should be non-negative, got %d", m.vp.Height)
+	}
+}
+
+func TestRefreshViewportNoPanicWithZeroHeight(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	m.height = 0
+	m.headerHeight = 0
+	m.logs = []string{"log line"}
+	m.updateViewportHeight()
+	m.vp.Width = 10
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("refreshViewport panicked: %v", r)
+		}
+	}()
+	m.refreshViewport()
+}
