@@ -326,6 +326,41 @@ func TestEnemySpawnHint(t *testing.T) {
 	}
 }
 
+func TestSummaryToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Missions: []config.Mission{{ID: "m1"}, {ID: "m2"}},
+		Fleets:   []config.Fleet{{MissionID: "m1", Count: 2}, {MissionID: "m2", Count: 3}},
+	}
+	colors := map[string]string{"m1": colorRed, "m2": colorGreen}
+	m := newTUIModel(cfg, colors)
+	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Battery: 80}})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d2", MissionID: "m2", Battery: 40}})
+	m = mi.(tuiModel)
+	bottom := m.renderBottom()
+	if strings.Contains(bottom, "SUMMARY") {
+		t.Fatalf("summary should be hidden by default")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = mi.(tuiModel)
+	bottom = m.renderBottom()
+	if !strings.Contains(bottom, "SUMMARY") {
+		t.Fatalf("summary not shown after toggle: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%sdrones=%d%s", colorGreen, 2, colorReset)) {
+		t.Fatalf("missing drone count: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%savg_batt=%.1f%s", colorCyan, 60.0, colorReset)) {
+		t.Fatalf("missing avg battery: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/2", colorRed, "m1", colorReset)) {
+		t.Fatalf("missing mission m1 progress: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/3", colorGreen, "m2", colorReset)) {
+		t.Fatalf("missing mission m2 progress: %q", bottom)
+	}
+}
+
 func TestUpdateViewportHeightClampsToZero(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, map[string]string{})
