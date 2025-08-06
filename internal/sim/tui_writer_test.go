@@ -66,13 +66,11 @@ func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	m = mi.(tuiModel)
 	mi, _ = m.Update(swarmMsg{line: "sw1"})
 	m = mi.(tuiModel)
-	dh, dl := m.renderDetections()
-	if dh != "Detections:" || dl != "det1" {
-		t.Fatalf("unexpected detections render: %q %q", dh, dl)
+	if strings.TrimSpace(m.detVP.View()) != "det1" {
+		t.Fatalf("unexpected detections view: %q", m.detVP.View())
 	}
-	sh, sl := m.renderSwarmEvents()
-	if sh != "Swarm Events:" || sl != "sw1" {
-		t.Fatalf("unexpected swarm render: %q %q", sh, sl)
+	if strings.TrimSpace(m.swarmVP.View()) != "sw1" {
+		t.Fatalf("unexpected swarm view: %q", m.swarmVP.View())
 	}
 	view := m.View()
 	detIdx := strings.Index(view, "Detections:")
@@ -95,19 +93,21 @@ func TestTelemetrySectionsCapped(t *testing.T) {
 		mi, _ = m.Update(detectionMsg{line: fmt.Sprintf("det%d", i)})
 		m = mi.(tuiModel)
 	}
-	_, detLines := m.renderDetections()
-	detCount := len(strings.Split(detLines, "\n"))
-	if detCount > m.maxSectionLines() {
-		t.Fatalf("detections exceed max lines: %d > %d", detCount, m.maxSectionLines())
+	if m.detVP.Height != m.maxSectionLines() {
+		t.Fatalf("unexpected det height: %d != %d", m.detVP.Height, m.maxSectionLines())
+	}
+	if m.detVP.YOffset != len(m.detLogs)-m.detVP.Height {
+		t.Fatalf("detections not scrolled to bottom")
 	}
 	for i := 0; i < 50; i++ {
 		mi, _ = m.Update(swarmMsg{line: fmt.Sprintf("sw%d", i)})
 		m = mi.(tuiModel)
 	}
-	_, swarmLines := m.renderSwarmEvents()
-	swarmCount := len(strings.Split(swarmLines, "\n"))
-	if swarmCount > m.maxSectionLines() {
-		t.Fatalf("swarm events exceed max lines: %d > %d", swarmCount, m.maxSectionLines())
+	if m.swarmVP.Height != m.maxSectionLines() {
+		t.Fatalf("unexpected swarm height: %d != %d", m.swarmVP.Height, m.maxSectionLines())
+	}
+	if m.swarmVP.YOffset != len(m.swarmLogs)-m.swarmVP.Height {
+		t.Fatalf("swarm events not scrolled to bottom")
 	}
 }
 
@@ -143,44 +143,48 @@ func TestWrapToggle(t *testing.T) {
 func TestScrollToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 20})
+	m = mi.(tuiModel)
 	m.vp.Height = 1
-	m.vp.Width = 20
-	mi, _ := m.Update(logMsg{line: "l1"})
+	m.detVP.Height = 1
+	m.swarmVP.Height = 1
+	mi, _ = m.Update(logMsg{line: "l1"})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(logMsg{line: "l2"})
 	m = mi.(tuiModel)
-	if m.vp.YOffset != 1 {
-		t.Fatalf("expected YOffset 1, got %d", m.vp.YOffset)
+	mi, _ = m.Update(detectionMsg{line: "d1"})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(detectionMsg{line: "d2"})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(swarmMsg{line: "s1"})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(swarmMsg{line: "s2"})
+	m = mi.(tuiModel)
+	if m.vp.YOffset != len(m.logs)-m.vp.Height || m.detVP.YOffset != len(m.detLogs)-m.detVP.Height || m.swarmVP.YOffset != len(m.swarmLogs)-m.swarmVP.Height {
+		t.Fatalf("expected initial offsets at bottom")
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	m = mi.(tuiModel)
 	if m.autoscroll {
 		t.Fatalf("autoscroll should be off")
 	}
+	offLog, offDet, offSw := m.vp.YOffset, m.detVP.YOffset, m.swarmVP.YOffset
 	mi, _ = m.Update(logMsg{line: "l3"})
 	m = mi.(tuiModel)
-	if m.vp.YOffset != 1 {
-		t.Fatalf("expected YOffset unchanged, got %d", m.vp.YOffset)
-	}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	mi, _ = m.Update(detectionMsg{line: "d3"})
 	m = mi.(tuiModel)
-	if m.vp.YOffset != 0 {
-		t.Fatalf("expected YOffset 0 after scrolling up, got %d", m.vp.YOffset)
+	mi, _ = m.Update(swarmMsg{line: "s3"})
+	m = mi.(tuiModel)
+	if m.vp.YOffset != offLog || m.detVP.YOffset != offDet || m.swarmVP.YOffset != offSw {
+		t.Fatalf("offsets changed with autoscroll off")
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	m = mi.(tuiModel)
 	if !m.autoscroll {
 		t.Fatalf("autoscroll should be on")
 	}
-	expected := len(m.logs) - m.vp.Height
-	if m.vp.YOffset != expected {
-		t.Fatalf("expected YOffset %d, got %d", expected, m.vp.YOffset)
-	}
-	mi, _ = m.Update(logMsg{line: "l4"})
-	m = mi.(tuiModel)
-	expected = len(m.logs) - m.vp.Height
-	if m.vp.YOffset != expected {
-		t.Fatalf("expected YOffset %d after new log, got %d", expected, m.vp.YOffset)
+	if m.vp.YOffset != len(m.logs)-m.vp.Height || m.detVP.YOffset != len(m.detLogs)-m.detVP.Height || m.swarmVP.YOffset != len(m.swarmLogs)-m.swarmVP.Height {
+		t.Fatalf("expected offsets at bottom when autoscroll on")
 	}
 }
 
