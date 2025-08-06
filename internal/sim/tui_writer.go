@@ -259,6 +259,8 @@ type tuiModel struct {
 	haveDrone       bool
 	summary         bool
 	help            bool
+	showMissions    bool
+	showEnemies     bool
 	droneBatteries  map[string]float64
 	missionTotals   map[string]int
 	missionCounts   map[string]map[string]struct{}
@@ -293,6 +295,8 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		swarmVP:        swarmVP,
 		missionColors:  missionColors,
 		autoscroll:     true,
+		showMissions:   true,
+		showEnemies:    true,
 		droneBatteries: make(map[string]float64),
 		missionTotals:  missionTotals,
 		missionCounts:  make(map[string]map[string]struct{}),
@@ -305,7 +309,11 @@ func (m tuiModel) Init() tea.Cmd { return nil }
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.table.SetWidth(msg.Width / 2)
+		tableWidth := msg.Width
+		if m.showMissions {
+			tableWidth = msg.Width / 2
+		}
+		m.table.SetWidth(tableWidth)
 		m.vp.Width = msg.Width
 		m.detVP.Width = msg.Width
 		m.swarmVP.Width = msg.Width
@@ -428,6 +436,22 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editEnemyDialog = true
 			m.updateViewportHeight()
 			return m, nil
+		case "m":
+			m.showMissions = !m.showMissions
+			width := m.vp.Width
+			if m.showMissions {
+				m.table.SetWidth(width / 2)
+			} else {
+				m.table.SetWidth(width)
+			}
+			m.header = m.renderHeader()
+			m.headerHeight = lipgloss.Height(m.header)
+			m.updateViewportHeight()
+			return m, nil
+		case "n":
+			m.showEnemies = !m.showEnemies
+			m.updateViewportHeight()
+			return m, nil
 		case "t":
 			m.summary = !m.summary
 			m.updateViewportHeight()
@@ -540,7 +564,10 @@ func (m *tuiModel) updateViewportHeight() {
 
 	detHeight := 1 + m.detVP.Height
 	swarmHeight := 1 + m.swarmVP.Height
-	enemyHeight := lipgloss.Height(m.renderEnemies())
+	enemyHeight := 0
+	if m.showEnemies || m.enemyDialog || m.editEnemyDialog {
+		enemyHeight = lipgloss.Height(m.renderEnemies())
+	}
 	h := m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
 	if h < 0 {
 		h = 0
@@ -604,7 +631,6 @@ func (m tuiModel) View() string {
 	}
 	bottom := m.renderBottom()
 	divider := strings.Repeat("─", m.vp.Width)
-	enemies := m.renderEnemies()
 	sections := []string{
 		m.header,
 		divider,
@@ -615,16 +641,20 @@ func (m tuiModel) View() string {
 		divider,
 		"Swarm Events:",
 		m.swarmVP.View(),
-		divider,
-		enemies,
-		divider,
-		bottom,
 	}
+	if m.showEnemies || m.enemyDialog || m.editEnemyDialog {
+		enemies := m.renderEnemies()
+		sections = append(sections, divider, enemies)
+	}
+	sections = append(sections, divider, bottom)
 	return strings.Join(sections, "\n")
 }
 
 func (m tuiModel) renderHeader() string {
 	tableView := m.table.View()
+	if !m.showMissions {
+		return tableView
+	}
 	missionsWidth := m.vp.Width/2 - 1
 	missions := renderMissionTree(m.cfg, m.missionColors, m.wrap, missionsWidth)
 	sep := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("│")
@@ -705,6 +735,16 @@ func (m tuiModel) renderBottom() string {
 		helpColor = lipgloss.Color("10")
 	}
 	helpIndicator := lipgloss.NewStyle().Foreground(helpColor).Render("●")
+	missionsColor := lipgloss.Color("10")
+	if !m.showMissions {
+		missionsColor = lipgloss.Color("9")
+	}
+	missionsIndicator := lipgloss.NewStyle().Foreground(missionsColor).Render("●")
+	enemiesColor := lipgloss.Color("10")
+	if !m.showEnemies {
+		enemiesColor = lipgloss.Color("9")
+	}
+	enemiesIndicator := lipgloss.NewStyle().Foreground(enemiesColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s %scomm_loss=%.2f%s %smsgs=%d%s %ssensor=%.2f%s %sweather=%.2f%s %schaos=%t%s",
 		colorBlue, colorReset,
 		colorYellow, m.state.CommunicationLoss, colorReset,
@@ -712,8 +752,8 @@ func (m tuiModel) renderBottom() string {
 		colorMagenta, m.state.SensorNoise, colorReset,
 		colorCyan, m.state.WeatherImpact, colorReset,
 		colorRed, m.state.ChaosMode, colorReset)
-	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy E:edit t:summary ?:help")
-	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, keys)
+	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy E:edit t:summary m:missions n:enemies ?:help")
+	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | Missions %s | Enemies %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, missionsIndicator, enemiesIndicator, keys)
 	if m.summary {
 		return fmt.Sprintf("%s\n%s", m.renderSummary(), line)
 	}
@@ -729,6 +769,8 @@ func (m tuiModel) renderHelp() string {
 		" e  spawn enemy (type,lat,lon,alt)",
 		" E  edit/remove enemy (id,status|delete)",
 		" t  toggle summary footer",
+		" m  toggle mission tree",
+		" n  toggle enemies section",
 		" ?  toggle this help view",
 		"",
 		"When auto-scroll is disabled:",
