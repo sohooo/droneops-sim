@@ -128,21 +128,29 @@ func (w *TUIWriter) Write(row telemetry.TelemetryRow) error {
 
 // WriteDetection implements DetectionWriter.
 func (w *TUIWriter) WriteDetection(d enemy.DetectionRow) error {
-	line := fmt.Sprintf("%s[%s]%s %sDETECT%s drone=%s enemy=%s type=%s lat=%.5f lon=%.5f alt=%.1f conf=%.2f",
+	line := fmt.Sprintf("%s[%s]%s %sDETECT%s %sdrone=%s%s %senemy=%s%s %stype=%s%s %slat=%.5f%s %slon=%.5f%s %salt=%.1f%s %sconf=%.2f%s",
 		colorGray, d.Timestamp.Format(time.RFC3339), colorReset,
-		colorRed, colorReset, d.DroneID, d.EnemyID, d.EnemyType,
-		d.Lat, d.Lon, d.Alt, d.Confidence)
+		colorRed, colorReset,
+		colorWhite(), d.DroneID, colorReset,
+		colorBlue, d.EnemyID, colorReset,
+		colorMagenta, d.EnemyType, colorReset,
+		colorGreen, d.Lat, colorReset,
+		colorYellow, d.Lon, colorReset,
+		colorCyan, d.Alt, colorReset,
+		colorGreen, d.Confidence, colorReset)
 	w.program.Send(detectionMsg{line: line})
 	return nil
 }
 
 // WriteSwarmEvent implements SwarmEventWriter.
 func (w *TUIWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
-	line := fmt.Sprintf("%s[%s]%s %sSWARM%s type=%s drones=%v",
+	line := fmt.Sprintf("%s[%s]%s %sSWARM%s %stype=%s%s %sdrones=%v%s",
 		colorGray, e.Timestamp.Format(time.RFC3339), colorReset,
-		colorCyan, colorReset, e.EventType, e.DroneIDs)
+		colorCyan, colorReset,
+		colorBlue, e.EventType, colorReset,
+		colorWhite(), e.DroneIDs, colorReset)
 	if e.EnemyID != "" {
-		line += fmt.Sprintf(" enemy=%s", e.EnemyID)
+		line += fmt.Sprintf(" %senemy=%s%s", colorMagenta, e.EnemyID, colorReset)
 	}
 	w.program.Send(swarmMsg{line: line})
 	return nil
@@ -535,8 +543,13 @@ func (m tuiModel) renderBottom() string {
 	adminIndicator := lipgloss.NewStyle().Foreground(adminColor).Render("●")
 	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
 	scrollIndicator := lipgloss.NewStyle().Foreground(scrollColor).Render("●")
-	state := fmt.Sprintf("%sSTATE%s comm_loss=%.2f msgs=%d sensor=%.2f weather=%.2f chaos=%t",
-		colorBlue, colorReset, m.state.CommunicationLoss, m.state.MessagesSent, m.state.SensorNoise, m.state.WeatherImpact, m.state.ChaosMode)
+	state := fmt.Sprintf("%sSTATE%s %scomm_loss=%.2f%s %smsgs=%d%s %ssensor=%.2f%s %sweather=%.2f%s %schaos=%t%s",
+		colorBlue, colorReset,
+		colorYellow, m.state.CommunicationLoss, colorReset,
+		colorGreen, m.state.MessagesSent, colorReset,
+		colorMagenta, m.state.SensorNoise, colorReset,
+		colorCyan, m.state.WeatherImpact, colorReset,
+		colorRed, m.state.ChaosMode, colorReset)
 	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy")
 	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, keys)
 }
