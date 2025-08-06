@@ -57,6 +57,51 @@ func TestTUIWriterMessages(t *testing.T) {
 	}
 }
 
+func TestDetectionSwarmAndStateColors(t *testing.T) {
+	p := &fakeProgram{}
+	w := &TUIWriter{program: p, missionColors: map[string]string{}}
+	d := enemy.DetectionRow{
+		DroneID: "d1", EnemyID: "e1", EnemyType: "vehicle", Lat: 1, Lon: 2, Alt: 3, Confidence: 0.9, Timestamp: time.Unix(0, 0).UTC(),
+	}
+	if err := w.WriteDetection(d); err != nil {
+		t.Fatalf("write detection: %v", err)
+	}
+	dm := p.msgs[0].(detectionMsg)
+	if !strings.Contains(dm.line, fmt.Sprintf("%sdrone=%s%s", colorWhite(), d.DroneID, colorReset)) {
+		t.Fatalf("expected colored drone field: %q", dm.line)
+	}
+	if !strings.Contains(dm.line, fmt.Sprintf("%slat=%.5f%s", colorGreen, d.Lat, colorReset)) {
+		t.Fatalf("expected colored lat field: %q", dm.line)
+	}
+
+	p.msgs = nil
+	e := telemetry.SwarmEventRow{EventType: "join", DroneIDs: []string{"d1", "d2"}, EnemyID: "e1", Timestamp: time.Unix(0, 0).UTC()}
+	if err := w.WriteSwarmEvent(e); err != nil {
+		t.Fatalf("write swarm: %v", err)
+	}
+	sm := p.msgs[0].(swarmMsg)
+	if !strings.Contains(sm.line, fmt.Sprintf("%stype=%s%s", colorBlue, e.EventType, colorReset)) {
+		t.Fatalf("expected colored type field: %q", sm.line)
+	}
+	if !strings.Contains(sm.line, fmt.Sprintf("%senemy=%s%s", colorMagenta, e.EnemyID, colorReset)) {
+		t.Fatalf("expected colored enemy field: %q", sm.line)
+	}
+
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	m.state = telemetry.SimulationStateRow{CommunicationLoss: 0.5, MessagesSent: 2, SensorNoise: 0.3, WeatherImpact: 0.4, ChaosMode: true}
+	bottom := m.renderBottom()
+	if !strings.Contains(bottom, fmt.Sprintf("%scomm_loss=%.2f%s", colorYellow, m.state.CommunicationLoss, colorReset)) {
+		t.Fatalf("expected colored comm_loss: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%smsgs=%d%s", colorGreen, m.state.MessagesSent, colorReset)) {
+		t.Fatalf("expected colored msgs: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%schaos=%t%s", colorRed, m.state.ChaosMode, colorReset)) {
+		t.Fatalf("expected colored chaos: %q", bottom)
+	}
+}
+
 func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, nil)
