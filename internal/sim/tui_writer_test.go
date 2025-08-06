@@ -326,6 +326,41 @@ func TestEnemySpawnHint(t *testing.T) {
 	}
 }
 
+func TestSummaryToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Missions: []config.Mission{{ID: "m1"}, {ID: "m2"}},
+		Fleets:   []config.Fleet{{MissionID: "m1", Count: 2}, {MissionID: "m2", Count: 3}},
+	}
+	colors := map[string]string{"m1": colorRed, "m2": colorGreen}
+	m := newTUIModel(cfg, colors)
+	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Battery: 80}})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d2", MissionID: "m2", Battery: 40}})
+	m = mi.(tuiModel)
+	bottom := m.renderBottom()
+	if strings.Contains(bottom, "SUMMARY") {
+		t.Fatalf("summary should be hidden by default")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = mi.(tuiModel)
+	bottom = m.renderBottom()
+	if !strings.Contains(bottom, "SUMMARY") {
+		t.Fatalf("summary not shown after toggle: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%sdrones=%d%s", colorGreen, 2, colorReset)) {
+		t.Fatalf("missing drone count: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%savg_batt=%.1f%s", colorCyan, 60.0, colorReset)) {
+		t.Fatalf("missing avg battery: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/2", colorRed, "m1", colorReset)) {
+		t.Fatalf("missing mission m1 progress: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/3", colorGreen, "m2", colorReset)) {
+		t.Fatalf("missing mission m2 progress: %q", bottom)
+	}
+}
+
 func TestUpdateViewportHeightClampsToZero(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, map[string]string{})
@@ -351,4 +386,58 @@ func TestRefreshViewportNoPanicWithZeroHeight(t *testing.T) {
 		}
 	}()
 	m.refreshViewport()
+}
+
+func TestRenderEnemiesShowsStatus(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{}, Status: enemy.EnemyActive}}
+	out := m.renderEnemies()
+	if !strings.Contains(out, "status=active") {
+		t.Fatalf("expected status, got %q", out)
+	}
+}
+
+func TestEnemyEditAndRemove(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{}, Status: enemy.EnemyActive}}
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
+	m = mi.(tuiModel)
+	if !m.editEnemyDialog {
+		t.Fatalf("expected edit dialog")
+	}
+	m.editEnemyInput.SetValue("e1,neutralized")
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = mi.(tuiModel)
+	if m.enemies[0].Status != enemy.EnemyNeutralized {
+		t.Fatalf("status not updated: %+v", m.enemies[0])
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
+	m = mi.(tuiModel)
+	m.editEnemyInput.SetValue("e1,delete")
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = mi.(tuiModel)
+	if len(m.enemies) != 0 {
+		t.Fatalf("enemy not removed")
+	}
+}
+
+func TestHelpToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m = mi.(tuiModel)
+	if !m.help {
+		t.Fatalf("help not enabled")
+	}
+	view := m.View()
+	if !strings.Contains(view, "Key Bindings:") {
+		t.Fatalf("help view missing: %q", view)
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m = mi.(tuiModel)
+	if m.help {
+		t.Fatalf("help not toggled off")
+	}
 }

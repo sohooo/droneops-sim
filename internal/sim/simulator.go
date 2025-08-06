@@ -286,11 +286,49 @@ func (s *Simulator) SpawnEnemy(en enemy.Enemy) {
 	if en.ID == "" {
 		en.ID = uuid.New().String()
 	}
+	if en.Status == "" {
+		en.Status = enemy.EnemyActive
+	}
 	s.enemyEng.Enemies = append(s.enemyEng.Enemies, &en)
 	if s.enemyObjects == nil {
 		s.enemyObjects = make(map[string]*enemy.Enemy)
 	}
 	s.enemyObjects[en.ID] = &en
+}
+
+// RemoveEnemy deletes an enemy from the simulation by ID.
+func (s *Simulator) RemoveEnemy(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.enemyEng != nil {
+		var remaining []*enemy.Enemy
+		for _, e := range s.enemyEng.Enemies {
+			if e.ID != id {
+				remaining = append(remaining, e)
+			}
+		}
+		s.enemyEng.Enemies = remaining
+	}
+	delete(s.enemyPrevPositions, id)
+	delete(s.enemyFollowers, id)
+	delete(s.enemyFollowerTargets, id)
+	delete(s.enemyObjects, id)
+}
+
+// UpdateEnemyStatus sets the status field for an existing enemy.
+func (s *Simulator) UpdateEnemyStatus(id string, st enemy.EnemyStatus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.enemyEng != nil {
+		for _, e := range s.enemyEng.Enemies {
+			if e.ID == id {
+				e.Status = st
+			}
+		}
+	}
+	if en, ok := s.enemyObjects[id]; ok {
+		en.Status = st
+	}
 }
 
 // ToggleChaos flips chaos mode on or off and returns the new state.
