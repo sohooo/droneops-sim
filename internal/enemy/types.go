@@ -16,6 +16,16 @@ const (
 	EnemyDecoy   EnemyType = "decoy"
 )
 
+// EnemyStatus represents the activity state of an enemy.
+type EnemyStatus string
+
+const (
+	// EnemyActive indicates the enemy is active in the simulation.
+	EnemyActive EnemyStatus = "active"
+	// EnemyNeutralized indicates the enemy has been neutralized.
+	EnemyNeutralized EnemyStatus = "neutralized"
+)
+
 // Enemy represents one simulated enemy entity.
 type Enemy struct {
 	ID         string
@@ -23,6 +33,7 @@ type Enemy struct {
 	Position   telemetry.Position
 	Confidence float64
 	Region     telemetry.Region
+	Status     EnemyStatus
 }
 
 // DetectionRow describes a drone enemy detection event.

@@ -42,6 +42,10 @@ type stateMsg struct{ telemetry.SimulationStateRow }
 type adminMsg struct{ active bool }
 
 type setSpawnMsg struct{ fn func(enemy.Enemy) }
+type setRemoveMsg struct{ fn func(string) }
+type setStatusMsg struct {
+	fn func(string, enemy.EnemyStatus)
+}
 type telemetryMsg struct{ telemetry.TelemetryRow }
 
 const (
@@ -204,6 +208,16 @@ func (w *TUIWriter) SetSpawner(fn func(enemy.Enemy)) {
 	w.program.Send(setSpawnMsg{fn: fn})
 }
 
+// SetEnemyRemover registers a callback to remove enemies.
+func (w *TUIWriter) SetEnemyRemover(fn func(string)) {
+	w.program.Send(setRemoveMsg{fn: fn})
+}
+
+// SetEnemyStatusUpdater registers a callback to update enemy status.
+func (w *TUIWriter) SetEnemyStatusUpdater(fn func(string, enemy.EnemyStatus)) {
+	w.program.Send(setStatusMsg{fn: fn})
+}
+
 // Close shuts down the TUI program and waits for cleanup.
 func (w *TUIWriter) Close() error {
 	w.sendSignal.Store(false)
@@ -217,28 +231,37 @@ func (w *TUIWriter) Close() error {
 }
 
 type tuiModel struct {
-	cfg           *config.SimulationConfig
-	table         table.Model
-	vp            viewport.Model
-	detVP         viewport.Model
-	swarmVP       viewport.Model
-	logs          []string
-	detLogs       []string
-	swarmLogs     []string
-	state         telemetry.SimulationStateRow
-	admin         bool
-	wrap          bool
-	autoscroll    bool
-	header        string
-	headerHeight  int
-	height        int
-	missionColors map[string]string
-	enemies       []enemy.Enemy
-	spawn         func(enemy.Enemy)
-	enemyInput    textinput.Model
-	enemyDialog   bool
-	lastDrone     telemetry.Position
-	haveDrone     bool
+	cfg             *config.SimulationConfig
+	table           table.Model
+	vp              viewport.Model
+	detVP           viewport.Model
+	swarmVP         viewport.Model
+	logs            []string
+	detLogs         []string
+	swarmLogs       []string
+	state           telemetry.SimulationStateRow
+	admin           bool
+	wrap            bool
+	autoscroll      bool
+	header          string
+	headerHeight    int
+	height          int
+	missionColors   map[string]string
+	enemies         []enemy.Enemy
+	spawn           func(enemy.Enemy)
+	enemyInput      textinput.Model
+	enemyDialog     bool
+	editEnemyInput  textinput.Model
+	editEnemyDialog bool
+	remove          func(string)
+	updateStatus    func(string, enemy.EnemyStatus)
+	lastDrone       telemetry.Position
+	haveDrone       bool
+	summary         bool
+	help            bool
+	droneBatteries  map[string]float64
+	missionTotals   map[string]int
+	missionCounts   map[string]map[string]struct{}
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
@@ -258,7 +281,22 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 	vp := viewport.New(0, 0)
 	detVP := viewport.New(0, 0)
 	swarmVP := viewport.New(0, 0)
-	m := tuiModel{cfg: cfg, table: t, vp: vp, detVP: detVP, swarmVP: swarmVP, missionColors: missionColors, autoscroll: true}
+	missionTotals := make(map[string]int)
+	for _, f := range cfg.Fleets {
+		missionTotals[f.MissionID] += f.Count
+	}
+	m := tuiModel{
+		cfg:            cfg,
+		table:          t,
+		vp:             vp,
+		detVP:          detVP,
+		swarmVP:        swarmVP,
+		missionColors:  missionColors,
+		autoscroll:     true,
+		droneBatteries: make(map[string]float64),
+		missionTotals:  missionTotals,
+		missionCounts:  make(map[string]map[string]struct{}),
+	}
 	return m
 }
 
@@ -301,6 +339,57 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if m.editEnemyDialog {
+			switch msg.Type {
+			case tea.KeyEnter:
+				parts := strings.Split(m.editEnemyInput.Value(), ",")
+				if len(parts) >= 2 {
+					id := strings.TrimSpace(parts[0])
+					action := strings.TrimSpace(parts[1])
+					switch action {
+					case "delete":
+						for i, e := range m.enemies {
+							if e.ID == id {
+								m.enemies = append(m.enemies[:i], m.enemies[i+1:]...)
+								if m.remove != nil {
+									go m.remove(id)
+								}
+								break
+							}
+						}
+					case string(enemy.EnemyActive), string(enemy.EnemyNeutralized):
+						st := enemy.EnemyStatus(action)
+						for i := range m.enemies {
+							if m.enemies[i].ID == id {
+								m.enemies[i].Status = st
+								break
+							}
+						}
+						if m.updateStatus != nil {
+							go m.updateStatus(id, st)
+						}
+					}
+				}
+				m.editEnemyDialog = false
+				m.updateViewportHeight()
+			case tea.KeyEsc:
+				m.editEnemyDialog = false
+				m.updateViewportHeight()
+			default:
+				var cmd tea.Cmd
+				m.editEnemyInput, cmd = m.editEnemyInput.Update(msg)
+				return m, cmd
+			}
+			return m, nil
+		}
+		if m.help {
+			switch msg.String() {
+			case "?", "esc":
+				m.help = false
+				m.updateViewportHeight()
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -330,6 +419,21 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.enemyInput.CursorEnd()
 			m.enemyInput.Focus()
 			m.enemyDialog = true
+			m.updateViewportHeight()
+			return m, nil
+		case "E":
+			m.editEnemyInput = textinput.New()
+			m.editEnemyInput.Placeholder = "id,status|delete"
+			m.editEnemyInput.Focus()
+			m.editEnemyDialog = true
+			m.updateViewportHeight()
+			return m, nil
+		case "t":
+			m.summary = !m.summary
+			m.updateViewportHeight()
+			return m, nil
+		case "?":
+			m.help = !m.help
 			m.updateViewportHeight()
 			return m, nil
 		}
@@ -386,12 +490,27 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case telemetryMsg:
 		m.lastDrone = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
 		m.haveDrone = true
+		if m.droneBatteries == nil {
+			m.droneBatteries = make(map[string]float64)
+		}
+		m.droneBatteries[msg.DroneID] = msg.Battery
+		if m.missionCounts == nil {
+			m.missionCounts = make(map[string]map[string]struct{})
+		}
+		if m.missionCounts[msg.MissionID] == nil {
+			m.missionCounts[msg.MissionID] = make(map[string]struct{})
+		}
+		m.missionCounts[msg.MissionID][msg.DroneID] = struct{}{}
 	case stateMsg:
 		m.state = msg.SimulationStateRow
 	case adminMsg:
 		m.admin = msg.active
 	case setSpawnMsg:
 		m.spawn = msg.fn
+	case setRemoveMsg:
+		m.remove = msg.fn
+	case setStatusMsg:
+		m.updateStatus = msg.fn
 	}
 	return m, nil
 }
@@ -480,6 +599,9 @@ func (m tuiModel) maxSectionLines() int {
 }
 
 func (m tuiModel) View() string {
+	if m.help {
+		return m.renderHelp()
+	}
 	bottom := m.renderBottom()
 	divider := strings.Repeat("─", m.vp.Width)
 	enemies := m.renderEnemies()
@@ -527,6 +649,36 @@ func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string, w
 	return strings.TrimRight(b.String(), "\n")
 }
 
+func (m tuiModel) renderSummary() string {
+	total := len(m.droneBatteries)
+	var sum float64
+	for _, b := range m.droneBatteries {
+		sum += b
+	}
+	avg := 0.0
+	if total > 0 {
+		avg = sum / float64(total)
+	}
+	var missionParts []string
+	for _, ms := range m.cfg.Missions {
+		totalMission := m.missionTotals[ms.ID]
+		active := len(m.missionCounts[ms.ID])
+		pct := 0.0
+		if totalMission > 0 {
+			pct = float64(active) / float64(totalMission) * 100
+		}
+		c := m.missionColors[ms.ID]
+		part := fmt.Sprintf("%s%s%s=%d/%d(%.0f%%)%s", c, ms.ID, colorReset, active, totalMission, pct, colorReset)
+		missionParts = append(missionParts, part)
+	}
+	missions := strings.Join(missionParts, " ")
+	summary := fmt.Sprintf("%sSUMMARY%s %sdrones=%d%s %savg_batt=%.1f%s", colorBlue, colorReset, colorGreen, total, colorReset, colorCyan, avg, colorReset)
+	if missions != "" {
+		summary = fmt.Sprintf("%s %s", summary, missions)
+	}
+	return summary
+}
+
 func (m tuiModel) renderBottom() string {
 	adminColor := lipgloss.Color("9")
 	if m.admin {
@@ -543,6 +695,16 @@ func (m tuiModel) renderBottom() string {
 	adminIndicator := lipgloss.NewStyle().Foreground(adminColor).Render("●")
 	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
 	scrollIndicator := lipgloss.NewStyle().Foreground(scrollColor).Render("●")
+	summaryColor := lipgloss.Color("9")
+	if m.summary {
+		summaryColor = lipgloss.Color("10")
+	}
+	summaryIndicator := lipgloss.NewStyle().Foreground(summaryColor).Render("●")
+	helpColor := lipgloss.Color("9")
+	if m.help {
+		helpColor = lipgloss.Color("10")
+	}
+	helpIndicator := lipgloss.NewStyle().Foreground(helpColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s %scomm_loss=%.2f%s %smsgs=%d%s %ssensor=%.2f%s %sweather=%.2f%s %schaos=%t%s",
 		colorBlue, colorReset,
 		colorYellow, m.state.CommunicationLoss, colorReset,
@@ -550,13 +712,38 @@ func (m tuiModel) renderBottom() string {
 		colorMagenta, m.state.SensorNoise, colorReset,
 		colorCyan, m.state.WeatherImpact, colorReset,
 		colorRed, m.state.ChaosMode, colorReset)
-	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy")
-	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, keys)
+	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy E:edit t:summary ?:help")
+	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, keys)
+	if m.summary {
+		return fmt.Sprintf("%s\n%s", m.renderSummary(), line)
+	}
+	return line
+}
+
+func (m tuiModel) renderHelp() string {
+	lines := []string{
+		"Key Bindings:",
+		" q  quit",
+		" w  toggle wrap for mission list",
+		" s  toggle auto-scroll",
+		" e  spawn enemy (type,lat,lon,alt)",
+		" E  edit/remove enemy (id,status|delete)",
+		" t  toggle summary footer",
+		" ?  toggle this help view",
+		"",
+		"When auto-scroll is disabled:",
+		" j/k or up/down    scroll one line",
+		" pgdown/pgup       scroll a page",
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m tuiModel) renderEnemies() string {
 	if m.enemyDialog {
 		return fmt.Sprintf("Spawn Enemy (type,lat,lon,alt) - Enter to spawn, Esc to cancel: %s", m.enemyInput.View())
+	}
+	if m.editEnemyDialog {
+		return fmt.Sprintf("Edit Enemy (id,status|delete) - Enter to apply, Esc to cancel: %s", m.editEnemyInput.View())
 	}
 	if len(m.enemies) == 0 {
 		return "Enemies: none"
@@ -569,7 +756,7 @@ func (m tuiModel) renderEnemies() string {
 	var b strings.Builder
 	b.WriteString("Enemies:\n")
 	for _, e := range m.enemies[start:] {
-		b.WriteString(fmt.Sprintf("%s %s lat=%.5f lon=%.5f alt=%.1f\n", e.ID, e.Type, e.Position.Lat, e.Position.Lon, e.Position.Alt))
+		b.WriteString(fmt.Sprintf("%s %s status=%s lat=%.5f lon=%.5f alt=%.1f\n", e.ID, e.Type, e.Status, e.Position.Lat, e.Position.Lon, e.Position.Alt))
 	}
 	return strings.TrimRight(b.String(), "\n")
 }
@@ -592,5 +779,5 @@ func parseEnemyInput(val string) (enemy.Enemy, error) {
 	if err != nil {
 		return enemy.Enemy{}, err
 	}
-	return enemy.Enemy{ID: uuid.New().String(), Type: typ, Position: telemetry.Position{Lat: lat, Lon: lon, Alt: alt}}, nil
+	return enemy.Enemy{ID: uuid.New().String(), Type: typ, Position: telemetry.Position{Lat: lat, Lon: lon, Alt: alt}, Status: enemy.EnemyActive}, nil
 }

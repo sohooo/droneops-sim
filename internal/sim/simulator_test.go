@@ -963,3 +963,24 @@ func TestSimulatorSpawnEnemy(t *testing.T) {
 		t.Fatalf("expected enemy to be spawned")
 	}
 }
+
+func TestSimulatorRemoveEnemy(t *testing.T) {
+	sim := &Simulator{rand: rand.New(rand.NewSource(1))}
+	sim.SpawnEnemy(enemy.Enemy{ID: "e1", Type: enemy.EnemyPerson})
+	sim.RemoveEnemy("e1")
+	if sim.enemyEng == nil || len(sim.enemyEng.Enemies) != 0 {
+		t.Fatalf("enemy not removed")
+	}
+	if _, ok := sim.enemyObjects["e1"]; ok {
+		t.Fatalf("enemy still present in objects")
+	}
+}
+
+func TestSimulatorUpdateEnemyStatus(t *testing.T) {
+	sim := &Simulator{rand: rand.New(rand.NewSource(1))}
+	sim.SpawnEnemy(enemy.Enemy{ID: "e1", Type: enemy.EnemyPerson})
+	sim.UpdateEnemyStatus("e1", enemy.EnemyNeutralized)
+	if sim.enemyEng.Enemies[0].Status != enemy.EnemyNeutralized {
+		t.Fatalf("status not updated")
+	}
+}

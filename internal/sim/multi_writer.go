@@ -183,6 +183,24 @@ func (mw *MultiWriter) SetSpawner(fn func(enemy.Enemy)) {
 	}
 }
 
+// SetRemover forwards enemy removal callbacks to writers that support it.
+func (mw *MultiWriter) SetRemover(fn func(string)) {
+	for _, w := range mw.telewriters {
+		if rm, ok := w.(EnemyRemover); ok {
+			rm.SetRemover(fn)
+		}
+	}
+}
+
+// SetStatusUpdater forwards enemy status update callbacks to writers that support it.
+func (mw *MultiWriter) SetStatusUpdater(fn func(string, enemy.EnemyStatus)) {
+	for _, w := range mw.telewriters {
+		if up, ok := w.(EnemyStatusUpdater); ok {
+			up.SetStatusUpdater(fn)
+		}
+	}
+}
+
 // Close closes underlying writers that support it.
 func (mw *MultiWriter) Close() error {
 	for _, w := range mw.telewriters {

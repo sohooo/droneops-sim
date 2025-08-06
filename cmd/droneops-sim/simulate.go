@@ -119,6 +119,12 @@ var simulateCmd = &cobra.Command{
 		if sp, ok := writer.(sim.EnemySpawner); ok {
 			sp.SetSpawner(simulator.SpawnEnemy)
 		}
+		if rm, ok := writer.(sim.EnemyRemover); ok {
+			rm.SetRemover(simulator.RemoveEnemy)
+		}
+		if up, ok := writer.(sim.EnemyStatusUpdater); ok {
+			up.SetStatusUpdater(simulator.UpdateEnemyStatus)
+		}
 
 		srv := admin.NewServer(simulator)
 		if aw, ok := writer.(sim.AdminStatusWriter); ok {

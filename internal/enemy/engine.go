@@ -34,6 +34,7 @@ func NewEngine(count int, regions []telemetry.Region, r *rand.Rand) *Engine {
 				Position:   randomPosition(r, reg),
 				Confidence: 100,
 				Region:     reg,
+				Status:     EnemyActive,
 			}
 			e.Enemies = append(e.Enemies, en)
 		}
@@ -95,6 +96,7 @@ func (e *Engine) spawnDecoy(parent *Enemy) {
 		Position:   randomStep(e.rand, parent.Position),
 		Confidence: parent.Confidence * 0.5,
 		Region:     parent.Region,
+		Status:     EnemyActive,
 	}
 	e.Enemies = append(e.Enemies, decoy)
 }
