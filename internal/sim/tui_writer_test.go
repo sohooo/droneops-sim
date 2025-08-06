@@ -441,3 +441,29 @@ func TestHelpToggle(t *testing.T) {
 		t.Fatalf("help not toggled off")
 	}
 }
+
+func TestToggleSections(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Name: "M1"}}}
+	m := newTUIModel(cfg, map[string]string{"m1": colorBlue})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
+	m = mi.(tuiModel)
+	if !strings.Contains(m.renderHeader(), "Missions") {
+		t.Fatalf("expected missions in header")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	m = mi.(tuiModel)
+	if strings.Contains(m.renderHeader(), "Missions") {
+		t.Fatalf("missions not hidden")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = mi.(tuiModel)
+	if strings.Contains(m.View(), "Enemies:") {
+		t.Fatalf("enemies section not hidden")
+	}
+	// toggle enemies back on
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = mi.(tuiModel)
+	if !strings.Contains(m.View(), "Enemies:") {
+		t.Fatalf("enemies section not shown")
+	}
+}
