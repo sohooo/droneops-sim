@@ -45,8 +45,10 @@ func TestTUIWriterMessages(t *testing.T) {
 	if err := w.WriteDetection(d); err != nil {
 		t.Fatalf("detect: %v", err)
 	}
-	if _, ok := p.msgs[4].(detectionMsg); !ok {
+	if dm, ok := p.msgs[4].(detectionMsg); !ok {
 		t.Fatalf("expected detectionMsg for detection")
+	} else if dm.row.DroneID != d.DroneID {
+		t.Fatalf("unexpected row in detectionMsg: %+v", dm.row)
 	}
 	e := telemetry.SwarmEventRow{EventType: "test", Timestamp: time.Unix(0, 0).UTC()}
 	if err := w.WriteSwarmEvent(e); err != nil {
@@ -107,7 +109,7 @@ func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	m := newTUIModel(cfg, nil)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 40})
 	m = mi.(tuiModel)
-	mi, _ = m.Update(detectionMsg{line: "det1"})
+	mi, _ = m.Update(detectionMsg{line: "det1", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(swarmMsg{line: "sw1"})
 	m = mi.(tuiModel)
@@ -135,7 +137,7 @@ func TestTelemetrySectionsCapped(t *testing.T) {
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
 	m = mi.(tuiModel)
 	for i := 0; i < 50; i++ {
-		mi, _ = m.Update(detectionMsg{line: fmt.Sprintf("det%d", i)})
+		mi, _ = m.Update(detectionMsg{line: fmt.Sprintf("det%d", i), row: enemy.DetectionRow{DroneID: "d", Timestamp: time.Unix(0, 0).UTC()}})
 		m = mi.(tuiModel)
 	}
 	if m.detVP.Height != m.maxSectionLines() {
@@ -197,9 +199,9 @@ func TestScrollToggle(t *testing.T) {
 	m = mi.(tuiModel)
 	mi, _ = m.Update(logMsg{line: "l2"})
 	m = mi.(tuiModel)
-	mi, _ = m.Update(detectionMsg{line: "d1"})
+	mi, _ = m.Update(detectionMsg{line: "d1", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
 	m = mi.(tuiModel)
-	mi, _ = m.Update(detectionMsg{line: "d2"})
+	mi, _ = m.Update(detectionMsg{line: "d2", row: enemy.DetectionRow{DroneID: "d2", Timestamp: time.Unix(0, 0).UTC()}})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(swarmMsg{line: "s1"})
 	m = mi.(tuiModel)
@@ -216,7 +218,7 @@ func TestScrollToggle(t *testing.T) {
 	offLog, offDet, offSw := m.vp.YOffset, m.detVP.YOffset, m.swarmVP.YOffset
 	mi, _ = m.Update(logMsg{line: "l3"})
 	m = mi.(tuiModel)
-	mi, _ = m.Update(detectionMsg{line: "d3"})
+	mi, _ = m.Update(detectionMsg{line: "d3", row: enemy.DetectionRow{DroneID: "d3", Timestamp: time.Unix(0, 0).UTC()}})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(swarmMsg{line: "s3"})
 	m = mi.(tuiModel)
@@ -353,11 +355,40 @@ func TestSummaryToggle(t *testing.T) {
 	if !strings.Contains(bottom, fmt.Sprintf("%savg_batt=%.1f%s", colorCyan, 60.0, colorReset)) {
 		t.Fatalf("missing avg battery: %q", bottom)
 	}
+	if !strings.Contains(bottom, fmt.Sprintf("%senemies=%d%s", colorRed, 0, colorReset)) {
+		t.Fatalf("missing enemy count: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%sdet=%d%s", colorMagenta, 0, colorReset)) {
+		t.Fatalf("missing detection count: %q", bottom)
+	}
 	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/2", colorRed, "m1", colorReset)) {
 		t.Fatalf("missing mission m1 progress: %q", bottom)
 	}
 	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/3", colorGreen, "m2", colorReset)) {
 		t.Fatalf("missing mission m2 progress: %q", bottom)
+	}
+}
+
+func TestSummaryIncludesEnemyAndDetectionStats(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1"}}}
+	m := newTUIModel(cfg, map[string]string{"m1": colorRed})
+	m.enemies = []enemy.Enemy{{ID: "e1", Status: enemy.EnemyActive}, {ID: "e2", Status: enemy.EnemyNeutralized}}
+	mi, _ := m.Update(detectionMsg{line: "det", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = mi.(tuiModel)
+	bottom := m.renderBottom()
+	if !strings.Contains(bottom, fmt.Sprintf("%senemies=%d%s", colorRed, 1, colorReset)) {
+		t.Fatalf("missing enemy count: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%sdet=%d%s", colorMagenta, 1, colorReset)) {
+		t.Fatalf("missing detection count: %q", bottom)
+	}
+	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1", colorWhite(), "d1", colorReset)) {
+		t.Fatalf("missing per-drone detections: %q", bottom)
+	}
+	if !strings.Contains(bottom, "trend=[1]") {
+		t.Fatalf("missing detection trend: %q", bottom)
 	}
 }
 

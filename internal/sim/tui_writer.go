@@ -29,8 +29,11 @@ type teaProgram interface {
 // logMsg carries a log line for the viewport.
 type logMsg struct{ line string }
 
-// detectionMsg carries a detection log line.
-type detectionMsg struct{ line string }
+// detectionMsg carries a detection log line and row data.
+type detectionMsg struct {
+	line string
+	row  enemy.DetectionRow
+}
 
 // swarmMsg carries a swarm event log line.
 type swarmMsg struct{ line string }
@@ -142,7 +145,7 @@ func (w *TUIWriter) WriteDetection(d enemy.DetectionRow) error {
 		colorYellow, d.Lon, colorReset,
 		colorCyan, d.Alt, colorReset,
 		colorGreen, d.Confidence, colorReset)
-	w.program.Send(detectionMsg{line: line})
+	w.program.Send(detectionMsg{line: line, row: d})
 	return nil
 }
 
@@ -231,39 +234,43 @@ func (w *TUIWriter) Close() error {
 }
 
 type tuiModel struct {
-	cfg             *config.SimulationConfig
-	table           table.Model
-	vp              viewport.Model
-	detVP           viewport.Model
-	swarmVP         viewport.Model
-	logs            []string
-	detLogs         []string
-	swarmLogs       []string
-	state           telemetry.SimulationStateRow
-	admin           bool
-	wrap            bool
-	autoscroll      bool
-	header          string
-	headerHeight    int
-	height          int
-	missionColors   map[string]string
-	enemies         []enemy.Enemy
-	spawn           func(enemy.Enemy)
-	enemyInput      textinput.Model
-	enemyDialog     bool
-	editEnemyInput  textinput.Model
-	editEnemyDialog bool
-	remove          func(string)
-	updateStatus    func(string, enemy.EnemyStatus)
-	lastDrone       telemetry.Position
-	haveDrone       bool
-	summary         bool
-	help            bool
-	showMissions    bool
-	showEnemies     bool
-	droneBatteries  map[string]float64
-	missionTotals   map[string]int
-	missionCounts   map[string]map[string]struct{}
+	cfg              *config.SimulationConfig
+	table            table.Model
+	vp               viewport.Model
+	detVP            viewport.Model
+	swarmVP          viewport.Model
+	logs             []string
+	detLogs          []string
+	swarmLogs        []string
+	state            telemetry.SimulationStateRow
+	admin            bool
+	wrap             bool
+	autoscroll       bool
+	header           string
+	headerHeight     int
+	height           int
+	missionColors    map[string]string
+	enemies          []enemy.Enemy
+	spawn            func(enemy.Enemy)
+	enemyInput       textinput.Model
+	enemyDialog      bool
+	editEnemyInput   textinput.Model
+	editEnemyDialog  bool
+	remove           func(string)
+	updateStatus     func(string, enemy.EnemyStatus)
+	lastDrone        telemetry.Position
+	haveDrone        bool
+	summary          bool
+	help             bool
+	showMissions     bool
+	showEnemies      bool
+	droneBatteries   map[string]float64
+	missionTotals    map[string]int
+	missionCounts    map[string]map[string]struct{}
+	detectionCounts  map[string]int
+	totalDetections  int
+	detectionHistory []int
+	lastDetMinute    time.Time
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
@@ -288,18 +295,19 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		missionTotals[f.MissionID] += f.Count
 	}
 	m := tuiModel{
-		cfg:            cfg,
-		table:          t,
-		vp:             vp,
-		detVP:          detVP,
-		swarmVP:        swarmVP,
-		missionColors:  missionColors,
-		autoscroll:     true,
-		showMissions:   true,
-		showEnemies:    true,
-		droneBatteries: make(map[string]float64),
-		missionTotals:  missionTotals,
-		missionCounts:  make(map[string]map[string]struct{}),
+		cfg:             cfg,
+		table:           t,
+		vp:              vp,
+		detVP:           detVP,
+		swarmVP:         swarmVP,
+		missionColors:   missionColors,
+		autoscroll:      true,
+		showMissions:    true,
+		showEnemies:     true,
+		droneBatteries:  make(map[string]float64),
+		missionTotals:   missionTotals,
+		missionCounts:   make(map[string]map[string]struct{}),
+		detectionCounts: make(map[string]int),
 	}
 	return m
 }
@@ -500,6 +508,32 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.detLogs) > 1000 {
 			m.detLogs = m.detLogs[len(m.detLogs)-1000:]
 		}
+		m.totalDetections++
+		if m.detectionCounts == nil {
+			m.detectionCounts = make(map[string]int)
+		}
+		m.detectionCounts[msg.row.DroneID]++
+		minute := msg.row.Timestamp.Truncate(time.Minute)
+		if m.lastDetMinute.IsZero() {
+			m.lastDetMinute = minute
+			m.detectionHistory = append(m.detectionHistory, 1)
+		} else if !minute.After(m.lastDetMinute) {
+			if len(m.detectionHistory) == 0 {
+				m.detectionHistory = append(m.detectionHistory, 1)
+			} else {
+				m.detectionHistory[len(m.detectionHistory)-1]++
+			}
+		} else {
+			diff := int(minute.Sub(m.lastDetMinute).Minutes())
+			for i := 0; i < diff-1; i++ {
+				m.detectionHistory = append(m.detectionHistory, 0)
+			}
+			m.detectionHistory = append(m.detectionHistory, 1)
+			m.lastDetMinute = minute
+		}
+		if len(m.detectionHistory) > 5 {
+			m.detectionHistory = m.detectionHistory[len(m.detectionHistory)-5:]
+		}
 		m.updateViewportHeight()
 		m.refreshDetections()
 		m.refreshViewport()
@@ -689,6 +723,22 @@ func (m tuiModel) renderSummary() string {
 	if total > 0 {
 		avg = sum / float64(total)
 	}
+	activeEnemies := 0
+	for _, e := range m.enemies {
+		if e.Status == enemy.EnemyActive {
+			activeEnemies++
+		}
+	}
+	var detParts []string
+	for d, c := range m.detectionCounts {
+		detParts = append(detParts, fmt.Sprintf("%s%s%s=%d", colorWhite(), d, colorReset, c))
+	}
+	detections := strings.Join(detParts, " ")
+	var trendParts []string
+	for _, v := range m.detectionHistory {
+		trendParts = append(trendParts, fmt.Sprintf("%d", v))
+	}
+	trend := strings.Join(trendParts, ",")
 	var missionParts []string
 	for _, ms := range m.cfg.Missions {
 		totalMission := m.missionTotals[ms.ID]
@@ -702,7 +752,13 @@ func (m tuiModel) renderSummary() string {
 		missionParts = append(missionParts, part)
 	}
 	missions := strings.Join(missionParts, " ")
-	summary := fmt.Sprintf("%sSUMMARY%s %sdrones=%d%s %savg_batt=%.1f%s", colorBlue, colorReset, colorGreen, total, colorReset, colorCyan, avg, colorReset)
+	summary := fmt.Sprintf("%sSUMMARY%s %sdrones=%d%s %savg_batt=%.1f%s %senemies=%d%s %sdet=%d%s", colorBlue, colorReset, colorGreen, total, colorReset, colorCyan, avg, colorReset, colorRed, activeEnemies, colorReset, colorMagenta, m.totalDetections, colorReset)
+	if detections != "" {
+		summary = fmt.Sprintf("%s [%s]", summary, detections)
+	}
+	if trend != "" {
+		summary = fmt.Sprintf("%s %strend=[%s]%s", summary, colorYellow, trend, colorReset)
+	}
 	if missions != "" {
 		summary = fmt.Sprintf("%s %s", summary, missions)
 	}
