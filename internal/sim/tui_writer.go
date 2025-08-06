@@ -217,28 +217,32 @@ func (w *TUIWriter) Close() error {
 }
 
 type tuiModel struct {
-	cfg           *config.SimulationConfig
-	table         table.Model
-	vp            viewport.Model
-	detVP         viewport.Model
-	swarmVP       viewport.Model
-	logs          []string
-	detLogs       []string
-	swarmLogs     []string
-	state         telemetry.SimulationStateRow
-	admin         bool
-	wrap          bool
-	autoscroll    bool
-	header        string
-	headerHeight  int
-	height        int
-	missionColors map[string]string
-	enemies       []enemy.Enemy
-	spawn         func(enemy.Enemy)
-	enemyInput    textinput.Model
-	enemyDialog   bool
-	lastDrone     telemetry.Position
-	haveDrone     bool
+	cfg            *config.SimulationConfig
+	table          table.Model
+	vp             viewport.Model
+	detVP          viewport.Model
+	swarmVP        viewport.Model
+	logs           []string
+	detLogs        []string
+	swarmLogs      []string
+	state          telemetry.SimulationStateRow
+	admin          bool
+	wrap           bool
+	autoscroll     bool
+	header         string
+	headerHeight   int
+	height         int
+	missionColors  map[string]string
+	enemies        []enemy.Enemy
+	spawn          func(enemy.Enemy)
+	enemyInput     textinput.Model
+	enemyDialog    bool
+	lastDrone      telemetry.Position
+	haveDrone      bool
+	summary        bool
+	droneBatteries map[string]float64
+	missionTotals  map[string]int
+	missionCounts  map[string]map[string]struct{}
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
@@ -258,7 +262,22 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 	vp := viewport.New(0, 0)
 	detVP := viewport.New(0, 0)
 	swarmVP := viewport.New(0, 0)
-	m := tuiModel{cfg: cfg, table: t, vp: vp, detVP: detVP, swarmVP: swarmVP, missionColors: missionColors, autoscroll: true}
+	missionTotals := make(map[string]int)
+	for _, f := range cfg.Fleets {
+		missionTotals[f.MissionID] += f.Count
+	}
+	m := tuiModel{
+		cfg:            cfg,
+		table:          t,
+		vp:             vp,
+		detVP:          detVP,
+		swarmVP:        swarmVP,
+		missionColors:  missionColors,
+		autoscroll:     true,
+		droneBatteries: make(map[string]float64),
+		missionTotals:  missionTotals,
+		missionCounts:  make(map[string]map[string]struct{}),
+	}
 	return m
 }
 
@@ -332,6 +351,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.enemyDialog = true
 			m.updateViewportHeight()
 			return m, nil
+		case "t":
+			m.summary = !m.summary
+			m.updateViewportHeight()
+			return m, nil
 		}
 		if !m.autoscroll {
 			switch msg.String() {
@@ -386,6 +409,17 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case telemetryMsg:
 		m.lastDrone = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
 		m.haveDrone = true
+		if m.droneBatteries == nil {
+			m.droneBatteries = make(map[string]float64)
+		}
+		m.droneBatteries[msg.DroneID] = msg.Battery
+		if m.missionCounts == nil {
+			m.missionCounts = make(map[string]map[string]struct{})
+		}
+		if m.missionCounts[msg.MissionID] == nil {
+			m.missionCounts[msg.MissionID] = make(map[string]struct{})
+		}
+		m.missionCounts[msg.MissionID][msg.DroneID] = struct{}{}
 	case stateMsg:
 		m.state = msg.SimulationStateRow
 	case adminMsg:
@@ -527,6 +561,36 @@ func renderMissionTree(cfg *config.SimulationConfig, colors map[string]string, w
 	return strings.TrimRight(b.String(), "\n")
 }
 
+func (m tuiModel) renderSummary() string {
+	total := len(m.droneBatteries)
+	var sum float64
+	for _, b := range m.droneBatteries {
+		sum += b
+	}
+	avg := 0.0
+	if total > 0 {
+		avg = sum / float64(total)
+	}
+	var missionParts []string
+	for _, ms := range m.cfg.Missions {
+		totalMission := m.missionTotals[ms.ID]
+		active := len(m.missionCounts[ms.ID])
+		pct := 0.0
+		if totalMission > 0 {
+			pct = float64(active) / float64(totalMission) * 100
+		}
+		c := m.missionColors[ms.ID]
+		part := fmt.Sprintf("%s%s%s=%d/%d(%.0f%%)%s", c, ms.ID, colorReset, active, totalMission, pct, colorReset)
+		missionParts = append(missionParts, part)
+	}
+	missions := strings.Join(missionParts, " ")
+	summary := fmt.Sprintf("%sSUMMARY%s %sdrones=%d%s %savg_batt=%.1f%s", colorBlue, colorReset, colorGreen, total, colorReset, colorCyan, avg, colorReset)
+	if missions != "" {
+		summary = fmt.Sprintf("%s %s", summary, missions)
+	}
+	return summary
+}
+
 func (m tuiModel) renderBottom() string {
 	adminColor := lipgloss.Color("9")
 	if m.admin {
@@ -543,6 +607,11 @@ func (m tuiModel) renderBottom() string {
 	adminIndicator := lipgloss.NewStyle().Foreground(adminColor).Render("●")
 	wrapIndicator := lipgloss.NewStyle().Foreground(wrapColor).Render("●")
 	scrollIndicator := lipgloss.NewStyle().Foreground(scrollColor).Render("●")
+	summaryColor := lipgloss.Color("9")
+	if m.summary {
+		summaryColor = lipgloss.Color("10")
+	}
+	summaryIndicator := lipgloss.NewStyle().Foreground(summaryColor).Render("●")
 	state := fmt.Sprintf("%sSTATE%s %scomm_loss=%.2f%s %smsgs=%d%s %ssensor=%.2f%s %sweather=%.2f%s %schaos=%t%s",
 		colorBlue, colorReset,
 		colorYellow, m.state.CommunicationLoss, colorReset,
@@ -550,8 +619,12 @@ func (m tuiModel) renderBottom() string {
 		colorMagenta, m.state.SensorNoise, colorReset,
 		colorCyan, m.state.WeatherImpact, colorReset,
 		colorRed, m.state.ChaosMode, colorReset)
-	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy")
-	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, keys)
+	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy t:summary")
+	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, keys)
+	if m.summary {
+		return fmt.Sprintf("%s\n%s", m.renderSummary(), line)
+	}
+	return line
 }
 
 func (m tuiModel) renderEnemies() string {
