@@ -212,6 +212,8 @@ type tuiModel struct {
 	cfg           *config.SimulationConfig
 	table         table.Model
 	vp            viewport.Model
+	detVP         viewport.Model
+	swarmVP       viewport.Model
 	logs          []string
 	detLogs       []string
 	swarmLogs     []string
@@ -246,7 +248,9 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 	}
 	t := table.New(table.WithColumns(cols), table.WithRows(rows), table.WithHeight(len(rows)+1))
 	vp := viewport.New(0, 0)
-	m := tuiModel{cfg: cfg, table: t, vp: vp, missionColors: missionColors, autoscroll: true}
+	detVP := viewport.New(0, 0)
+	swarmVP := viewport.New(0, 0)
+	m := tuiModel{cfg: cfg, table: t, vp: vp, detVP: detVP, swarmVP: swarmVP, missionColors: missionColors, autoscroll: true}
 	return m
 }
 
@@ -257,11 +261,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.table.SetWidth(msg.Width / 2)
 		m.vp.Width = msg.Width
+		m.detVP.Width = msg.Width
+		m.swarmVP.Width = msg.Width
 		m.height = msg.Height
 		m.header = m.renderHeader()
 		m.headerHeight = lipgloss.Height(m.header)
 		m.updateViewportHeight()
 		m.refreshViewport()
+		m.refreshDetections()
+		m.refreshSwarmEvents()
 	case tea.KeyMsg:
 		if m.enemyDialog {
 			switch msg.Type {
@@ -294,11 +302,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.header = m.renderHeader()
 			m.headerHeight = lipgloss.Height(m.header)
 			m.updateViewportHeight()
+			return m, nil
 		case "s":
 			m.autoscroll = !m.autoscroll
 			if m.autoscroll {
 				m.vp.GotoBottom()
+				m.detVP.GotoBottom()
+				m.swarmVP.GotoBottom()
 			}
+			return m, nil
 		case "e":
 			m.enemyInput = textinput.New()
 			m.enemyInput.Placeholder = "type,lat,lon,alt"
@@ -311,10 +323,36 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.enemyInput.Focus()
 			m.enemyDialog = true
 			m.updateViewportHeight()
+			return m, nil
 		}
-		var cmd tea.Cmd
-		m.vp, cmd = m.vp.Update(msg)
-		return m, cmd
+		if !m.autoscroll {
+			switch msg.String() {
+			case "j", "down":
+				m.vp.LineDown(1)
+				m.detVP.LineDown(1)
+				m.swarmVP.LineDown(1)
+			case "k", "up":
+				m.vp.LineUp(1)
+				m.detVP.LineUp(1)
+				m.swarmVP.LineUp(1)
+			case "pgdown", "ctrl+n":
+				m.vp.LineDown(10)
+				m.detVP.LineDown(10)
+				m.swarmVP.LineDown(10)
+			case "pgup", "ctrl+p":
+				m.vp.LineUp(10)
+				m.detVP.LineUp(10)
+				m.swarmVP.LineUp(10)
+			default:
+				var cmd tea.Cmd
+				m.vp, cmd = m.vp.Update(msg)
+				m.detVP, _ = m.detVP.Update(msg)
+				m.swarmVP, _ = m.swarmVP.Update(msg)
+				return m, cmd
+			}
+			return m, nil
+		}
+		return m, nil
 	case logMsg:
 		m.logs = append(m.logs, msg.line)
 		if len(m.logs) > 1000 {
@@ -327,6 +365,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.detLogs = m.detLogs[len(m.detLogs)-1000:]
 		}
 		m.updateViewportHeight()
+		m.refreshDetections()
 		m.refreshViewport()
 	case swarmMsg:
 		m.swarmLogs = append(m.swarmLogs, msg.line)
@@ -334,6 +373,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.swarmLogs = m.swarmLogs[len(m.swarmLogs)-1000:]
 		}
 		m.updateViewportHeight()
+		m.refreshSwarmEvents()
 		m.refreshViewport()
 	case telemetryMsg:
 		m.lastDrone = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
@@ -350,16 +390,40 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *tuiModel) updateViewportHeight() {
 	bottomHeight := lipgloss.Height(m.renderBottom())
-	detHeader, detLines := m.renderDetections()
-	swarmHeader, swarmLines := m.renderSwarmEvents()
-	detHeight := lipgloss.Height(detHeader + "\n" + detLines)
-	swarmHeight := lipgloss.Height(swarmHeader + "\n" + swarmLines)
+
+	maxLines := m.maxSectionLines()
+
+	detLines := len(m.detLogs)
+	if detLines == 0 {
+		detLines = 1
+	}
+	if detLines > maxLines {
+		detLines = maxLines
+	}
+	m.detVP.Height = detLines
+
+	swarmLines := len(m.swarmLogs)
+	if swarmLines == 0 {
+		swarmLines = 1
+	}
+	if swarmLines > maxLines {
+		swarmLines = maxLines
+	}
+	m.swarmVP.Height = swarmLines
+
+	detHeight := 1 + m.detVP.Height
+	swarmHeight := 1 + m.swarmVP.Height
 	enemyHeight := lipgloss.Height(m.renderEnemies())
 	h := m.height - m.headerHeight - bottomHeight - detHeight - swarmHeight - enemyHeight - 5
 	if h < 0 {
 		h = 0
 	}
 	m.vp.Height = h
+	if m.autoscroll {
+		m.detVP.GotoBottom()
+		m.swarmVP.GotoBottom()
+		m.vp.GotoBottom()
+	}
 }
 
 func (m *tuiModel) refreshViewport() {
@@ -377,6 +441,28 @@ func (m *tuiModel) refreshViewport() {
 	}
 }
 
+func (m *tuiModel) refreshDetections() {
+	content := "none"
+	if len(m.detLogs) > 0 {
+		content = strings.Join(m.detLogs, "\n")
+	}
+	m.detVP.SetContent(content)
+	if m.autoscroll {
+		m.detVP.GotoBottom()
+	}
+}
+
+func (m *tuiModel) refreshSwarmEvents() {
+	content := "none"
+	if len(m.swarmLogs) > 0 {
+		content = strings.Join(m.swarmLogs, "\n")
+	}
+	m.swarmVP.SetContent(content)
+	if m.autoscroll {
+		m.swarmVP.GotoBottom()
+	}
+}
+
 func (m tuiModel) maxSectionLines() int {
 	h := int(float64(m.height) * maxSectionHeightPct)
 	if h < 1 {
@@ -388,19 +474,17 @@ func (m tuiModel) maxSectionLines() int {
 func (m tuiModel) View() string {
 	bottom := m.renderBottom()
 	divider := strings.Repeat("─", m.vp.Width)
-	detHeader, detLines := m.renderDetections()
-	swarmHeader, swarmLines := m.renderSwarmEvents()
 	enemies := m.renderEnemies()
 	sections := []string{
 		m.header,
 		divider,
 		m.vp.View(),
 		divider,
-		detHeader,
-		detLines,
+		"Detections:",
+		m.detVP.View(),
 		divider,
-		swarmHeader,
-		swarmLines,
+		"Swarm Events:",
+		m.swarmVP.View(),
 		divider,
 		enemies,
 		divider,
@@ -455,34 +539,6 @@ func (m tuiModel) renderBottom() string {
 		colorBlue, colorReset, m.state.CommunicationLoss, m.state.MessagesSent, m.state.SensorNoise, m.state.WeatherImpact, m.state.ChaosMode)
 	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy")
 	return fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, keys)
-}
-
-func (m tuiModel) renderDetections() (string, string) {
-	header := "Detections:"
-	if len(m.detLogs) == 0 {
-		return header, "none"
-	}
-	maxLines := m.maxSectionLines()
-	start := len(m.detLogs) - maxLines
-	if start < 0 {
-		start = 0
-	}
-	lines := m.detLogs[start:]
-	return header, strings.Join(lines, "\n")
-}
-
-func (m tuiModel) renderSwarmEvents() (string, string) {
-	header := "Swarm Events:"
-	if len(m.swarmLogs) == 0 {
-		return header, "none"
-	}
-	maxLines := m.maxSectionLines()
-	start := len(m.swarmLogs) - maxLines
-	if start < 0 {
-		start = 0
-	}
-	lines := m.swarmLogs[start:]
-	return header, strings.Join(lines, "\n")
 }
 
 func (m tuiModel) renderEnemies() string {
