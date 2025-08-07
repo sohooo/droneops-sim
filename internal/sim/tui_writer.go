@@ -1238,18 +1238,24 @@ func (m tuiModel) renderMap() string {
 	scaleKM := kmPerChar * float64(barChars)
 	b.WriteString(fmt.Sprintf("Scale: |%s| %.0fkm\n", strings.Repeat("-", barChars), scaleKM))
 	var legendParts []string
+	legendParts = append(legendParts,
+		fmt.Sprintf("%s=background", mapBackgroundChar),
+		fmt.Sprintf("%s=grid", mapIntersectionChar),
+		"◯=zone",
+		fmt.Sprintf("%s◎%s=detection", colorCyan, colorReset),
+		"⬆=drone_high ↑=drone_low",
+		fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset),
+		fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset),
+	)
 	for _, ms := range m.cfg.Missions {
 		if c, ok := m.missionColors[ms.ID]; ok {
-			legendParts = append(legendParts, fmt.Sprintf("%s^%s=%s(%s)", c, colorReset, ms.ID, ms.Name))
+			legendParts = append(legendParts, fmt.Sprintf("%s↑%s=%s(%s)", c, colorReset, ms.ID, ms.Name))
 		}
 	}
-	legendParts = append(legendParts, fmt.Sprintf("%sX%s=active", colorRed, colorReset))
-	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutralized", colorYellow, colorReset))
-	legendParts = append(legendParts, "⬆=high_alt ↑=low_alt")
-	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
-	legendParts = append(legendParts, fmt.Sprintf("%s◎%s=detection", colorCyan, colorReset))
-	legendParts = append(legendParts, fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset))
-	legendParts = append(legendParts, "◯=mission_zone")
+	legendParts = append(legendParts,
+		fmt.Sprintf("%sX%s=active", colorRed, colorReset),
+		fmt.Sprintf("%sx%s=neutralized", colorYellow, colorReset),
+	)
 	b.WriteString(strings.Join(legendParts, " "))
 	content := strings.TrimRight(b.String(), "\n")
 	style := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("8")).Background(lipgloss.Color("235"))
