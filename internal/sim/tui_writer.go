@@ -1142,7 +1142,7 @@ func (m tuiModel) renderMap() string {
 				x := int(float64(x0) + math.Cos(rad)*rx)
 				y := int(float64(y0) + math.Sin(rad)*ry)
 				if y >= 0 && y < mapHeight && x >= 0 && x < width {
-					grid[y][x] = fmt.Sprintf("%s%s%s", c, "o", colorReset)
+					grid[y][x] = fmt.Sprintf("%s%s%s", c, "◯", colorReset)
 				}
 			}
 		}
@@ -1163,7 +1163,7 @@ func (m tuiModel) renderMap() string {
 				x := int(float64(x0) + math.Cos(rad)*rx)
 				y := int(float64(y0) + math.Sin(rad)*ry)
 				if y >= 0 && y < mapHeight && x >= 0 && x < width {
-					grid[y][x] = fmt.Sprintf("%s*%s", colorCyan, colorReset)
+					grid[y][x] = fmt.Sprintf("%s◎%s", colorCyan, colorReset)
 				}
 			}
 		}
@@ -1247,9 +1247,9 @@ func (m tuiModel) renderMap() string {
 	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutralized", colorYellow, colorReset))
 	legendParts = append(legendParts, "⬆=high_alt ↑=low_alt")
 	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
-	legendParts = append(legendParts, fmt.Sprintf("%s*%s=detection", colorCyan, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%s◎%s=detection", colorCyan, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset))
-	legendParts = append(legendParts, "o=mission_zone")
+	legendParts = append(legendParts, "◯=mission_zone")
 	b.WriteString(strings.Join(legendParts, " "))
 	content := strings.TrimRight(b.String(), "\n")
 	style := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("8")).Background(lipgloss.Color("235"))
