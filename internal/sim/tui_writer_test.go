@@ -188,6 +188,26 @@ func TestRenderMapAddsContext(t *testing.T) {
 	}
 }
 
+func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
+	cfg := &config.SimulationConfig{DetectionRadiusM: 1000}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m = mi.(tuiModel)
+	m.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
+	m.droneHeadings["d1"] = 0
+	m.droneTrails["d1"] = []telemetry.Position{{Lat: 10.001, Lon: 20.001}}
+	m.mapShowDetection = true
+	m.mapShowTrails = true
+	m.initMapViewport()
+	out := m.renderMap()
+	if strings.Count(out, "*") < 2 {
+		t.Fatalf("expected detection radius in map: %q", out)
+	}
+	if strings.Count(out, "·") < 2 {
+		t.Fatalf("expected trail in map: %q", out)
+	}
+}
+
 func TestWrapToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "M1", Description: "alpha beta gamma delta epsilon zeta"}},

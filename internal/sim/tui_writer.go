@@ -57,6 +57,8 @@ const (
 	enemyOffset         = 0.0001
 	maxSectionHeightPct = 0.2
 	highAltThreshold    = 100.0
+	trailLength         = 5
+	trailChar           = "·"
 )
 
 // TUIWriter renders telemetry using a bubbletea TUI.
@@ -268,6 +270,7 @@ type tuiModel struct {
 	showEnemies      bool
 	dronePositions   map[string]telemetry.Position
 	droneHeadings    map[string]float64
+	droneTrails      map[string][]telemetry.Position
 	showMap          bool
 	mapCenterLat     float64
 	mapCenterLon     float64
@@ -277,6 +280,8 @@ type tuiModel struct {
 	mapShowDrones    bool
 	mapShowEnemies   bool
 	mapShowZones     bool
+	mapShowDetection bool
+	mapShowTrails    bool
 	droneBatteries   map[string]float64
 	missionTotals    map[string]int
 	missionCounts    map[string]map[string]struct{}
@@ -308,24 +313,27 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		missionTotals[f.MissionID] += f.Count
 	}
 	m := tuiModel{
-		cfg:             cfg,
-		table:           t,
-		vp:              vp,
-		detVP:           detVP,
-		swarmVP:         swarmVP,
-		missionColors:   missionColors,
-		autoscroll:      true,
-		showMissions:    true,
-		showEnemies:     true,
-		mapShowDrones:   true,
-		mapShowEnemies:  true,
-		mapShowZones:    true,
-		dronePositions:  make(map[string]telemetry.Position),
-		droneHeadings:   make(map[string]float64),
-		droneBatteries:  make(map[string]float64),
-		missionTotals:   missionTotals,
-		missionCounts:   make(map[string]map[string]struct{}),
-		detectionCounts: make(map[string]int),
+		cfg:              cfg,
+		table:            t,
+		vp:               vp,
+		detVP:            detVP,
+		swarmVP:          swarmVP,
+		missionColors:    missionColors,
+		autoscroll:       true,
+		showMissions:     true,
+		showEnemies:      true,
+		mapShowDrones:    true,
+		mapShowEnemies:   true,
+		mapShowZones:     true,
+		mapShowDetection: false,
+		mapShowTrails:    true,
+		dronePositions:   make(map[string]telemetry.Position),
+		droneHeadings:    make(map[string]float64),
+		droneTrails:      make(map[string][]telemetry.Position),
+		droneBatteries:   make(map[string]float64),
+		missionTotals:    missionTotals,
+		missionCounts:    make(map[string]map[string]struct{}),
+		detectionCounts:  make(map[string]int),
 	}
 	return m
 }
@@ -460,6 +468,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "3":
 				m.mapShowZones = !m.mapShowZones
+				return m, nil
+			case "4":
+				m.mapShowDetection = !m.mapShowDetection
+				return m, nil
+			case "5":
+				m.mapShowTrails = !m.mapShowTrails
 				return m, nil
 			}
 		}
@@ -620,6 +634,14 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.dronePositions = make(map[string]telemetry.Position)
 		}
 		m.dronePositions[msg.DroneID] = telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt}
+		if m.droneTrails == nil {
+			m.droneTrails = make(map[string][]telemetry.Position)
+		}
+		trail := append(m.droneTrails[msg.DroneID], telemetry.Position{Lat: msg.Lat, Lon: msg.Lon, Alt: msg.Alt})
+		if len(trail) > trailLength {
+			trail = trail[len(trail)-trailLength:]
+		}
+		m.droneTrails[msg.DroneID] = trail
 		if m.droneHeadings == nil {
 			m.droneHeadings = make(map[string]float64)
 		}
@@ -913,6 +935,8 @@ func (m tuiModel) renderHelp() string {
 		" 1  toggle drone layer",
 		" 2  toggle enemy layer",
 		" 3  toggle mission zones",
+		" 4  toggle detection radius",
+		" 5  toggle trails",
 		" p  toggle mission tree",
 		" n  toggle enemies section",
 		" h/? toggle this help view",
@@ -1103,6 +1127,47 @@ func (m tuiModel) renderMap() string {
 			}
 		}
 	}
+	if m.mapShowDetection && m.cfg.DetectionRadiusM > 0 {
+		radiusKM := m.cfg.DetectionRadiusM / 1000
+		for _, p := range m.dronePositions {
+			kmPerLat := 111.0
+			kmPerLon := 111.0 * math.Cos(p.Lat*math.Pi/180)
+			rLat := radiusKM / kmPerLat
+			rLon := radiusKM / kmPerLon
+			rx := rLon / (maxLon - minLon) * float64(width-1)
+			ry := rLat / (maxLat - minLat) * float64(mapHeight-1)
+			x0 := int((p.Lon - minLon) / (maxLon - minLon) * float64(width-1))
+			y0 := int((maxLat - p.Lat) / (maxLat - minLat) * float64(mapHeight-1))
+			for deg := 0; deg < 360; deg += 15 {
+				rad := float64(deg) * math.Pi / 180
+				x := int(float64(x0) + math.Cos(rad)*rx)
+				y := int(float64(y0) + math.Sin(rad)*ry)
+				if y >= 0 && y < mapHeight && x >= 0 && x < width {
+					grid[y][x] = fmt.Sprintf("%s*%s", colorCyan, colorReset)
+				}
+			}
+		}
+	}
+	if m.mapShowTrails {
+		for id, trail := range m.droneTrails {
+			missionColor := colorWhite()
+			for mid, drones := range m.missionCounts {
+				if _, ok := drones[id]; ok {
+					if c, ok := m.missionColors[mid]; ok {
+						missionColor = c
+					}
+					break
+				}
+			}
+			for _, p := range trail {
+				x := int((p.Lon - minLon) / (maxLon - minLon) * float64(width-1))
+				y := int((maxLat - p.Lat) / (maxLat - minLat) * float64(mapHeight-1))
+				if y >= 0 && y < mapHeight && x >= 0 && x < width {
+					grid[y][x] = fmt.Sprintf("%s%s%s", missionColor, trailChar, colorReset)
+				}
+			}
+		}
+	}
 	if m.mapShowEnemies {
 		for _, e := range m.enemies {
 			x := int((e.Position.Lon - minLon) / (maxLon - minLon) * float64(width-1))
@@ -1162,6 +1227,8 @@ func (m tuiModel) renderMap() string {
 	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutral", colorYellow, colorReset))
 	legendParts = append(legendParts, "▲=high_alt ^=low_alt")
 	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%s*%s=detection", colorCyan, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset))
 	legendParts = append(legendParts, "o=mission_zone")
 	b.WriteString(strings.Join(legendParts, " "))
 	return strings.TrimRight(b.String(), "\n")
