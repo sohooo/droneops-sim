@@ -17,7 +17,8 @@ It supports:
 - **Observer dashboard** for stepping through mission events, switching perspectives, and injecting commands
 - **Swarm-event logs** for follower assignments, reassignments, and formation changes
 - **Per-tick simulation state metrics** including communication reliability, sensor noise, weather impact, and chaos-mode status
- - **Interactive TUI** with hotkeys (`q` quit, `w` wrap, `s` scroll, `e` spawn enemy via `type,lat,lon,alt` + `Enter`; dialog auto-fills near the latest drone position for quick spawning, `E` edit/remove enemy via `id,status|delete`, `t` toggle summary footer (enabled by default), `p` toggle a battlefield map with gridlines, north indicator, scale bar, mission-colored drone arrows shaded by battery level with altitude-aware shapes, distinct enemy status markers, optional detection range circles and recent drone trails, `h/?` help overlay)
+- **Interactive TUI** with hotkeys (`q` quit, `w` wrap, `s` scroll, `e` spawn enemy via `type,lat,lon,alt` + `Enter`; dialog auto-fills near the latest drone position for quick spawning, `E` edit/remove enemy via `id,status|delete`, `t` toggle summary footer (enabled by default), `p` toggle a battlefield map with gridlines, north indicator, scale bar, mission-colored drone arrows shaded by battery level with altitude-aware shapes, distinct enemy status markers, optional detection range circles and recent drone trails, `h/?` help overlay)
+  The map uses Unicode symbols by default; set `TUI_SYMBOLS=ascii` to render with plain ASCII.
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
@@ -122,6 +123,7 @@ The simulator can be configured through the following environment variables:
 | `ENABLE_SWARM_EVENTS` | `true` | No | Toggle emission of swarm event stream. |
 | `ENABLE_MOVEMENT_METRICS` | `true` | No | Toggle emission of movement telemetry. |
 | `ENABLE_SIMULATION_STATE` | `true` | No | Toggle emission of simulation state stream. |
+| `TUI_SYMBOLS` | `unicode` | No | Symbol set for TUI map ("unicode" or "ascii"). |
 
 ## Grafana Dashboard
 

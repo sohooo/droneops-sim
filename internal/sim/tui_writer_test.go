@@ -90,7 +90,7 @@ func TestDetectionSwarmAndStateColors(t *testing.T) {
 	}
 
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	m.state = telemetry.SimulationStateRow{CommunicationLoss: 0.5, MessagesSent: 2, SensorNoise: 0.3, WeatherImpact: 0.4, ChaosMode: true}
 	bottom := m.renderBottom()
 	if !strings.Contains(bottom, fmt.Sprintf("%scomm_loss=%.2f%s", colorYellow, m.state.CommunicationLoss, colorReset)) {
@@ -106,7 +106,7 @@ func TestDetectionSwarmAndStateColors(t *testing.T) {
 
 func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 40})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(detectionMsg{line: "det1", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
@@ -133,7 +133,7 @@ func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 
 func TestTelemetrySectionsCapped(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
 	m = mi.(tuiModel)
 	for i := 0; i < 50; i++ {
@@ -160,7 +160,7 @@ func TestTelemetrySectionsCapped(t *testing.T) {
 
 func TestRenderMapAddsContext(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
 	m = mi.(tuiModel)
 	m.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
@@ -191,7 +191,7 @@ func TestRenderMapAddsContext(t *testing.T) {
 
 func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
 	cfg := &config.SimulationConfig{DetectionRadiusM: 1000}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
 	m = mi.(tuiModel)
 	m.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
@@ -206,6 +206,37 @@ func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
 	}
 	if strings.Count(out, "·") < 2 {
 		t.Fatalf("expected trail in map: %q", out)
+	}
+}
+
+func TestRenderMapSymbolSets(t *testing.T) {
+	cfg := &config.SimulationConfig{DetectionRadiusM: 1000}
+	m := newTUIModel(cfg, nil, unicodeSymbols)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m = mi.(tuiModel)
+	m.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
+	m.droneHeadings["d1"] = 0
+	m.droneTrails["d1"] = []telemetry.Position{{Lat: 10.001, Lon: 20.001}}
+	m.mapShowTrails = true
+	m.initMapViewport()
+	unicodeOut := m.renderMap()
+	if !strings.Contains(unicodeOut, "┼") || !strings.Contains(unicodeOut, "·") {
+		t.Fatalf("expected unicode symbols in map: %q", unicodeOut)
+	}
+	m2 := newTUIModel(cfg, nil, asciiSymbols)
+	mi, _ = m2.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m2 = mi.(tuiModel)
+	m2.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
+	m2.droneHeadings["d1"] = 0
+	m2.droneTrails["d1"] = []telemetry.Position{{Lat: 10.001, Lon: 20.001}}
+	m2.mapShowTrails = true
+	m2.initMapViewport()
+	asciiOut := m2.renderMap()
+	if strings.Contains(asciiOut, "┼") || strings.Contains(asciiOut, "·") {
+		t.Fatalf("expected ascii symbols without unicode chars: %q", asciiOut)
+	}
+	if !strings.Contains(asciiOut, "+") || !strings.Contains(asciiOut, ".") {
+		t.Fatalf("expected ascii grid and trail in map: %q", asciiOut)
 	}
 }
 
@@ -254,7 +285,7 @@ func TestRenderMapLegendExpanded(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "Alpha"}},
 	}
-	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
 	m = mi.(tuiModel)
 	out := m.renderMap()
@@ -280,7 +311,7 @@ func TestWrapToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "M1", Description: "alpha beta gamma delta epsilon zeta"}},
 	}
-	m := newTUIModel(cfg, map[string]string{"m1": colorBlue})
+	m := newTUIModel(cfg, map[string]string{"m1": colorBlue}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 20})
 	m = mi.(tuiModel)
 	long := "one two three four five six"
@@ -307,7 +338,7 @@ func TestWrapToggle(t *testing.T) {
 
 func TestScrollToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 20})
 	m = mi.(tuiModel)
 	m.vp.Height = 1
@@ -355,7 +386,7 @@ func TestScrollToggle(t *testing.T) {
 
 func TestEnemySpawn(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	m.spawn = func(enemy.Enemy) {}
 	// provide last known drone position
 	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{Lat: 1, Lon: 2, Alt: 3}})
@@ -382,7 +413,7 @@ func TestEnemySpawn(t *testing.T) {
 
 func TestEnemySpawnFallback(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	m.spawn = func(enemy.Enemy) {}
 	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	m = mi.(tuiModel)
@@ -393,7 +424,7 @@ func TestEnemySpawnFallback(t *testing.T) {
 
 func TestEnemySpawnNonBlocking(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	start := make(chan struct{})
 	block := make(chan struct{})
 	m.spawn = func(enemy.Enemy) {
@@ -425,7 +456,7 @@ func TestEnemySpawnNonBlocking(t *testing.T) {
 
 func TestEnemySpawnHint(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{Lat: 4, Lon: 5, Alt: 6}})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
@@ -452,7 +483,7 @@ func TestSummaryToggle(t *testing.T) {
 		Fleets:   []config.Fleet{{MissionID: "m1", Count: 2}, {MissionID: "m2", Count: 3}},
 	}
 	colors := map[string]string{"m1": colorRed, "m2": colorGreen}
-	m := newTUIModel(cfg, colors)
+	m := newTUIModel(cfg, colors, unicodeSymbols)
 	mi, _ := m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Battery: 80}})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d2", MissionID: "m2", Battery: 40}})
@@ -489,7 +520,7 @@ func TestSummaryToggle(t *testing.T) {
 
 func TestHelpHintInFooter(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	bottom := m.renderBottom()
 	if !strings.Contains(bottom, "(h)elp") {
 		t.Fatalf("missing help hint: %q", bottom)
@@ -498,7 +529,7 @@ func TestHelpHintInFooter(t *testing.T) {
 
 func TestSummaryIncludesEnemyAndDetectionStats(t *testing.T) {
 	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1"}}}
-	m := newTUIModel(cfg, map[string]string{"m1": colorRed})
+	m := newTUIModel(cfg, map[string]string{"m1": colorRed}, unicodeSymbols)
 	m.enemies = []enemy.Enemy{{ID: "e1", Status: enemy.EnemyActive}, {ID: "e2", Status: enemy.EnemyNeutralized}}
 	mi, _ := m.Update(detectionMsg{line: "det", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
 	m = mi.(tuiModel)
@@ -519,7 +550,7 @@ func TestSummaryIncludesEnemyAndDetectionStats(t *testing.T) {
 
 func TestUpdateViewportHeightClampsToZero(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	m.height = 0
 	m.headerHeight = 0
 	m.updateViewportHeight()
@@ -530,7 +561,7 @@ func TestUpdateViewportHeightClampsToZero(t *testing.T) {
 
 func TestRefreshViewportNoPanicWithZeroHeight(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	m.height = 0
 	m.headerHeight = 0
 	m.logs = []string{"log line"}
@@ -546,7 +577,7 @@ func TestRefreshViewportNoPanicWithZeroHeight(t *testing.T) {
 
 func TestRenderEnemiesShowsStatus(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{}, Status: enemy.EnemyActive}}
 	out := m.renderEnemies()
 	if !strings.Contains(out, "status=active") {
@@ -556,7 +587,7 @@ func TestRenderEnemiesShowsStatus(t *testing.T) {
 
 func TestEnemyEditAndRemove(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{}, Status: enemy.EnemyActive}}
 	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
 	m = mi.(tuiModel)
@@ -581,7 +612,7 @@ func TestEnemyEditAndRemove(t *testing.T) {
 
 func TestHelpToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, map[string]string{})
+	m := newTUIModel(cfg, map[string]string{}, unicodeSymbols)
 	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	m = mi.(tuiModel)
 	if !m.help {
@@ -600,7 +631,7 @@ func TestHelpToggle(t *testing.T) {
 
 func TestToggleSections(t *testing.T) {
 	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Name: "M1"}}}
-	m := newTUIModel(cfg, map[string]string{"m1": colorBlue})
+	m := newTUIModel(cfg, map[string]string{"m1": colorBlue}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
 	m = mi.(tuiModel)
 	if !strings.Contains(m.renderHeader(), "Missions") {
@@ -626,7 +657,7 @@ func TestToggleSections(t *testing.T) {
 
 func TestMapViewRendering(t *testing.T) {
 	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1"}}}
-	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
 	m = mi.(tuiModel)
 	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0, Alt: 50, Battery: 80}
@@ -649,7 +680,7 @@ func TestMapViewRendering(t *testing.T) {
 
 func TestEnemyStatusMarkers(t *testing.T) {
 	cfg := &config.SimulationConfig{}
-	m := newTUIModel(cfg, nil)
+	m := newTUIModel(cfg, nil, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
 	m = mi.(tuiModel)
 	m.dronePositions["d1"] = telemetry.Position{Lat: 0, Lon: 0}
@@ -670,7 +701,7 @@ func TestEnemyStatusMarkers(t *testing.T) {
 
 func TestMapLayerToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Region: config.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}}}
-	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
 	m = mi.(tuiModel)
 	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0, Alt: 50, Battery: 80}
@@ -708,7 +739,7 @@ func TestMapLayerToggle(t *testing.T) {
 
 func TestMapZoomPan(t *testing.T) {
 	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Region: config.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}}}
-	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen}, unicodeSymbols)
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
 	m = mi.(tuiModel)
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
