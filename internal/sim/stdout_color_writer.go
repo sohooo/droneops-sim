@@ -34,7 +34,7 @@ type ColorStdoutWriter struct {
 	colorIdx      int
 }
 
-var missionPalette = []string{colorRed, colorGreen, colorYellow, colorBlue, colorMagenta, colorCyan}
+var missionPalette = []string{colorGreen, colorCyan, colorBlue, colorMagenta, colorYellow, colorRed}
 
 // NewColorStdoutWriter creates a ColorStdoutWriter writing to os.Stdout.
 func NewColorStdoutWriter(cfg *config.SimulationConfig) *ColorStdoutWriter {

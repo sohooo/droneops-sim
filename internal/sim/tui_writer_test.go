@@ -498,3 +498,26 @@ func TestToggleSections(t *testing.T) {
 		t.Fatalf("enemies section not shown")
 	}
 }
+
+func TestMapViewRendering(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1"}}}
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
+	m = mi.(tuiModel)
+	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0}
+	mi, _ = m.Update(telemetryMsg{TelemetryRow: row})
+	m = mi.(tuiModel)
+	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0.1}, Status: enemy.EnemyActive}}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	m = mi.(tuiModel)
+	if !m.showMap {
+		t.Fatalf("map view not enabled")
+	}
+	view := m.View()
+	if !strings.Contains(view, colorGreen+"^"+colorReset) {
+		t.Fatalf("missing drone marker: %q", view)
+	}
+	if !strings.Contains(view, colorRed+"X"+colorReset) {
+		t.Fatalf("missing enemy marker: %q", view)
+	}
+}
