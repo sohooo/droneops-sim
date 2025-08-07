@@ -457,7 +457,7 @@ func TestEnemyEditAndRemove(t *testing.T) {
 func TestHelpToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, map[string]string{})
-	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	mi, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	m = mi.(tuiModel)
 	if !m.help {
 		t.Fatalf("help not enabled")
@@ -466,7 +466,7 @@ func TestHelpToggle(t *testing.T) {
 	if !strings.Contains(view, "Key Bindings:") {
 		t.Fatalf("help view missing: %q", view)
 	}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	m = mi.(tuiModel)
 	if m.help {
 		t.Fatalf("help not toggled off")
@@ -481,7 +481,7 @@ func TestToggleSections(t *testing.T) {
 	if !strings.Contains(m.renderHeader(), "Missions") {
 		t.Fatalf("expected missions in header")
 	}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	m = mi.(tuiModel)
 	if strings.Contains(m.renderHeader(), "Missions") {
 		t.Fatalf("missions not hidden")
@@ -508,7 +508,7 @@ func TestMapViewRendering(t *testing.T) {
 	mi, _ = m.Update(telemetryMsg{TelemetryRow: row})
 	m = mi.(tuiModel)
 	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0.1}, Status: enemy.EnemyActive}}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	m = mi.(tuiModel)
 	if !m.showMap {
 		t.Fatalf("map view not enabled")

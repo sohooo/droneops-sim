@@ -274,7 +274,7 @@ type tuiModel struct {
 	detectionCounts  map[string]int
 	totalDetections  int
 	detectionHistory []int
-	lastDetMinute    time.Time
+	lastDetSecond    time.Time
 }
 
 func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
@@ -406,7 +406,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.help {
 			switch msg.String() {
-			case "?", "esc":
+			case "?", "h", "esc":
 				m.help = false
 				m.updateViewportHeight()
 			}
@@ -450,7 +450,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editEnemyDialog = true
 			m.updateViewportHeight()
 			return m, nil
-		case "m":
+		case "p":
 			m.showMissions = !m.showMissions
 			width := m.vp.Width
 			if m.showMissions {
@@ -466,7 +466,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showEnemies = !m.showEnemies
 			m.updateViewportHeight()
 			return m, nil
-		case "p":
+		case "m":
 			m.showMap = !m.showMap
 			m.updateViewportHeight()
 			return m, nil
@@ -474,7 +474,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.summary = !m.summary
 			m.updateViewportHeight()
 			return m, nil
-		case "?":
+		case "h", "?":
 			m.help = !m.help
 			m.updateViewportHeight()
 			return m, nil
@@ -523,23 +523,23 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.detectionCounts = make(map[string]int)
 		}
 		m.detectionCounts[msg.row.DroneID]++
-		minute := msg.row.Timestamp.Truncate(time.Minute)
-		if m.lastDetMinute.IsZero() {
-			m.lastDetMinute = minute
+		second := msg.row.Timestamp.Truncate(time.Second)
+		if m.lastDetSecond.IsZero() {
+			m.lastDetSecond = second
 			m.detectionHistory = append(m.detectionHistory, 1)
-		} else if !minute.After(m.lastDetMinute) {
+		} else if !second.After(m.lastDetSecond) {
 			if len(m.detectionHistory) == 0 {
 				m.detectionHistory = append(m.detectionHistory, 1)
 			} else {
 				m.detectionHistory[len(m.detectionHistory)-1]++
 			}
 		} else {
-			diff := int(minute.Sub(m.lastDetMinute).Minutes())
+			diff := int(second.Sub(m.lastDetSecond).Seconds())
 			for i := 0; i < diff-1; i++ {
 				m.detectionHistory = append(m.detectionHistory, 0)
 			}
 			m.detectionHistory = append(m.detectionHistory, 1)
-			m.lastDetMinute = minute
+			m.lastDetSecond = second
 		}
 		if len(m.detectionHistory) > 5 {
 			m.detectionHistory = m.detectionHistory[len(m.detectionHistory)-5:]
@@ -836,8 +836,7 @@ func (m tuiModel) renderBottom() string {
 		colorMagenta, m.state.SensorNoise, colorReset,
 		colorCyan, m.state.WeatherImpact, colorReset,
 		colorRed, m.state.ChaosMode, colorReset)
-	keys := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("q:quit w:wrap s:scroll e:enemy E:edit t:summary m:missions n:enemies ?:help")
-	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | Missions %s | Enemies %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, missionsIndicator, enemiesIndicator, keys)
+	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | Missions %s | Enemies %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, missionsIndicator, enemiesIndicator)
 	if m.summary {
 		return fmt.Sprintf("%s\n%s", m.renderSummary(), line)
 	}
@@ -853,10 +852,10 @@ func (m tuiModel) renderHelp() string {
 		" e  spawn enemy (type,lat,lon,alt)",
 		" E  edit/remove enemy (id,status|delete)",
 		" t  toggle summary footer",
-		" p  toggle map view",
-		" m  toggle mission tree",
+		" m  toggle map view",
+		" p  toggle mission tree",
 		" n  toggle enemies section",
-		" ?  toggle this help view",
+		" h/? toggle this help view",
 		"",
 		"When auto-scroll is disabled:",
 		" j/k or up/down    scroll one line",
