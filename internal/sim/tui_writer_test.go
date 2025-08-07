@@ -209,6 +209,47 @@ func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
 	}
 }
 
+func TestHeadingIcon(t *testing.T) {
+	cases := []struct {
+		h    float64
+		icon string
+	}{
+		{0, "↑"},
+		{45, "↗"},
+		{90, "→"},
+		{135, "↘"},
+		{180, "↓"},
+		{225, "↙"},
+		{270, "←"},
+		{315, "↖"},
+	}
+	for _, tt := range cases {
+		if got := headingIcon(tt.h); got != tt.icon {
+			t.Fatalf("heading %v: expected %q, got %q", tt.h, tt.icon, got)
+		}
+	}
+}
+
+func TestAltitudeIcon(t *testing.T) {
+	below := altitudeIcon(0, highAltThreshold-1)
+	if below != "↑" {
+		t.Fatalf("expected low altitude icon ↑, got %q", below)
+	}
+	cases := []struct {
+		h    float64
+		icon string
+	}{
+		{0, "⬆"},
+		{45, "⬈"},
+		{90, "➡"},
+	}
+	for _, tt := range cases {
+		if got := altitudeIcon(tt.h, highAltThreshold); got != tt.icon {
+			t.Fatalf("heading %v: expected %q, got %q", tt.h, tt.icon, got)
+		}
+	}
+}
+
 func TestRenderMapLegendExpanded(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "Alpha"}},
@@ -594,7 +635,7 @@ func TestMapViewRendering(t *testing.T) {
 		t.Fatalf("map view not enabled")
 	}
 	view := m.View()
-	if !strings.Contains(view, bgGreen+colorGreen+"^"+colorReset) {
+	if !strings.Contains(view, bgGreen+colorGreen+"↑"+colorReset) {
 		t.Fatalf("missing drone marker: %q", view)
 	}
 	if !strings.Contains(view, colorRed+"X"+colorReset) {
@@ -635,7 +676,7 @@ func TestMapLayerToggle(t *testing.T) {
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	m = mi.(tuiModel)
 	out := m.renderMap()
-	if !strings.Contains(out, bgGreen+colorGreen+"^"+colorReset) {
+	if !strings.Contains(out, bgGreen+colorGreen+"↑"+colorReset) {
 		t.Fatalf("expected drone marker: %q", out)
 	}
 	if strings.Count(out, colorRed+"X"+colorReset) < 2 {
@@ -646,7 +687,7 @@ func TestMapLayerToggle(t *testing.T) {
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
 	m = mi.(tuiModel)
-	if strings.Contains(m.renderMap(), bgGreen+colorGreen+"^"+colorReset) {
+	if strings.Contains(m.renderMap(), bgGreen+colorGreen+"↑"+colorReset) {
 		t.Fatalf("drone layer not toggled off")
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
