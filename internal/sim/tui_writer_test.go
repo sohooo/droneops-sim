@@ -174,11 +174,12 @@ func TestRenderMapAddsContext(t *testing.T) {
 	}
 	lines := strings.Split(out, "\n")
 	hasGrid := false
-	for _, line := range lines[1:] {
-		if strings.HasPrefix(line, "Scale:") {
+	for _, line := range lines[2:] {
+		inner := strings.Trim(line, "│")
+		if strings.HasPrefix(inner, "Scale:") {
 			break
 		}
-		if strings.ContainsAny(line, "|-+") {
+		if strings.ContainsAny(inner, "|-+") {
 			hasGrid = true
 			break
 		}
@@ -205,6 +206,28 @@ func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
 	}
 	if strings.Count(out, "·") < 2 {
 		t.Fatalf("expected trail in map: %q", out)
+	}
+}
+
+func TestRenderMapLegendExpanded(t *testing.T) {
+	cfg := &config.SimulationConfig{
+		Missions: []config.Mission{{ID: "m1", Name: "Alpha"}},
+	}
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	m = mi.(tuiModel)
+	out := m.renderMap()
+	if !strings.Contains(out, "m1(Alpha)") {
+		t.Fatalf("expected mission name in legend: %q", out)
+	}
+	if !strings.Contains(out, "active") {
+		t.Fatalf("expected active enemy legend: %q", out)
+	}
+	if !strings.Contains(out, "neutralized") {
+		t.Fatalf("expected neutralized enemy legend: %q", out)
+	}
+	if !strings.Contains(out, "detection") {
+		t.Fatalf("expected detection legend: %q", out)
 	}
 }
 
@@ -639,21 +662,24 @@ func TestMapZoomPan(t *testing.T) {
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	m = mi.(tuiModel)
 	initial := m.renderMap()
+	lines := strings.Split(initial, "\n")
 	var maxLat1, minLat1, minLon1, maxLon1 float64
-	fmt.Sscanf(strings.Split(initial, "\n")[0], "lat %f..%f lon %f..%f", &maxLat1, &minLat1, &minLon1, &maxLon1)
+	fmt.Sscanf(strings.Trim(lines[1], "│"), "lat %f..%f lon %f..%f", &maxLat1, &minLat1, &minLon1, &maxLon1)
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'+'}})
 	m = mi.(tuiModel)
 	zoomed := m.renderMap()
+	lines = strings.Split(zoomed, "\n")
 	var maxLat2, minLat2, minLon2, maxLon2 float64
-	fmt.Sscanf(strings.Split(zoomed, "\n")[0], "lat %f..%f lon %f..%f", &maxLat2, &minLat2, &minLon2, &maxLon2)
+	fmt.Sscanf(strings.Trim(lines[1], "│"), "lat %f..%f lon %f..%f", &maxLat2, &minLat2, &minLon2, &maxLon2)
 	if (maxLat2 - minLat2) >= (maxLat1 - minLat1) {
 		t.Fatalf("expected zoom in to reduce lat span")
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
 	m = mi.(tuiModel)
 	panned := m.renderMap()
+	lines = strings.Split(panned, "\n")
 	var maxLat3, minLat3, minLon3, maxLon3 float64
-	fmt.Sscanf(strings.Split(panned, "\n")[0], "lat %f..%f lon %f..%f", &maxLat3, &minLat3, &minLon3, &maxLon3)
+	fmt.Sscanf(strings.Trim(lines[1], "│"), "lat %f..%f lon %f..%f", &maxLat3, &minLat3, &minLon3, &maxLon3)
 	if minLon3 <= minLon2 {
 		t.Fatalf("expected pan right to increase min lon")
 	}
