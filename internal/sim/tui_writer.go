@@ -269,6 +269,14 @@ type tuiModel struct {
 	dronePositions   map[string]telemetry.Position
 	droneHeadings    map[string]float64
 	showMap          bool
+	mapCenterLat     float64
+	mapCenterLon     float64
+	mapLatSpan       float64
+	mapLonSpan       float64
+	mapInitialized   bool
+	mapShowDrones    bool
+	mapShowEnemies   bool
+	mapShowZones     bool
 	droneBatteries   map[string]float64
 	missionTotals    map[string]int
 	missionCounts    map[string]map[string]struct{}
@@ -309,6 +317,9 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		autoscroll:      true,
 		showMissions:    true,
 		showEnemies:     true,
+		mapShowDrones:   true,
+		mapShowEnemies:  true,
+		mapShowZones:    true,
 		dronePositions:  make(map[string]telemetry.Position),
 		droneHeadings:   make(map[string]float64),
 		droneBatteries:  make(map[string]float64),
@@ -413,6 +424,45 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if m.showMap {
+			switch msg.String() {
+			case "+", "=":
+				m.mapLatSpan *= 0.8
+				m.mapLonSpan *= 0.8
+				if m.mapLatSpan < 0.0001 {
+					m.mapLatSpan = 0.0001
+				}
+				if m.mapLonSpan < 0.0001 {
+					m.mapLonSpan = 0.0001
+				}
+				return m, nil
+			case "-":
+				m.mapLatSpan *= 1.25
+				m.mapLonSpan *= 1.25
+				return m, nil
+			case "left":
+				m.mapCenterLon -= m.mapLonSpan * 0.1
+				return m, nil
+			case "right":
+				m.mapCenterLon += m.mapLonSpan * 0.1
+				return m, nil
+			case "up":
+				m.mapCenterLat += m.mapLatSpan * 0.1
+				return m, nil
+			case "down":
+				m.mapCenterLat -= m.mapLatSpan * 0.1
+				return m, nil
+			case "1":
+				m.mapShowDrones = !m.mapShowDrones
+				return m, nil
+			case "2":
+				m.mapShowEnemies = !m.mapShowEnemies
+				return m, nil
+			case "3":
+				m.mapShowZones = !m.mapShowZones
+				return m, nil
+			}
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -469,6 +519,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "m":
 			m.showMap = !m.showMap
+			if m.showMap && !m.mapInitialized {
+				m.initMapViewport()
+			}
 			m.updateViewportHeight()
 			return m, nil
 		case "t":
@@ -854,6 +907,12 @@ func (m tuiModel) renderHelp() string {
 		" E  edit/remove enemy (id,status|delete)",
 		" t  toggle summary footer",
 		" m  toggle map view",
+		" +  zoom in map",
+		" -  zoom out map",
+		" ←→↑↓ pan map",
+		" 1  toggle drone layer",
+		" 2  toggle enemy layer",
+		" 3  toggle mission zones",
 		" p  toggle mission tree",
 		" n  toggle enemies section",
 		" h/? toggle this help view",
@@ -910,16 +969,7 @@ func batteryBG(b float64) string {
 	}
 }
 
-func (m tuiModel) renderMap() string {
-	width := m.vp.Width
-	bottomHeight := lipgloss.Height(m.renderBottom())
-	mapHeight := m.height - m.headerHeight - bottomHeight - 4
-	if mapHeight < 1 {
-		mapHeight = 1
-	}
-	if len(m.dronePositions) == 0 && len(m.enemies) == 0 {
-		return "No position data"
-	}
+func (m *tuiModel) initMapViewport() {
 	minLat, maxLat := math.Inf(1), math.Inf(-1)
 	minLon, maxLon := math.Inf(1), math.Inf(-1)
 	for _, p := range m.dronePositions {
@@ -951,14 +1001,55 @@ func (m tuiModel) renderMap() string {
 			maxLon = p.Lon
 		}
 	}
-	if maxLat == minLat {
-		maxLat += 0.01
-		minLat -= 0.01
+	for _, ms := range m.cfg.Missions {
+		kmPerLat := 111.0
+		kmPerLon := 111.0 * math.Cos(ms.Region.CenterLat*math.Pi/180)
+		latDelta := ms.Region.RadiusKM / kmPerLat
+		lonDelta := ms.Region.RadiusKM / kmPerLon
+		if ms.Region.CenterLat-latDelta < minLat {
+			minLat = ms.Region.CenterLat - latDelta
+		}
+		if ms.Region.CenterLat+latDelta > maxLat {
+			maxLat = ms.Region.CenterLat + latDelta
+		}
+		if ms.Region.CenterLon-lonDelta < minLon {
+			minLon = ms.Region.CenterLon - lonDelta
+		}
+		if ms.Region.CenterLon+lonDelta > maxLon {
+			maxLon = ms.Region.CenterLon + lonDelta
+		}
 	}
-	if maxLon == minLon {
-		maxLon += 0.01
-		minLon -= 0.01
+	if minLat == math.Inf(1) {
+		minLat, maxLat = 0, 1
+		minLon, maxLon = 0, 1
 	}
+	m.mapCenterLat = (maxLat + minLat) / 2
+	m.mapCenterLon = (maxLon + minLon) / 2
+	m.mapLatSpan = maxLat - minLat
+	m.mapLonSpan = maxLon - minLon
+	if m.mapLatSpan == 0 {
+		m.mapLatSpan = 0.02
+	}
+	if m.mapLonSpan == 0 {
+		m.mapLonSpan = 0.02
+	}
+	m.mapInitialized = true
+}
+
+func (m tuiModel) renderMap() string {
+	width := m.vp.Width
+	bottomHeight := lipgloss.Height(m.renderBottom())
+	mapHeight := m.height - m.headerHeight - bottomHeight - 4
+	if mapHeight < 1 {
+		mapHeight = 1
+	}
+	if len(m.dronePositions) == 0 && len(m.enemies) == 0 && len(m.cfg.Missions) == 0 {
+		return "No position data"
+	}
+	minLat := m.mapCenterLat - m.mapLatSpan/2
+	maxLat := m.mapCenterLat + m.mapLatSpan/2
+	minLon := m.mapCenterLon - m.mapLonSpan/2
+	maxLon := m.mapCenterLon + m.mapLonSpan/2
 	lonRange := maxLon - minLon
 	grid := make([][]string, mapHeight)
 	for i := range grid {
@@ -988,37 +1079,65 @@ func (m tuiModel) renderMap() string {
 			}
 		}
 	}
-	for _, e := range m.enemies {
-		x := int((e.Position.Lon - minLon) / (maxLon - minLon) * float64(width-1))
-		y := int((maxLat - e.Position.Lat) / (maxLat - minLat) * float64(mapHeight-1))
-		if y >= 0 && y < mapHeight && x >= 0 && x < width {
-			sym := "X"
-			col := colorRed
-			if e.Status == enemy.EnemyNeutralized {
-				sym = "x"
-				col = colorYellow
+	if m.mapShowZones {
+		for _, ms := range m.cfg.Missions {
+			c := colorWhite()
+			if col, ok := m.missionColors[ms.ID]; ok {
+				c = col
 			}
-			grid[y][x] = fmt.Sprintf("%s%s%s", col, sym, colorReset)
+			x0 := int((ms.Region.CenterLon - minLon) / (maxLon - minLon) * float64(width-1))
+			y0 := int((maxLat - ms.Region.CenterLat) / (maxLat - minLat) * float64(mapHeight-1))
+			kmPerLat := 111.0
+			kmPerLon := 111.0 * math.Cos(ms.Region.CenterLat*math.Pi/180)
+			rLat := ms.Region.RadiusKM / kmPerLat
+			rLon := ms.Region.RadiusKM / kmPerLon
+			rx := rLon / (maxLon - minLon) * float64(width-1)
+			ry := rLat / (maxLat - minLat) * float64(mapHeight-1)
+			for deg := 0; deg < 360; deg += 10 {
+				rad := float64(deg) * math.Pi / 180
+				x := int(float64(x0) + math.Cos(rad)*rx)
+				y := int(float64(y0) + math.Sin(rad)*ry)
+				if y >= 0 && y < mapHeight && x >= 0 && x < width {
+					grid[y][x] = fmt.Sprintf("%s%s%s", c, "o", colorReset)
+				}
+			}
 		}
 	}
-	for id, p := range m.dronePositions {
-		x := int((p.Lon - minLon) / (maxLon - minLon) * float64(width-1))
-		y := int((maxLat - p.Lat) / (maxLat - minLat) * float64(mapHeight-1))
-		if y < 0 || y >= mapHeight || x < 0 || x >= width {
-			continue
-		}
-		missionColor := colorWhite()
-		for mid, drones := range m.missionCounts {
-			if _, ok := drones[id]; ok {
-				if c, ok := m.missionColors[mid]; ok {
-					missionColor = c
+	if m.mapShowEnemies {
+		for _, e := range m.enemies {
+			x := int((e.Position.Lon - minLon) / (maxLon - minLon) * float64(width-1))
+			y := int((maxLat - e.Position.Lat) / (maxLat - minLat) * float64(mapHeight-1))
+			if y >= 0 && y < mapHeight && x >= 0 && x < width {
+				sym := "X"
+				col := colorRed
+				if e.Status == enemy.EnemyNeutralized {
+					sym = "x"
+					col = colorYellow
 				}
-				break
+				grid[y][x] = fmt.Sprintf("%s%s%s", col, sym, colorReset)
 			}
 		}
-		icon := altitudeIcon(m.droneHeadings[id], p.Alt)
-		bg := batteryBG(m.droneBatteries[id])
-		grid[y][x] = fmt.Sprintf("%s%s%s%s", bg, missionColor, icon, colorReset)
+	}
+	if m.mapShowDrones {
+		for id, p := range m.dronePositions {
+			x := int((p.Lon - minLon) / (maxLon - minLon) * float64(width-1))
+			y := int((maxLat - p.Lat) / (maxLat - minLat) * float64(mapHeight-1))
+			if y < 0 || y >= mapHeight || x < 0 || x >= width {
+				continue
+			}
+			missionColor := colorWhite()
+			for mid, drones := range m.missionCounts {
+				if _, ok := drones[id]; ok {
+					if c, ok := m.missionColors[mid]; ok {
+						missionColor = c
+					}
+					break
+				}
+			}
+			icon := altitudeIcon(m.droneHeadings[id], p.Alt)
+			bg := batteryBG(m.droneBatteries[id])
+			grid[y][x] = fmt.Sprintf("%s%s%s%s", bg, missionColor, icon, colorReset)
+		}
 	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("lat %.5f..%.5f lon %.5f..%.5f N↑\n", maxLat, minLat, minLon, maxLon))
@@ -1043,6 +1162,7 @@ func (m tuiModel) renderMap() string {
 	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutral", colorYellow, colorReset))
 	legendParts = append(legendParts, "▲=high_alt ^=low_alt")
 	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
+	legendParts = append(legendParts, "o=mission_zone")
 	b.WriteString(strings.Join(legendParts, " "))
 	return strings.TrimRight(b.String(), "\n")
 }
