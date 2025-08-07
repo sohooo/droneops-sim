@@ -955,14 +955,22 @@ func headingIcon(h float64) string {
 		h += 360
 	}
 	switch {
-	case h >= 45 && h < 135:
-		return ">"
-	case h >= 135 && h < 225:
-		return "v"
-	case h >= 225 && h < 315:
-		return "<"
+	case h >= 22.5 && h < 67.5:
+		return "↗"
+	case h >= 67.5 && h < 112.5:
+		return "→"
+	case h >= 112.5 && h < 157.5:
+		return "↘"
+	case h >= 157.5 && h < 202.5:
+		return "↓"
+	case h >= 202.5 && h < 247.5:
+		return "↙"
+	case h >= 247.5 && h < 292.5:
+		return "←"
+	case h >= 292.5 && h < 337.5:
+		return "↖"
 	default:
-		return "^"
+		return "↑"
 	}
 }
 
@@ -970,14 +978,22 @@ func altitudeIcon(h, alt float64) string {
 	icon := headingIcon(h)
 	if alt >= highAltThreshold {
 		switch icon {
-		case "^":
-			return "▲"
-		case ">":
-			return "▶"
-		case "v":
-			return "▼"
-		case "<":
-			return "◀"
+		case "↑":
+			return "⬆"
+		case "↗":
+			return "⬈"
+		case "→":
+			return "➡"
+		case "↘":
+			return "⬊"
+		case "↓":
+			return "⬇"
+		case "↙":
+			return "⬋"
+		case "←":
+			return "⬅"
+		case "↖":
+			return "⬉"
 		}
 	}
 	return icon
@@ -1229,7 +1245,7 @@ func (m tuiModel) renderMap() string {
 	}
 	legendParts = append(legendParts, fmt.Sprintf("%sX%s=active", colorRed, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutralized", colorYellow, colorReset))
-	legendParts = append(legendParts, "▲=high_alt ^=low_alt")
+	legendParts = append(legendParts, "⬆=high_alt ↑=low_alt")
 	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%s*%s=detection", colorCyan, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset))
