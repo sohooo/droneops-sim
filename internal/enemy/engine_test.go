@@ -3,7 +3,6 @@ package enemy
 import (
 	"math/rand"
 	"testing"
-	"time"
 
 	"droneops-sim/internal/telemetry"
 )
@@ -39,24 +38,6 @@ func TestEngine_SpawnMultipleRegions(t *testing.T) {
 	}
 	if !foundA || !foundB {
 		t.Fatalf("enemies not spawned in all regions")
-	}
-}
-
-func TestEngine_SpawnDecoy(t *testing.T) {
-	eng := &Engine{
-		regions:   []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
-		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}, Status: EnemyActive}},
-		rand:      rand.New(rand.NewSource(1)),
-		randFloat: func() float64 { return 0.1 },
-	}
-	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	_ = eng.Step([]*telemetry.Drone{drone})
-	if len(eng.Enemies) != 2 {
-		t.Fatalf("expected decoy to spawn")
-	}
-	decoy := eng.Enemies[1]
-	if decoy.Type != EnemyDecoy {
-		t.Fatalf("expected decoy type, got %s", decoy.Type)
 	}
 }
 
@@ -96,54 +77,6 @@ func TestEngine_DeterministicStep(t *testing.T) {
 	p2 := eng2.Enemies[0].Position
 	if p1.Lat != p2.Lat || p1.Lon != p2.Lon || p1.Alt != p2.Alt {
 		t.Fatalf("expected deterministic positions, got %#v and %#v", p1, p2)
-	}
-}
-
-func TestEngine_DecoyCap(t *testing.T) {
-	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
-	eng := &Engine{
-		regions:            []telemetry.Region{region},
-		Enemies:            []*Enemy{parent},
-		rand:               rand.New(rand.NewSource(1)),
-		randFloat:          func() float64 { return 0 },
-		MaxDecoysPerParent: 1,
-	}
-	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	_ = eng.Step([]*telemetry.Drone{drone})
-	_ = eng.Step([]*telemetry.Drone{drone})
-	count := 0
-	for _, e := range eng.Enemies {
-		if e.Type == EnemyDecoy && e.ParentID == parent.ID {
-			count++
-		}
-	}
-	if count != 1 {
-		t.Fatalf("expected 1 decoy, got %d", count)
-	}
-}
-
-func TestEngine_DecoyExpiration(t *testing.T) {
-	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
-	eng := &Engine{
-		regions:       []telemetry.Region{region},
-		Enemies:       []*Enemy{parent},
-		rand:          rand.New(rand.NewSource(1)),
-		randFloat:     func() float64 { return 0 },
-		DecoyLifespan: time.Hour,
-	}
-	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	_ = eng.Step([]*telemetry.Drone{drone})
-	if len(eng.Enemies) != 2 {
-		t.Fatalf("expected decoy to spawn")
-	}
-	eng.Enemies[1].ExpiresAt = time.Now().Add(-time.Second)
-	_ = eng.Step(nil)
-	for _, e := range eng.Enemies {
-		if e.Type == EnemyDecoy {
-			t.Fatalf("expected decoy to expire")
-		}
 	}
 }
 

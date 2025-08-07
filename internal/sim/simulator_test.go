@@ -997,14 +997,13 @@ func TestSimulatorPrunesEnemiesAndStabilizesDetections(t *testing.T) {
 	parent := &enemy.Enemy{ID: "p", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: enemy.EnemyActive}
 	eng := enemy.NewEngine(0, nil, rand.New(rand.NewSource(1)))
 	eng.Enemies = []*enemy.Enemy{parent}
-	eng.DecoyLifespan = time.Millisecond
 	sim.enemyEng = eng
 
 	var detCounts []int
 	var prevLens []int
 	for i := 0; i < 3; i++ {
-		decoy := &enemy.Enemy{ID: fmt.Sprintf("d%d", i), Type: enemy.EnemyDecoy, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: enemy.EnemyActive, ExpiresAt: time.Now().Add(-time.Second)}
-		sim.enemyEng.Enemies = append(sim.enemyEng.Enemies, decoy)
+		inactive := &enemy.Enemy{ID: fmt.Sprintf("d%d", i), Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: enemy.EnemyNeutralized}
+		sim.enemyEng.Enemies = append(sim.enemyEng.Enemies, inactive)
 		sim.tick(context.Background())
 		detCounts = append(detCounts, len(dWriter.Detections))
 		prevLens = append(prevLens, len(sim.enemyPrevPositions))

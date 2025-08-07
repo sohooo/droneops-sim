@@ -13,7 +13,6 @@ const (
 	EnemyVehicle EnemyType = "vehicle"
 	EnemyPerson  EnemyType = "person"
 	EnemyDrone   EnemyType = "drone"
-	EnemyDecoy   EnemyType = "decoy"
 )
 
 // EnemyStatus represents the activity state of an enemy.
@@ -34,8 +33,6 @@ type Enemy struct {
 	Confidence float64
 	Region     telemetry.Region
 	Status     EnemyStatus
-	ParentID   string
-	ExpiresAt  time.Time
 }
 
 // DetectionRow describes a drone enemy detection event.
