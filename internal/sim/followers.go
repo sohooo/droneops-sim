@@ -201,10 +201,6 @@ func (s *Simulator) assignFollower(fleet *DroneFleet, detecting *telemetry.Drone
 		switch en.Type {
 		case enemy.EnemyVehicle, enemy.EnemyDrone:
 			count++
-		case enemy.EnemyDecoy:
-			if count > 0 {
-				count--
-			}
 		}
 		count += s.missionCriticality
 	}

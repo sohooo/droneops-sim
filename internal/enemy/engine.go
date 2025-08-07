@@ -14,12 +14,10 @@ const nearDroneDistThreshold = 0.005 // degrees, ~500m
 
 // Engine maintains and updates simulated enemy entities.
 type Engine struct {
-	regions            []telemetry.Region
-	Enemies            []*Enemy
-	rand               *rand.Rand
-	randFloat          func() float64
-	MaxDecoysPerParent int
-	DecoyLifespan      time.Duration
+	regions   []telemetry.Region
+	Enemies   []*Enemy
+	rand      *rand.Rand
+	randFloat func() float64
 }
 
 // NewEngine creates an engine with a given number of enemies per region.
@@ -91,22 +89,6 @@ func moveTowards(pos, target telemetry.Position) telemetry.Position {
 	return telemetry.Position{Lat: pos.Lat + vecLat*factor, Lon: pos.Lon + vecLon*factor, Alt: pos.Alt}
 }
 
-func (e *Engine) spawnDecoy(parent *Enemy) {
-	decoy := &Enemy{
-		ID:         uuid.New().String(),
-		Type:       EnemyDecoy,
-		Position:   randomStep(e.rand, parent.Position),
-		Confidence: parent.Confidence * 0.5,
-		Region:     parent.Region,
-		Status:     EnemyActive,
-		ParentID:   parent.ID,
-	}
-	if e.DecoyLifespan > 0 {
-		decoy.ExpiresAt = time.Now().Add(e.DecoyLifespan)
-	}
-	e.Enemies = append(e.Enemies, decoy)
-}
-
 func nearestDrone(pos telemetry.Position, drones []*telemetry.Drone) (*telemetry.Drone, float64) {
 	var closest *telemetry.Drone
 	min := math.MaxFloat64
@@ -140,19 +122,6 @@ func (e *Engine) respondToNearbyDrone(en *Enemy, drones []*telemetry.Drone) bool
 	nearest, dist := nearestDrone(en.Position, drones)
 	if nearest != nil && dist < nearDroneDistThreshold {
 		en.Position = moveAway(e.rand, en.Position, nearest.Position)
-		if e.randFloat() < 0.3 {
-			count := 0
-			if e.MaxDecoysPerParent > 0 {
-				for _, other := range e.Enemies {
-					if other.Type == EnemyDecoy && other.ParentID == en.ID {
-						count++
-					}
-				}
-			}
-			if e.MaxDecoysPerParent == 0 || count < e.MaxDecoysPerParent {
-				e.spawnDecoy(en)
-			}
-		}
 		return true
 	}
 	return false
@@ -184,14 +153,9 @@ func (e *Engine) Step(drones []*telemetry.Drone) []string {
 	if e.randFloat == nil {
 		e.randFloat = e.rand.Float64
 	}
-	now := time.Now()
 	filtered := e.Enemies[:0]
 	var removed []string
 	for _, en := range e.Enemies {
-		if en.Type == EnemyDecoy && !en.ExpiresAt.IsZero() && now.After(en.ExpiresAt) {
-			removed = append(removed, en.ID)
-			continue
-		}
 		if en.Status != EnemyActive {
 			removed = append(removed, en.ID)
 			continue
