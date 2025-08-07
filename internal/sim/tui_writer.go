@@ -63,7 +63,7 @@ type symbolSet struct {
 var (
 	unicodeSymbols = symbolSet{
 		trail:           "·",
-		mapBackground:   "░",
+		mapBackground:   " ",
 		mapHorizontal:   "─",
 		mapVertical:     "│",
 		mapIntersection: "┼",
@@ -183,10 +183,17 @@ func (w *TUIWriter) WriteDetection(d enemy.DetectionRow) error {
 
 // WriteSwarmEvent implements SwarmEventWriter.
 func (w *TUIWriter) WriteSwarmEvent(e telemetry.SwarmEventRow) error {
+	evtColor := colorBlue
+	switch e.EventType {
+	case telemetry.SwarmEventAssignment:
+		evtColor = colorGreen
+	case telemetry.SwarmEventUnassignment:
+		evtColor = colorRed
+	}
 	line := fmt.Sprintf("%s[%s]%s %sSWARM%s %stype=%s%s %sdrones=%v%s",
 		colorGray, e.Timestamp.Format(time.RFC3339), colorReset,
 		colorCyan, colorReset,
-		colorBlue, e.EventType, colorReset,
+		evtColor, e.EventType, colorReset,
 		colorWhite(), e.DroneIDs, colorReset)
 	if e.EnemyID != "" {
 		line += fmt.Sprintf(" %senemy=%s%s", colorMagenta, e.EnemyID, colorReset)
@@ -274,6 +281,7 @@ type tuiModel struct {
 	logs             []string
 	detLogs          []string
 	swarmLogs        []string
+	lastSwarm        string
 	state            telemetry.SimulationStateRow
 	admin            bool
 	wrap             bool
@@ -651,6 +659,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.swarmLogs) > 1000 {
 			m.swarmLogs = m.swarmLogs[len(m.swarmLogs)-1000:]
 		}
+		m.lastSwarm = msg.line
 		m.updateViewportHeight()
 		m.refreshSwarmEvents()
 		m.refreshViewport()
@@ -1256,6 +1265,10 @@ func (m tuiModel) renderMap() string {
 		b.WriteString(strings.Join(row, ""))
 		b.WriteByte('\n')
 	}
+	if m.lastSwarm != "" {
+		b.WriteString(m.lastSwarm)
+		b.WriteByte('\n')
+	}
 	// simple horizontal scale bar based on longitude range
 	midLat := (maxLat + minLat) / 2
 	kmPerLon := 111.0 * math.Cos(midLat*math.Pi/180)
@@ -1265,7 +1278,6 @@ func (m tuiModel) renderMap() string {
 	b.WriteString(fmt.Sprintf("Scale: |%s| %.0fkm\n", strings.Repeat("-", barChars), scaleKM))
 	var legendParts []string
 	legendParts = append(legendParts,
-		fmt.Sprintf("%s=background", m.symbols.mapBackground),
 		fmt.Sprintf("%s=grid", m.symbols.mapIntersection),
 		"◯=zone",
 		fmt.Sprintf("%s◎%s=detection", colorCyan, colorReset),
