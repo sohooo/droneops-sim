@@ -34,6 +34,8 @@ type Enemy struct {
 	Confidence float64
 	Region     telemetry.Region
 	Status     EnemyStatus
+	ParentID   string
+	ExpiresAt  time.Time
 }
 
 // DetectionRow describes a drone enemy detection event.

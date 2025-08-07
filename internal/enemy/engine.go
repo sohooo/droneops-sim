@@ -14,10 +14,12 @@ const nearDroneDistThreshold = 0.005 // degrees, ~500m
 
 // Engine maintains and updates simulated enemy entities.
 type Engine struct {
-	regions   []telemetry.Region
-	Enemies   []*Enemy
-	rand      *rand.Rand
-	randFloat func() float64
+	regions            []telemetry.Region
+	Enemies            []*Enemy
+	rand               *rand.Rand
+	randFloat          func() float64
+	MaxDecoysPerParent int
+	DecoyLifespan      time.Duration
 }
 
 // NewEngine creates an engine with a given number of enemies per region.
@@ -97,6 +99,10 @@ func (e *Engine) spawnDecoy(parent *Enemy) {
 		Confidence: parent.Confidence * 0.5,
 		Region:     parent.Region,
 		Status:     EnemyActive,
+		ParentID:   parent.ID,
+	}
+	if e.DecoyLifespan > 0 {
+		decoy.ExpiresAt = time.Now().Add(e.DecoyLifespan)
 	}
 	e.Enemies = append(e.Enemies, decoy)
 }
@@ -135,7 +141,17 @@ func (e *Engine) respondToNearbyDrone(en *Enemy, drones []*telemetry.Drone) bool
 	if nearest != nil && dist < nearDroneDistThreshold {
 		en.Position = moveAway(e.rand, en.Position, nearest.Position)
 		if e.randFloat() < 0.3 {
-			e.spawnDecoy(en)
+			count := 0
+			if e.MaxDecoysPerParent > 0 {
+				for _, other := range e.Enemies {
+					if other.Type == EnemyDecoy && other.ParentID == en.ID {
+						count++
+					}
+				}
+			}
+			if e.MaxDecoysPerParent == 0 || count < e.MaxDecoysPerParent {
+				e.spawnDecoy(en)
+			}
 		}
 		return true
 	}
@@ -167,6 +183,15 @@ func (e *Engine) Step(drones []*telemetry.Drone) {
 	if e.randFloat == nil {
 		e.randFloat = e.rand.Float64
 	}
+	now := time.Now()
+	filtered := e.Enemies[:0]
+	for _, en := range e.Enemies {
+		if en.Type == EnemyDecoy && !en.ExpiresAt.IsZero() && now.After(en.ExpiresAt) {
+			continue
+		}
+		filtered = append(filtered, en)
+	}
+	e.Enemies = filtered
 	for _, en := range e.Enemies {
 		handled := e.respondToNearbyDrone(en, drones)
 		if !handled {
