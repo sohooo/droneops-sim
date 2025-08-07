@@ -258,17 +258,21 @@ func TestRenderMapLegendExpanded(t *testing.T) {
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
 	m = mi.(tuiModel)
 	out := m.renderMap()
-	if !strings.Contains(out, "m1(Alpha)") {
-		t.Fatalf("expected mission name in legend: %q", out)
+	expected := []string{
+		"m1(Alpha)",
+		"active",
+		"neutralized",
+		"background",
+		"grid",
+		"zone",
+		"detection",
+		"drone_high",
+		"drone_low",
 	}
-	if !strings.Contains(out, "active") {
-		t.Fatalf("expected active enemy legend: %q", out)
-	}
-	if !strings.Contains(out, "neutralized") {
-		t.Fatalf("expected neutralized enemy legend: %q", out)
-	}
-	if !strings.Contains(out, "detection") {
-		t.Fatalf("expected detection legend: %q", out)
+	for _, substr := range expected {
+		if !strings.Contains(out, substr) {
+			t.Fatalf("expected %q in legend: %q", substr, out)
+		}
 	}
 }
 
