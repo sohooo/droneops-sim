@@ -59,6 +59,10 @@ const (
 	highAltThreshold    = 100.0
 	trailLength         = 5
 	trailChar           = "·"
+	mapBackgroundChar   = "░"
+	mapHorizontalChar   = "─"
+	mapVerticalChar     = "│"
+	mapIntersectionChar = "┼"
 )
 
 // TUIWriter renders telemetry using a bubbletea TUI.
@@ -1079,7 +1083,7 @@ func (m tuiModel) renderMap() string {
 	for i := range grid {
 		row := make([]string, width)
 		for j := range row {
-			row[j] = "."
+			row[j] = mapBackgroundChar
 		}
 		grid[i] = row
 	}
@@ -1088,18 +1092,18 @@ func (m tuiModel) renderMap() string {
 	for i := 1; i < divisions; i++ {
 		x := int(float64(width-1) * float64(i) / divisions)
 		for y := 0; y < mapHeight; y++ {
-			if grid[y][x] == "-" {
-				grid[y][x] = "+"
-			} else if grid[y][x] == "." {
-				grid[y][x] = "|"
+			if grid[y][x] == mapHorizontalChar {
+				grid[y][x] = mapIntersectionChar
+			} else if grid[y][x] == mapBackgroundChar {
+				grid[y][x] = mapVerticalChar
 			}
 		}
 		y := int(float64(mapHeight-1) * float64(i) / divisions)
 		for x2 := 0; x2 < width; x2++ {
-			if grid[y][x2] == "|" {
-				grid[y][x2] = "+"
-			} else if grid[y][x2] == "." {
-				grid[y][x2] = "-"
+			if grid[y][x2] == mapVerticalChar {
+				grid[y][x2] = mapIntersectionChar
+			} else if grid[y][x2] == mapBackgroundChar {
+				grid[y][x2] = mapHorizontalChar
 			}
 		}
 	}

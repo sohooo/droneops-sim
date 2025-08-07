@@ -179,7 +179,7 @@ func TestRenderMapAddsContext(t *testing.T) {
 		if strings.HasPrefix(inner, "Scale:") {
 			break
 		}
-		if strings.ContainsAny(inner, "|-+") {
+		if strings.ContainsAny(inner, "│─┼") {
 			hasGrid = true
 			break
 		}
