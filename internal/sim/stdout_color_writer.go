@@ -23,6 +23,10 @@ const (
 	colorMagenta = "\x1b[35m"
 	colorCyan    = "\x1b[36m"
 	colorGray    = "\x1b[90m"
+
+	bgRed    = "\x1b[41m"
+	bgGreen  = "\x1b[42m"
+	bgYellow = "\x1b[43m"
 )
 
 // ColorStdoutWriter prints telemetry rows using ANSI colors.

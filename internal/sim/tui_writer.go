@@ -56,6 +56,7 @@ const (
 	fallbackEnemyInput  = "vehicle,0,0,0"
 	enemyOffset         = 0.0001
 	maxSectionHeightPct = 0.2
+	highAltThreshold    = 100.0
 )
 
 // TUIWriter renders telemetry using a bubbletea TUI.
@@ -881,6 +882,34 @@ func headingIcon(h float64) string {
 	}
 }
 
+func altitudeIcon(h, alt float64) string {
+	icon := headingIcon(h)
+	if alt >= highAltThreshold {
+		switch icon {
+		case "^":
+			return "▲"
+		case ">":
+			return "▶"
+		case "v":
+			return "▼"
+		case "<":
+			return "◀"
+		}
+	}
+	return icon
+}
+
+func batteryBG(b float64) string {
+	switch {
+	case b < 25:
+		return bgRed
+	case b < 75:
+		return bgYellow
+	default:
+		return bgGreen
+	}
+}
+
 func (m tuiModel) renderMap() string {
 	width := m.vp.Width
 	bottomHeight := lipgloss.Height(m.renderBottom())
@@ -963,7 +992,13 @@ func (m tuiModel) renderMap() string {
 		x := int((e.Position.Lon - minLon) / (maxLon - minLon) * float64(width-1))
 		y := int((maxLat - e.Position.Lat) / (maxLat - minLat) * float64(mapHeight-1))
 		if y >= 0 && y < mapHeight && x >= 0 && x < width {
-			grid[y][x] = fmt.Sprintf("%sX%s", colorRed, colorReset)
+			sym := "X"
+			col := colorRed
+			if e.Status == enemy.EnemyNeutralized {
+				sym = "x"
+				col = colorYellow
+			}
+			grid[y][x] = fmt.Sprintf("%s%s%s", col, sym, colorReset)
 		}
 	}
 	for id, p := range m.dronePositions {
@@ -981,8 +1016,9 @@ func (m tuiModel) renderMap() string {
 				break
 			}
 		}
-		icon := headingIcon(m.droneHeadings[id])
-		grid[y][x] = fmt.Sprintf("%s%s%s", missionColor, icon, colorReset)
+		icon := altitudeIcon(m.droneHeadings[id], p.Alt)
+		bg := batteryBG(m.droneBatteries[id])
+		grid[y][x] = fmt.Sprintf("%s%s%s%s", bg, missionColor, icon, colorReset)
 	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("lat %.5f..%.5f lon %.5f..%.5f N↑\n", maxLat, minLat, minLon, maxLon))
@@ -1003,7 +1039,10 @@ func (m tuiModel) renderMap() string {
 			legendParts = append(legendParts, fmt.Sprintf("%s^%s=%s", c, colorReset, ms.ID))
 		}
 	}
-	legendParts = append(legendParts, fmt.Sprintf("%sX%s=enemy", colorRed, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%sX%s=active", colorRed, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutral", colorYellow, colorReset))
+	legendParts = append(legendParts, "▲=high_alt ^=low_alt")
+	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
 	b.WriteString(strings.Join(legendParts, " "))
 	return strings.TrimRight(b.String(), "\n")
 }

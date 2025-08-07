@@ -534,7 +534,7 @@ func TestMapViewRendering(t *testing.T) {
 	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
 	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
 	m = mi.(tuiModel)
-	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0}
+	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0, Alt: 50, Battery: 80}
 	mi, _ = m.Update(telemetryMsg{TelemetryRow: row})
 	m = mi.(tuiModel)
 	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0.1}, Status: enemy.EnemyActive}}
@@ -544,10 +544,31 @@ func TestMapViewRendering(t *testing.T) {
 		t.Fatalf("map view not enabled")
 	}
 	view := m.View()
-	if !strings.Contains(view, colorGreen+"^"+colorReset) {
+	if !strings.Contains(view, bgGreen+colorGreen+"^"+colorReset) {
 		t.Fatalf("missing drone marker: %q", view)
 	}
 	if !strings.Contains(view, colorRed+"X"+colorReset) {
 		t.Fatalf("missing enemy marker: %q", view)
+	}
+}
+
+func TestEnemyStatusMarkers(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
+	m = mi.(tuiModel)
+	m.dronePositions["d1"] = telemetry.Position{Lat: 0, Lon: 0}
+	m.droneHeadings["d1"] = 0
+	m.droneBatteries["d1"] = 100
+	m.enemies = []enemy.Enemy{
+		{ID: "e1", Position: telemetry.Position{Lat: 0, Lon: 0.1}, Status: enemy.EnemyActive},
+		{ID: "e2", Position: telemetry.Position{Lat: 0.1, Lon: 0}, Status: enemy.EnemyNeutralized},
+	}
+	out := m.renderMap()
+	if !strings.Contains(out, colorRed+"X"+colorReset) {
+		t.Fatalf("active enemy marker missing: %q", out)
+	}
+	if !strings.Contains(out, colorYellow+"x"+colorReset) {
+		t.Fatalf("neutralized enemy marker missing: %q", out)
 	}
 }
