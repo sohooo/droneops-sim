@@ -201,7 +201,7 @@ func TestRenderMapShowsDetectionAndTrails(t *testing.T) {
 	m.mapShowTrails = true
 	m.initMapViewport()
 	out := m.renderMap()
-	if strings.Count(out, "*") < 2 {
+	if strings.Count(out, "◎") < 2 {
 		t.Fatalf("expected detection radius in map: %q", out)
 	}
 	if strings.Count(out, "·") < 2 {
@@ -682,7 +682,7 @@ func TestMapLayerToggle(t *testing.T) {
 	if strings.Count(out, colorRed+"X"+colorReset) < 2 {
 		t.Fatalf("expected enemy marker: %q", out)
 	}
-	if !strings.Contains(out, colorGreen+"o"+colorReset) {
+	if !strings.Contains(out, colorGreen+"◯"+colorReset) {
 		t.Fatalf("expected mission zone: %q", out)
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
@@ -697,7 +697,7 @@ func TestMapLayerToggle(t *testing.T) {
 	}
 	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
 	m = mi.(tuiModel)
-	if strings.Contains(m.renderMap(), colorGreen+"o"+colorReset) {
+	if strings.Contains(m.renderMap(), colorGreen+"◯"+colorReset) {
 		t.Fatalf("mission zone layer not toggled off")
 	}
 }
