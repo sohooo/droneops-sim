@@ -104,6 +104,28 @@ func TestDetectionSwarmAndStateColors(t *testing.T) {
 	}
 }
 
+func TestSwarmAssignmentUnassignmentColors(t *testing.T) {
+	p := &fakeProgram{}
+	w := &TUIWriter{program: p, missionColors: map[string]string{}}
+	assign := telemetry.SwarmEventRow{EventType: telemetry.SwarmEventAssignment, DroneIDs: []string{"d1"}, EnemyID: "e1", Timestamp: time.Unix(0, 0).UTC()}
+	if err := w.WriteSwarmEvent(assign); err != nil {
+		t.Fatalf("write assign: %v", err)
+	}
+	sm := p.msgs[0].(swarmMsg)
+	if !strings.Contains(sm.line, fmt.Sprintf("%stype=%s%s", colorGreen, telemetry.SwarmEventAssignment, colorReset)) {
+		t.Fatalf("expected green assignment: %q", sm.line)
+	}
+	p.msgs = nil
+	unassign := telemetry.SwarmEventRow{EventType: telemetry.SwarmEventUnassignment, DroneIDs: []string{"d1"}, EnemyID: "e1", Timestamp: time.Unix(0, 0).UTC()}
+	if err := w.WriteSwarmEvent(unassign); err != nil {
+		t.Fatalf("write unassign: %v", err)
+	}
+	sm = p.msgs[0].(swarmMsg)
+	if !strings.Contains(sm.line, fmt.Sprintf("%stype=%s%s", colorRed, telemetry.SwarmEventUnassignment, colorReset)) {
+		t.Fatalf("expected red unassignment: %q", sm.line)
+	}
+}
+
 func TestRenderDetectionsAndSwarmEvents(t *testing.T) {
 	cfg := &config.SimulationConfig{}
 	m := newTUIModel(cfg, nil, unicodeSymbols)
@@ -293,7 +315,6 @@ func TestRenderMapLegendExpanded(t *testing.T) {
 		"m1(Alpha)",
 		"active",
 		"neutralized",
-		"background",
 		"grid",
 		"zone",
 		"detection",
@@ -696,6 +717,20 @@ func TestEnemyStatusMarkers(t *testing.T) {
 	}
 	if !strings.Contains(out, colorYellow+"x"+colorReset) {
 		t.Fatalf("neutralized enemy marker missing: %q", out)
+	}
+}
+
+func TestMapShowsLastSwarmEvent(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Region: config.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}}}
+	m := newTUIModel(cfg, nil, unicodeSymbols)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 10})
+	m = mi.(tuiModel)
+	m.initMapViewport()
+	mi, _ = m.Update(swarmMsg{line: "swarm-event"})
+	m = mi.(tuiModel)
+	out := m.renderMap()
+	if !strings.Contains(out, "swarm-event") {
+		t.Fatalf("expected swarm event in map: %q", out)
 	}
 }
 
