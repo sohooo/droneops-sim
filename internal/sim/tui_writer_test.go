@@ -413,14 +413,8 @@ func TestSummaryToggle(t *testing.T) {
 	mi, _ = m.Update(telemetryMsg{telemetry.TelemetryRow{DroneID: "d2", MissionID: "m2", Battery: 40}})
 	m = mi.(tuiModel)
 	bottom := m.renderBottom()
-	if strings.Contains(bottom, "SUMMARY") {
-		t.Fatalf("summary should be hidden by default")
-	}
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	m = mi.(tuiModel)
-	bottom = m.renderBottom()
 	if !strings.Contains(bottom, "SUMMARY") {
-		t.Fatalf("summary not shown after toggle: %q", bottom)
+		t.Fatalf("summary should be shown by default: %q", bottom)
 	}
 	if !strings.Contains(bottom, fmt.Sprintf("%sdrones=%d%s", colorGreen, 2, colorReset)) {
 		t.Fatalf("missing drone count: %q", bottom)
@@ -440,6 +434,21 @@ func TestSummaryToggle(t *testing.T) {
 	if !strings.Contains(bottom, fmt.Sprintf("%s%s%s=1/3", colorGreen, "m2", colorReset)) {
 		t.Fatalf("missing mission m2 progress: %q", bottom)
 	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = mi.(tuiModel)
+	bottom = m.renderBottom()
+	if strings.Contains(bottom, "SUMMARY") {
+		t.Fatalf("summary not hidden after toggle: %q", bottom)
+	}
+}
+
+func TestHelpHintInFooter(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, map[string]string{})
+	bottom := m.renderBottom()
+	if !strings.Contains(bottom, "(h)elp") {
+		t.Fatalf("missing help hint: %q", bottom)
+	}
 }
 
 func TestSummaryIncludesEnemyAndDetectionStats(t *testing.T) {
@@ -447,8 +456,6 @@ func TestSummaryIncludesEnemyAndDetectionStats(t *testing.T) {
 	m := newTUIModel(cfg, map[string]string{"m1": colorRed})
 	m.enemies = []enemy.Enemy{{ID: "e1", Status: enemy.EnemyActive}, {ID: "e2", Status: enemy.EnemyNeutralized}}
 	mi, _ := m.Update(detectionMsg{line: "det", row: enemy.DetectionRow{DroneID: "d1", Timestamp: time.Unix(0, 0).UTC()}})
-	m = mi.(tuiModel)
-	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
 	m = mi.(tuiModel)
 	bottom := m.renderBottom()
 	if !strings.Contains(bottom, fmt.Sprintf("%senemies=%d%s", colorRed, 1, colorReset)) {

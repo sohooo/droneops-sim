@@ -334,6 +334,7 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		missionTotals:    missionTotals,
 		missionCounts:    make(map[string]map[string]struct{}),
 		detectionCounts:  make(map[string]int),
+		summary:          true,
 	}
 	return m
 }
@@ -890,11 +891,6 @@ func (m tuiModel) renderBottom() string {
 		summaryColor = lipgloss.Color("10")
 	}
 	summaryIndicator := lipgloss.NewStyle().Foreground(summaryColor).Render("●")
-	helpColor := lipgloss.Color("9")
-	if m.help {
-		helpColor = lipgloss.Color("10")
-	}
-	helpIndicator := lipgloss.NewStyle().Foreground(helpColor).Render("●")
 	missionsColor := lipgloss.Color("10")
 	if !m.showMissions {
 		missionsColor = lipgloss.Color("9")
@@ -912,7 +908,8 @@ func (m tuiModel) renderBottom() string {
 		colorMagenta, m.state.SensorNoise, colorReset,
 		colorCyan, m.state.WeatherImpact, colorReset,
 		colorRed, m.state.ChaosMode, colorReset)
-	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Help %s | Missions %s | Enemies %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, helpIndicator, missionsIndicator, enemiesIndicator)
+	helpHint := fmt.Sprintf("%s(h)elp%s", colorBlue, colorReset)
+	line := fmt.Sprintf("%s | Admin UI %s | Wrap %s | Scroll %s | Summary %s | Missions %s | Enemies %s | %s", state, adminIndicator, wrapIndicator, scrollIndicator, summaryIndicator, missionsIndicator, enemiesIndicator, helpHint)
 	if m.summary {
 		return fmt.Sprintf("%s\n%s", m.renderSummary(), line)
 	}
