@@ -52,17 +52,37 @@ type setStatusMsg struct {
 }
 type telemetryMsg struct{ telemetry.TelemetryRow }
 
+type symbolSet struct {
+	trail           string
+	mapBackground   string
+	mapHorizontal   string
+	mapVertical     string
+	mapIntersection string
+}
+
+var (
+	unicodeSymbols = symbolSet{
+		trail:           "·",
+		mapBackground:   "░",
+		mapHorizontal:   "─",
+		mapVertical:     "│",
+		mapIntersection: "┼",
+	}
+	asciiSymbols = symbolSet{
+		trail:           ".",
+		mapBackground:   " ",
+		mapHorizontal:   "-",
+		mapVertical:     "|",
+		mapIntersection: "+",
+	}
+)
+
 const (
 	fallbackEnemyInput  = "vehicle,0,0,0"
 	enemyOffset         = 0.0001
 	maxSectionHeightPct = 0.2
 	highAltThreshold    = 100.0
 	trailLength         = 5
-	trailChar           = "·"
-	mapBackgroundChar   = "░"
-	mapHorizontalChar   = "─"
-	mapVerticalChar     = "│"
-	mapIntersectionChar = "┼"
 )
 
 // TUIWriter renders telemetry using a bubbletea TUI.
@@ -79,7 +99,11 @@ func NewTUIWriter(cfg *config.SimulationConfig) *TUIWriter {
 	mc := make(map[string]string)
 	w := &TUIWriter{missionColors: mc, done: make(chan struct{})}
 	w.sendSignal.Store(true)
-	m := newTUIModel(cfg, mc)
+	symbols := unicodeSymbols
+	if strings.ToLower(os.Getenv("TUI_SYMBOLS")) == "ascii" {
+		symbols = asciiSymbols
+	}
+	m := newTUIModel(cfg, mc, symbols)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	w.program = p
 	for _, ms := range cfg.Missions {
@@ -293,9 +317,10 @@ type tuiModel struct {
 	totalDetections  int
 	detectionHistory []int
 	lastDetSecond    time.Time
+	symbols          symbolSet
 }
 
-func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) tuiModel {
+func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string, symbols symbolSet) tuiModel {
 	cols := []table.Column{
 		{Title: "Config", Width: 20},
 		{Title: "Value", Width: 10},
@@ -339,6 +364,7 @@ func newTUIModel(cfg *config.SimulationConfig, missionColors map[string]string) 
 		missionCounts:    make(map[string]map[string]struct{}),
 		detectionCounts:  make(map[string]int),
 		summary:          true,
+		symbols:          symbols,
 	}
 	return m
 }
@@ -1099,7 +1125,7 @@ func (m tuiModel) renderMap() string {
 	for i := range grid {
 		row := make([]string, width)
 		for j := range row {
-			row[j] = mapBackgroundChar
+			row[j] = m.symbols.mapBackground
 		}
 		grid[i] = row
 	}
@@ -1108,18 +1134,18 @@ func (m tuiModel) renderMap() string {
 	for i := 1; i < divisions; i++ {
 		x := int(float64(width-1) * float64(i) / divisions)
 		for y := 0; y < mapHeight; y++ {
-			if grid[y][x] == mapHorizontalChar {
-				grid[y][x] = mapIntersectionChar
-			} else if grid[y][x] == mapBackgroundChar {
-				grid[y][x] = mapVerticalChar
+			if grid[y][x] == m.symbols.mapHorizontal {
+				grid[y][x] = m.symbols.mapIntersection
+			} else if grid[y][x] == m.symbols.mapBackground {
+				grid[y][x] = m.symbols.mapVertical
 			}
 		}
 		y := int(float64(mapHeight-1) * float64(i) / divisions)
 		for x2 := 0; x2 < width; x2++ {
-			if grid[y][x2] == mapVerticalChar {
-				grid[y][x2] = mapIntersectionChar
-			} else if grid[y][x2] == mapBackgroundChar {
-				grid[y][x2] = mapHorizontalChar
+			if grid[y][x2] == m.symbols.mapVertical {
+				grid[y][x2] = m.symbols.mapIntersection
+			} else if grid[y][x2] == m.symbols.mapBackground {
+				grid[y][x2] = m.symbols.mapHorizontal
 			}
 		}
 	}
@@ -1183,7 +1209,7 @@ func (m tuiModel) renderMap() string {
 				x := int((p.Lon - minLon) / (maxLon - minLon) * float64(width-1))
 				y := int((maxLat - p.Lat) / (maxLat - minLat) * float64(mapHeight-1))
 				if y >= 0 && y < mapHeight && x >= 0 && x < width {
-					grid[y][x] = fmt.Sprintf("%s%s%s", missionColor, trailChar, colorReset)
+					grid[y][x] = fmt.Sprintf("%s%s%s", missionColor, m.symbols.trail, colorReset)
 				}
 			}
 		}
@@ -1239,13 +1265,13 @@ func (m tuiModel) renderMap() string {
 	b.WriteString(fmt.Sprintf("Scale: |%s| %.0fkm\n", strings.Repeat("-", barChars), scaleKM))
 	var legendParts []string
 	legendParts = append(legendParts,
-		fmt.Sprintf("%s=background", mapBackgroundChar),
-		fmt.Sprintf("%s=grid", mapIntersectionChar),
+		fmt.Sprintf("%s=background", m.symbols.mapBackground),
+		fmt.Sprintf("%s=grid", m.symbols.mapIntersection),
 		"◯=zone",
 		fmt.Sprintf("%s◎%s=detection", colorCyan, colorReset),
 		"⬆=drone_high ↑=drone_low",
 		fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset),
-		fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset),
+		fmt.Sprintf("%s%s%s=trail", colorGray, m.symbols.trail, colorReset),
 	)
 	for _, ms := range m.cfg.Missions {
 		if c, ok := m.missionColors[ms.ID]; ok {
