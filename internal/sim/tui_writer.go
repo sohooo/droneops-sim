@@ -1061,9 +1061,12 @@ func (m *tuiModel) initMapViewport() {
 }
 
 func (m tuiModel) renderMap() string {
-	width := m.vp.Width
+	width := m.vp.Width - 2
+	if width < 1 {
+		width = 1
+	}
 	bottomHeight := lipgloss.Height(m.renderBottom())
-	mapHeight := m.height - m.headerHeight - bottomHeight - 4
+	mapHeight := m.height - m.headerHeight - bottomHeight - 6
 	if mapHeight < 1 {
 		mapHeight = 1
 	}
@@ -1220,18 +1223,20 @@ func (m tuiModel) renderMap() string {
 	var legendParts []string
 	for _, ms := range m.cfg.Missions {
 		if c, ok := m.missionColors[ms.ID]; ok {
-			legendParts = append(legendParts, fmt.Sprintf("%s^%s=%s", c, colorReset, ms.ID))
+			legendParts = append(legendParts, fmt.Sprintf("%s^%s=%s(%s)", c, colorReset, ms.ID, ms.Name))
 		}
 	}
 	legendParts = append(legendParts, fmt.Sprintf("%sX%s=active", colorRed, colorReset))
-	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutral", colorYellow, colorReset))
+	legendParts = append(legendParts, fmt.Sprintf("%sx%s=neutralized", colorYellow, colorReset))
 	legendParts = append(legendParts, "▲=high_alt ^=low_alt")
 	legendParts = append(legendParts, fmt.Sprintf("%s█%s=high_batt %s█%s=med %s█%s=low", bgGreen, colorReset, bgYellow, colorReset, bgRed, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%s*%s=detection", colorCyan, colorReset))
 	legendParts = append(legendParts, fmt.Sprintf("%s%s%s=trail", colorGray, trailChar, colorReset))
 	legendParts = append(legendParts, "o=mission_zone")
 	b.WriteString(strings.Join(legendParts, " "))
-	return strings.TrimRight(b.String(), "\n")
+	content := strings.TrimRight(b.String(), "\n")
+	style := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("8")).Background(lipgloss.Color("235"))
+	return style.Render(content)
 }
 
 func (m tuiModel) renderEnemies() string {
