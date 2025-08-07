@@ -297,9 +297,7 @@ func (s *Simulator) SpawnEnemy(en enemy.Enemy) {
 }
 
 // RemoveEnemy deletes an enemy from the simulation by ID.
-func (s *Simulator) RemoveEnemy(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *Simulator) removeEnemy(id string) {
 	if s.enemyEng != nil {
 		var remaining []*enemy.Enemy
 		for _, e := range s.enemyEng.Enemies {
@@ -313,6 +311,12 @@ func (s *Simulator) RemoveEnemy(id string) {
 	delete(s.enemyFollowers, id)
 	delete(s.enemyFollowerTargets, id)
 	delete(s.enemyObjects, id)
+}
+
+func (s *Simulator) RemoveEnemy(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.removeEnemy(id)
 }
 
 // UpdateEnemyStatus sets the status field for an existing enemy.

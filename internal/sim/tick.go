@@ -46,7 +46,10 @@ func (s *Simulator) tick(ctx context.Context) {
 		for _, en := range s.enemyEng.Enemies {
 			s.enemyPrevPositions[en.ID] = en.Position
 		}
-		s.enemyEng.Step(allDrones)
+		removed := s.enemyEng.Step(allDrones)
+		for _, id := range removed {
+			s.removeEnemy(id)
+		}
 	}
 
 	for _, fleet := range s.fleets {

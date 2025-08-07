@@ -11,12 +11,12 @@ import (
 func TestEngine_EvasiveManeuver(t *testing.T) {
 	eng := &Engine{
 		regions:   []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
-		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
+		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}, Status: EnemyActive}},
 		rand:      rand.New(rand.NewSource(1)),
 		randFloat: func() float64 { return 0.9 },
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	eng.Step([]*telemetry.Drone{drone})
+	_ = eng.Step([]*telemetry.Drone{drone})
 	if distance(eng.Enemies[0].Position, drone.Position) == 0 {
 		t.Fatalf("expected enemy to move away from drone")
 	}
@@ -45,12 +45,12 @@ func TestEngine_SpawnMultipleRegions(t *testing.T) {
 func TestEngine_SpawnDecoy(t *testing.T) {
 	eng := &Engine{
 		regions:   []telemetry.Region{{CenterLat: 0, CenterLon: 0, RadiusKM: 1}},
-		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}},
+		Enemies:   []*Enemy{{ID: "e", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Confidence: 100, Region: telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}, Status: EnemyActive}},
 		rand:      rand.New(rand.NewSource(1)),
 		randFloat: func() float64 { return 0.1 },
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	eng.Step([]*telemetry.Drone{drone})
+	_ = eng.Step([]*telemetry.Drone{drone})
 	if len(eng.Enemies) != 2 {
 		t.Fatalf("expected decoy to spawn")
 	}
@@ -62,11 +62,11 @@ func TestEngine_SpawnDecoy(t *testing.T) {
 
 func TestEngine_PursueEnemy(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	e1 := &Enemy{ID: "e1", Type: EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region}
-	e2 := &Enemy{ID: "e2", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0.001, Lon: 0}, Region: region}
+	e1 := &Enemy{ID: "e1", Type: EnemyPerson, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
+	e2 := &Enemy{ID: "e2", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0.001, Lon: 0}, Region: region, Status: EnemyActive}
 	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{e1, e2}, rand: rand.New(rand.NewSource(1)), randFloat: func() float64 { return 0 }}
 	before := distance(e1.Position, e2.Position)
-	eng.Step(nil)
+	_ = eng.Step(nil)
 	after := distance(e1.Position, e2.Position)
 	if after >= before {
 		t.Fatalf("expected enemy to move towards another enemy")
@@ -75,9 +75,9 @@ func TestEngine_PursueEnemy(t *testing.T) {
 
 func TestEngine_HandleRegionBounds(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	en := &Enemy{ID: "e", Type: EnemyPerson, Position: telemetry.Position{Lat: 0.02, Lon: 0.02}, Region: region}
+	en := &Enemy{ID: "e", Type: EnemyPerson, Position: telemetry.Position{Lat: 0.02, Lon: 0.02}, Region: region, Status: EnemyActive}
 	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{en}, rand: rand.New(rand.NewSource(1)), randFloat: rand.Float64}
-	eng.Step(nil)
+	_ = eng.Step(nil)
 	center := telemetry.Position{Lat: region.CenterLat, Lon: region.CenterLon}
 	if distance(en.Position, center) > region.RadiusKM/111 {
 		t.Fatalf("expected enemy to be within region bounds")
@@ -101,7 +101,7 @@ func TestEngine_DeterministicStep(t *testing.T) {
 
 func TestEngine_DecoyCap(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region}
+	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
 	eng := &Engine{
 		regions:            []telemetry.Region{region},
 		Enemies:            []*Enemy{parent},
@@ -110,8 +110,8 @@ func TestEngine_DecoyCap(t *testing.T) {
 		MaxDecoysPerParent: 1,
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	eng.Step([]*telemetry.Drone{drone})
-	eng.Step([]*telemetry.Drone{drone})
+	_ = eng.Step([]*telemetry.Drone{drone})
+	_ = eng.Step([]*telemetry.Drone{drone})
 	count := 0
 	for _, e := range eng.Enemies {
 		if e.Type == EnemyDecoy && e.ParentID == parent.ID {
@@ -125,7 +125,7 @@ func TestEngine_DecoyCap(t *testing.T) {
 
 func TestEngine_DecoyExpiration(t *testing.T) {
 	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
-	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region}
+	parent := &Enemy{ID: "p", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
 	eng := &Engine{
 		regions:       []telemetry.Region{region},
 		Enemies:       []*Enemy{parent},
@@ -134,15 +134,29 @@ func TestEngine_DecoyExpiration(t *testing.T) {
 		DecoyLifespan: time.Hour,
 	}
 	drone := &telemetry.Drone{Position: telemetry.Position{Lat: 0, Lon: 0}}
-	eng.Step([]*telemetry.Drone{drone})
+	_ = eng.Step([]*telemetry.Drone{drone})
 	if len(eng.Enemies) != 2 {
 		t.Fatalf("expected decoy to spawn")
 	}
 	eng.Enemies[1].ExpiresAt = time.Now().Add(-time.Second)
-	eng.Step(nil)
+	_ = eng.Step(nil)
 	for _, e := range eng.Enemies {
 		if e.Type == EnemyDecoy {
 			t.Fatalf("expected decoy to expire")
 		}
+	}
+}
+
+func TestEngine_RemoveInactive(t *testing.T) {
+	region := telemetry.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}
+	active := &Enemy{ID: "a", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyActive}
+	inactive := &Enemy{ID: "b", Type: EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0}, Region: region, Status: EnemyNeutralized}
+	eng := &Engine{regions: []telemetry.Region{region}, Enemies: []*Enemy{active, inactive}, rand: rand.New(rand.NewSource(1)), randFloat: rand.Float64}
+	removed := eng.Step(nil)
+	if len(removed) != 1 || removed[0] != "b" {
+		t.Fatalf("expected to remove inactive enemy, got %v", removed)
+	}
+	if len(eng.Enemies) != 1 || eng.Enemies[0].ID != "a" {
+		t.Fatalf("expected only active enemy to remain")
 	}
 }
