@@ -158,6 +158,36 @@ func TestTelemetrySectionsCapped(t *testing.T) {
 	}
 }
 
+func TestRenderMapAddsContext(t *testing.T) {
+	cfg := &config.SimulationConfig{}
+	m := newTUIModel(cfg, nil)
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m = mi.(tuiModel)
+	m.dronePositions["d1"] = telemetry.Position{Lat: 10, Lon: 20}
+	m.droneHeadings["d1"] = 0
+	out := m.renderMap()
+	if !strings.Contains(out, "N↑") {
+		t.Fatalf("expected north indicator in map: %q", out)
+	}
+	if !strings.Contains(out, "Scale:") {
+		t.Fatalf("expected scale bar in map: %q", out)
+	}
+	lines := strings.Split(out, "\n")
+	hasGrid := false
+	for _, line := range lines[1:] {
+		if strings.HasPrefix(line, "Scale:") {
+			break
+		}
+		if strings.ContainsAny(line, "|-+") {
+			hasGrid = true
+			break
+		}
+	}
+	if !hasGrid {
+		t.Fatalf("expected gridlines in map: %q", out)
+	}
+}
+
 func TestWrapToggle(t *testing.T) {
 	cfg := &config.SimulationConfig{
 		Missions: []config.Mission{{ID: "m1", Name: "M1", Description: "alpha beta gamma delta epsilon zeta"}},

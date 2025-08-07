@@ -930,6 +930,7 @@ func (m tuiModel) renderMap() string {
 		maxLon += 0.01
 		minLon -= 0.01
 	}
+	lonRange := maxLon - minLon
 	grid := make([][]string, mapHeight)
 	for i := range grid {
 		row := make([]string, width)
@@ -937,6 +938,26 @@ func (m tuiModel) renderMap() string {
 			row[j] = "."
 		}
 		grid[i] = row
+	}
+	// overlay simple lat/lon gridlines
+	const divisions = 4
+	for i := 1; i < divisions; i++ {
+		x := int(float64(width-1) * float64(i) / divisions)
+		for y := 0; y < mapHeight; y++ {
+			if grid[y][x] == "-" {
+				grid[y][x] = "+"
+			} else if grid[y][x] == "." {
+				grid[y][x] = "|"
+			}
+		}
+		y := int(float64(mapHeight-1) * float64(i) / divisions)
+		for x2 := 0; x2 < width; x2++ {
+			if grid[y][x2] == "|" {
+				grid[y][x2] = "+"
+			} else if grid[y][x2] == "." {
+				grid[y][x2] = "-"
+			}
+		}
 	}
 	for _, e := range m.enemies {
 		x := int((e.Position.Lon - minLon) / (maxLon - minLon) * float64(width-1))
@@ -964,11 +985,18 @@ func (m tuiModel) renderMap() string {
 		grid[y][x] = fmt.Sprintf("%s%s%s", missionColor, icon, colorReset)
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("lat %.5f..%.5f lon %.5f..%.5f\n", maxLat, minLat, minLon, maxLon))
+	b.WriteString(fmt.Sprintf("lat %.5f..%.5f lon %.5f..%.5f N↑\n", maxLat, minLat, minLon, maxLon))
 	for _, row := range grid {
 		b.WriteString(strings.Join(row, ""))
 		b.WriteByte('\n')
 	}
+	// simple horizontal scale bar based on longitude range
+	midLat := (maxLat + minLat) / 2
+	kmPerLon := 111.0 * math.Cos(midLat*math.Pi/180)
+	kmPerChar := lonRange * kmPerLon / float64(width)
+	barChars := int(math.Min(10, float64(width)/3))
+	scaleKM := kmPerChar * float64(barChars)
+	b.WriteString(fmt.Sprintf("Scale: |%s| %.0fkm\n", strings.Repeat("-", barChars), scaleKM))
 	var legendParts []string
 	for _, ms := range m.cfg.Missions {
 		if c, ok := m.missionColors[ms.ID]; ok {
