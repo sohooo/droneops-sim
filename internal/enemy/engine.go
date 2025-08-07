@@ -178,15 +178,22 @@ func (e *Engine) handleRegionBounds(en *Enemy) {
 	}
 }
 
-// Step updates enemies based on drone positions and tactics.
-func (e *Engine) Step(drones []*telemetry.Drone) {
+// Step updates enemies based on drone positions and tactics and returns
+// IDs of any enemies removed due to expiration or inactivity.
+func (e *Engine) Step(drones []*telemetry.Drone) []string {
 	if e.randFloat == nil {
 		e.randFloat = e.rand.Float64
 	}
 	now := time.Now()
 	filtered := e.Enemies[:0]
+	var removed []string
 	for _, en := range e.Enemies {
 		if en.Type == EnemyDecoy && !en.ExpiresAt.IsZero() && now.After(en.ExpiresAt) {
+			removed = append(removed, en.ID)
+			continue
+		}
+		if en.Status != EnemyActive {
+			removed = append(removed, en.ID)
 			continue
 		}
 		filtered = append(filtered, en)
@@ -202,4 +209,5 @@ func (e *Engine) Step(drones []*telemetry.Drone) {
 		}
 		e.handleRegionBounds(en)
 	}
+	return removed
 }
