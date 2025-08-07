@@ -572,3 +572,69 @@ func TestEnemyStatusMarkers(t *testing.T) {
 		t.Fatalf("neutralized enemy marker missing: %q", out)
 	}
 }
+
+func TestMapLayerToggle(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Region: config.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}}}
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m = mi.(tuiModel)
+	row := telemetry.TelemetryRow{DroneID: "d1", MissionID: "m1", Lat: 0, Lon: 0, HeadingDeg: 0, Alt: 50, Battery: 80}
+	mi, _ = m.Update(telemetryMsg{TelemetryRow: row})
+	m = mi.(tuiModel)
+	m.enemies = []enemy.Enemy{{ID: "e1", Type: enemy.EnemyVehicle, Position: telemetry.Position{Lat: 0, Lon: 0.1}, Status: enemy.EnemyActive}}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	m = mi.(tuiModel)
+	out := m.renderMap()
+	if !strings.Contains(out, bgGreen+colorGreen+"^"+colorReset) {
+		t.Fatalf("expected drone marker: %q", out)
+	}
+	if strings.Count(out, colorRed+"X"+colorReset) < 2 {
+		t.Fatalf("expected enemy marker: %q", out)
+	}
+	if !strings.Contains(out, colorGreen+"o"+colorReset) {
+		t.Fatalf("expected mission zone: %q", out)
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	m = mi.(tuiModel)
+	if strings.Contains(m.renderMap(), bgGreen+colorGreen+"^"+colorReset) {
+		t.Fatalf("drone layer not toggled off")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
+	m = mi.(tuiModel)
+	if strings.Count(m.renderMap(), colorRed+"X"+colorReset) > 1 {
+		t.Fatalf("enemy layer not toggled off")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
+	m = mi.(tuiModel)
+	if strings.Contains(m.renderMap(), colorGreen+"o"+colorReset) {
+		t.Fatalf("mission zone layer not toggled off")
+	}
+}
+
+func TestMapZoomPan(t *testing.T) {
+	cfg := &config.SimulationConfig{Missions: []config.Mission{{ID: "m1", Region: config.Region{CenterLat: 0, CenterLon: 0, RadiusKM: 1}}}}
+	m := newTUIModel(cfg, map[string]string{"m1": colorGreen})
+	mi, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	m = mi.(tuiModel)
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	m = mi.(tuiModel)
+	initial := m.renderMap()
+	var maxLat1, minLat1, minLon1, maxLon1 float64
+	fmt.Sscanf(strings.Split(initial, "\n")[0], "lat %f..%f lon %f..%f", &maxLat1, &minLat1, &minLon1, &maxLon1)
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'+'}})
+	m = mi.(tuiModel)
+	zoomed := m.renderMap()
+	var maxLat2, minLat2, minLon2, maxLon2 float64
+	fmt.Sscanf(strings.Split(zoomed, "\n")[0], "lat %f..%f lon %f..%f", &maxLat2, &minLat2, &minLon2, &maxLon2)
+	if (maxLat2 - minLat2) >= (maxLat1 - minLat1) {
+		t.Fatalf("expected zoom in to reduce lat span")
+	}
+	mi, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+	m = mi.(tuiModel)
+	panned := m.renderMap()
+	var maxLat3, minLat3, minLon3, maxLon3 float64
+	fmt.Sscanf(strings.Split(panned, "\n")[0], "lat %f..%f lon %f..%f", &maxLat3, &minLat3, &minLon3, &maxLon3)
+	if minLon3 <= minLon2 {
+		t.Fatalf("expected pan right to increase min lon")
+	}
+}
