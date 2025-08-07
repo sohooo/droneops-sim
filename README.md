@@ -17,7 +17,7 @@ It supports:
 - **Observer dashboard** for stepping through mission events, switching perspectives, and injecting commands
 - **Swarm-event logs** for follower assignments, reassignments, and formation changes
 - **Per-tick simulation state metrics** including communication reliability, sensor noise, weather impact, and chaos-mode status
-- **Interactive TUI** with hotkeys (`q` quit, `w` wrap, `s` scroll, `e` spawn enemy via `type,lat,lon,alt` + `Enter`; dialog auto-fills near the latest drone position for quick spawning, `E` edit/remove enemy via `id,status|delete`, `t` toggle summary footer, `p` toggle a battlefield map with colored drone arrows and red enemy markers, `?` help overlay)
+- **Interactive TUI** with hotkeys (`q` quit, `w` wrap, `s` scroll, `e` spawn enemy via `type,lat,lon,alt` + `Enter`; dialog auto-fills near the latest drone position for quick spawning, `E` edit/remove enemy via `id,status|delete`, `t` toggle summary footer, `p` toggle a battlefield map with gridlines, north indicator, scale bar, colored drone arrows, and red enemy markers, `?` help overlay)
 
 This project was designed to support visualization dashboards (e.g., Grafana Geomap panel) and multi-cluster sync scenarios (mission clusters → command cluster).
 
