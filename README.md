@@ -112,6 +112,7 @@ The simulator can be configured through the following environment variables:
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `GREPTIMEDB_ENDPOINT` | _none_ | Yes (for GreptimeDB) | GreptimeDB gRPC endpoint. If unset, telemetry is printed to STDOUT. |
+| `GREPTIMEDB_DATABASE` | `metrics` | No | GreptimeDB database name to write into. |
 | `GREPTIMEDB_TABLE` | `drone_telemetry` | No | Table for drone telemetry records. |
 | `ENEMY_DETECTION_TABLE` | `enemy_detection` | No | Table storing enemy detection events. |
 | `SWARM_EVENT_TABLE` | `swarm_events` | No | Table storing swarm coordination events. |

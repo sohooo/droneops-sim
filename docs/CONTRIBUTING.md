@@ -40,6 +40,7 @@ To write to GreptimeDB instead, set the endpoint and table variables:
 
 ```bash
 export GREPTIMEDB_ENDPOINT=127.0.0.1:4001
+export GREPTIMEDB_DATABASE=metrics
 export GREPTIMEDB_TABLE=drone_telemetry
 export ENEMY_DETECTION_TABLE=enemy_detection
 ./build/droneops-sim simulate

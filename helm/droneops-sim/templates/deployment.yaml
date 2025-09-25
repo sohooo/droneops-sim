@@ -27,6 +27,8 @@ spec:
         env:
         - name: GREPTIMEDB_ENDPOINT
           value: "127.0.0.1:4001"
+        - name: GREPTIMEDB_DATABASE
+          value: "metrics"
         - name: GREPTIMEDB_TABLE
           value: "drone_telemetry"
         - name: ENEMY_DETECTION_TABLE
