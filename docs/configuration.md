@@ -109,6 +109,7 @@ adjusts how aggressively the swarm adds followers when a threat is detected.
 ### Enemy Detection
 
 Enemy detection events are stored in GreptimeDB when the `GREPTIMEDB_ENDPOINT` variable is set.
+Use `GREPTIMEDB_DATABASE` to select the target database (defaults to `metrics`).
 Use `ENEMY_DETECTION_TABLE` to control the table name (default: `enemy_detection`).
 See [enemy-detection.md](enemy-detection.md) for more details.
 

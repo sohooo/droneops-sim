@@ -74,12 +74,16 @@ func baseWriters(cfg *config.SimulationConfig, printOnly bool) (sim.TelemetryWri
 	}
 
 	endpoint := os.Getenv("GREPTIMEDB_ENDPOINT")
+	database := os.Getenv("GREPTIMEDB_DATABASE")
+	if database == "" {
+		database = "metrics"
+	}
 	table := os.Getenv("GREPTIMEDB_TABLE")
 	detTable := os.Getenv("ENEMY_DETECTION_TABLE")
 	swarmTable := os.Getenv("SWARM_EVENT_TABLE")
 	stateTable := os.Getenv("SIMULATION_STATE_TABLE")
 	missionTable := os.Getenv("MISSIONS_TABLE")
-	w, err := sim.NewGreptimeDBWriter(endpoint, "public", table, detTable, swarmTable, stateTable, missionTable)
+	w, err := sim.NewGreptimeDBWriter(endpoint, database, table, detTable, swarmTable, stateTable, missionTable)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -47,7 +47,7 @@ The `droneops-sim` project includes a Helm chart for deploying the simulator in 
 
 - The Helm chart uses ConfigMaps to manage simulation and schema configurations.
 - Ensure the Kubernetes cluster has sufficient resources to handle the configured replicas and resource limits.
-- Update the `GREPTIMEDB_ENDPOINT`, `GREPTIMEDB_TABLE`, and `ENEMY_DETECTION_TABLE` environment variables in the deployment if connecting to a real database.
+- Update the `GREPTIMEDB_ENDPOINT`, `GREPTIMEDB_DATABASE`, `GREPTIMEDB_TABLE`, and `ENEMY_DETECTION_TABLE` environment variables in the deployment if connecting to a real database.
 
 For more details, refer to the `helm/droneops-sim` directory and the `values.yaml` file.
 

@@ -22,6 +22,7 @@ make run
 
 ```bash
 export GREPTIMEDB_ENDPOINT=127.0.0.1:4001
+export GREPTIMEDB_DATABASE=metrics
 export GREPTIMEDB_TABLE=drone_telemetry
 export ENEMY_DETECTION_TABLE=enemy_detection
 export SWARM_EVENT_TABLE=swarm_events
@@ -39,6 +40,7 @@ Docker run:
 docker build -t droneops-sim:latest .
 docker run --rm \
     -e GREPTIMEDB_ENDPOINT=127.0.0.1:4001 \
+    -e GREPTIMEDB_DATABASE=metrics \
     -e GREPTIMEDB_TABLE=drone_telemetry \
     -e ENEMY_DETECTION_TABLE=enemy_detection \
     -e SWARM_EVENT_TABLE=swarm_events \
